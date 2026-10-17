@@ -3,6 +3,7 @@ export function homeView({ config, text, language }, otherViews) {
   const shared = { appearance: config.appearance };
   const cards = [liveCard('header', { ...shared, compact: true, title: config.title ?? 'Mufflonbau', weather: config.weather, calendars: config.calendars, rooms: config.rooms }, language)];
   if (config.rooms.length) cards.push(liveCard('room-summary', { ...shared, compact: true, rooms: config.rooms }, language));
+  if (config.ventilation) cards.push(liveCard('ventilation', { ...shared, compact: true, ventilation: config.ventilation, rooms: config.rooms }, language));
   if (config.people.length) cards.push(liveCard('presence-summary', { ...shared, compact: true, people: config.people }, language));
   if (config.cleaning?.entity) cards.push(liveCard('cleaning', { ...shared, compact: true, cleaning: config.cleaning }, language));
   if (config.monitors.length) cards.push(liveCard('warnings', { ...shared, monitors: config.monitors, compact: true }, language));

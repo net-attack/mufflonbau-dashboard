@@ -1,0 +1,21 @@
+# Strategy editor; these entities are synthetic and must be replaced.
+type: custom:mufflonbau
+title: Mufflonbau
+language: de
+appearance:
+  theme: storybook
+ventilation:
+  outdoor_temperature: sensor.example_outdoor_temperature
+  outdoor_humidity: sensor.example_outdoor_humidity
+  humidity_high: 60
+  min_drying_difference: 1
+  max_age_minutes: 180
+rooms:
+  - id: living
+    name: Wohnzimmer
+    temperature: sensor.example_living_temperature
+    humidity: sensor.example_living_humidity
+  - id: bedroom
+    name: Schlafzimmer
+    temperature: sensor.example_bedroom_temperature
+    humidity: sensor.example_bedroom_humidity

@@ -29,10 +29,12 @@ export class MufflonbauShell extends HTMLElement {
   _render() {
     if (!this._config) return;
     const text = translations[this._config.language ?? 'en'];
-    const quickBack = ['rooms', 'presence', 'system', 'climate', 'cleaning'].includes(this._config.path);
+    const quickBack = ['rooms', 'presence', 'system', 'climate', 'cleaning', 'ventilation'].includes(this._config.path);
     const expertView = this._config.path === 'expert';
     const shell = element('div', undefined, 'shell');
     this.dataset.view = this._config.path;
+    if (this._config.path === 'home' && this._config.cards.some(card => card.mode === 'ventilation')) this.dataset.ventilation = 'true';
+    else delete this.dataset.ventilation;
     if (this._config.path === 'cleaning' && this._config.cleaning_theme === 'flusenfels') this.dataset.cleaningTheme = 'flusenfels';
     else delete this.dataset.cleaningTheme;
     if (this._config.full_view) this.setAttribute('data-full-view', 'true'); else this.removeAttribute('data-full-view');
@@ -90,7 +92,7 @@ export class MufflonbauShell extends HTMLElement {
     for (const config of this._config.cards) {
       const slot = element('section', undefined, 'slot');
       if (config.mode) slot.classList.add(`mode-${config.mode}`);
-      const layout = { header: 'wide', climate: 'rooms', 'room-summary': 'compact', people: 'compact', 'presence-summary': 'compact', devices: 'devices', cleaning: 'cleaning', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
+      const layout = { ventilation: config.compact ? 'compact' : 'wide', header: 'wide', climate: 'rooms', 'room-summary': 'compact', people: 'compact', 'presence-summary': 'compact', devices: 'devices', cleaning: 'cleaning', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
       if (layout) slot.classList.add(layout);
       let card;
       if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning', 'custom:mufflonbau-presence'].includes(config.type)) {

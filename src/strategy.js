@@ -6,6 +6,7 @@ import { systemViews } from './modules/system.js';
 import { calendarViews } from './modules/calendar.js';
 import { homeView, presenceView } from './modules/home.js';
 import { roomLightHierarchy } from './core/light-hierarchy.js';
+import { ventilationViews } from './modules/ventilation.js';
 import { cleaningPageText } from './core/cleaning-theme.js';
 export function generateDashboard(rawConfig, hass) {
   const config = normalizeConfig(rawConfig);
@@ -15,7 +16,7 @@ export function generateDashboard(rawConfig, hass) {
   });
   const language = resolveLanguage(config, hass);
   const context = { config, hass, language, text: translations[language] };
-  const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];
+  const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...ventilationViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];
   const allViews = [homeView(context, views), ...views];
   const firstLinks = ['home', 'calendar', 'rooms', 'cleaning'];
   const navigation = allViews.filter(item => !item.subview || item.path === 'presence').map(({ path, title, icon }) => ({ path, title, icon }))

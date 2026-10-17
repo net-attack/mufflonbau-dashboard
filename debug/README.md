@@ -5,8 +5,10 @@
 2. Copy its JSON result into `debug/ha-inventory.local.json` in this repository.
 3. Tell the developer that the file is ready.
 
-Set-valued attributes (such as supported color modes) are normalized recursively
-to JSON arrays, preserving nested group members and diagnostics.
+Set-valued attributes (such as supported color modes) become JSON arrays. The
+export deliberately uses no recursion: scalars, flat collections, and one mapping
+level are retained; deeper/unsupported structures receive an explicit omission
+marker. Group member IDs and ordinary vacuum error fields remain available.
 
 The query reads states, area/device assignments, light-group membership
 (`attributes.entity_id`), device capabilities, vacuum status/error attributes,

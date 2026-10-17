@@ -15,10 +15,15 @@ class DiagnosticTemplateTest(unittest.TestCase):
             return SimpleNamespace(entity_id=entity_id, domain=entity_id.split('.')[0],
                 name=attributes.get('friendly_name', entity_id), state=value,
                 attributes=attributes, last_updated=stamp)
+        cycle = {}
+        cycle['self'] = cycle
+        nested_list = []
+        nested_list.append(nested_list)
         states = [
             state('light.room', 'on', {'entity_id': {'light.panel', 'light.lamp'}}),
             state('light.panel', 'off', {'friendly_name': 'Panel "desk"', 'supported_color_modes': {'rgb', 'brightness'}, 'brightness': 0}),
             state('vacuum.robot', 'unavailable', {'error': {'reasons': {'busy', 'network'}, 'retry': True}, 'error_code': 42}),
+            state('sensor.cyclic', 'unknown', {'error': cycle, 'rgb_color': nested_list}),
             state('camera.map', 'idle', {'access_token': 'DO_NOT_EXPORT', 'entity_picture': 'DO_NOT_EXPORT'}),
         ]
         env = SandboxedEnvironment()
@@ -43,6 +48,8 @@ class DiagnosticTemplateTest(unittest.TestCase):
         self.assertEqual(entities['vacuum.robot']['attributes']['error_code'], 42)
         self.assertIsNone(entities['light.room']['device_id'])
         self.assertEqual(result['areas'], [{'id': 'living', 'name': 'Living room'}])
+        self.assertEqual(entities['sensor.cyclic']['attributes']['error'], {'self': '[nested value omitted]'})
+        self.assertEqual(entities['sensor.cyclic']['attributes']['rgb_color'], ['[nested value omitted]'])
         self.assertNotIn('DO_NOT_EXPORT', rendered)
 
 

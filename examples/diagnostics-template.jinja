@@ -1,21 +1,5 @@
 {# Paste into Home Assistant Developer Tools > Template. Read-only inventory. #}
-{# HA attributes may contain sets, including supported_color_modes and group members. #}
-{%- macro json_safe(value) -%}
-  {%- if value is mapping -%}
-    { {%- for key, child in value.items() -%}
-      {{ key | string | to_json }}: {{ json_safe(child) }}{{ ',' if not loop.last }}
-    {%- endfor -%} }
-  {%- elif value is iterable and value is not string -%}
-    [ {%- for child in value -%}
-      {{ json_safe(child) }}{{ ',' if not loop.last }}
-    {%- endfor -%} ]
-  {%- elif value is none or value is boolean or value is number or value is string -%}
-    {{ value | to_json }}
-  {%- else -%}
-    {{ value | string | to_json }}
-  {%- endif -%}
-{%- endmacro -%}
-
+{# Intentionally non-recursive: export scalars, flat collections, and one mapping level. #}
 {% set domains = ['light', 'group', 'vacuum', 'sensor', 'binary_sensor', 'climate', 'switch', 'humidifier', 'input_button', 'button', 'script', 'camera'] %}
 {% set allowed_attributes = ['entity_id', 'device_class', 'unit_of_measurement', 'supported_features', 'supported_color_modes', 'color_mode', 'brightness', 'color_temp_kelvin', 'rgb_color', 'hvac_modes', 'hvac_mode', 'hvac_action', 'temperature', 'current_temperature', 'current_humidity', 'humidity', 'battery_level', 'fan_speed', 'fan_speed_list', 'status', 'error', 'error_code', 'current_room', 'cleaned_area', 'cleaning_time', 'restored', 'assumed_state', 'all'] %}
 {% set output = namespace(areas=[], entities=[]) %}
@@ -26,7 +10,34 @@
   {% set device = device_id(entity.entity_id) %}
   {% set attrs = namespace(pairs=[]) %}
   {% for key in allowed_attributes if key in entity.attributes %}
-    {% set attrs.pairs = attrs.pairs + [(key, entity.attributes[key])] %}
+    {% set value = entity.attributes[key] %}
+    {% set safe = namespace(value='[nested or unsupported value omitted]') %}
+    {% if value is none or value is boolean or value is number or value is string %}
+      {% set safe.value = value %}
+    {% elif value is mapping %}
+      {% set fields = namespace(pairs=[]) %}
+      {% for field, child in value.items() %}
+        {% if child is none or child is boolean or child is number or child is string %}
+          {% set fields.pairs = fields.pairs + [(field | string, child)] %}
+        {% elif child is iterable and child is not mapping %}
+          {% set items = namespace(values=[]) %}
+          {% for item in child %}
+            {% set items.values = items.values + [item if item is none or item is boolean or item is number or item is string else '[nested value omitted]'] %}
+          {% endfor %}
+          {% set fields.pairs = fields.pairs + [(field | string, items.values)] %}
+        {% else %}
+          {% set fields.pairs = fields.pairs + [(field | string, '[nested value omitted]')] %}
+        {% endif %}
+      {% endfor %}
+      {% set safe.value = dict(fields.pairs) %}
+    {% elif value is iterable %}
+      {% set items = namespace(values=[]) %}
+      {% for item in value %}
+        {% set items.values = items.values + [item if item is none or item is boolean or item is number or item is string else '[nested value omitted]'] %}
+      {% endfor %}
+      {% set safe.value = items.values %}
+    {% endif %}
+    {% set attrs.pairs = attrs.pairs + [(key, safe.value)] %}
   {% endfor %}
   {% set output.entities = output.entities + [{
     'entity_id': entity.entity_id,
@@ -42,4 +53,4 @@
     'attributes': dict(attrs.pairs)
   }] %}
 {% endfor %}
-{{ json_safe({'schema_version': 1, 'exported_at': now().isoformat(), 'areas': output.areas, 'entities': output.entities}) | from_json | to_json(pretty_print=true) }}
+{{ {'schema_version': 1, 'exported_at': now().isoformat(), 'areas': output.areas, 'entities': output.entities} | to_json(pretty_print=true) }}

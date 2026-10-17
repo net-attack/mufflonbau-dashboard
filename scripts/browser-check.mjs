@@ -294,8 +294,8 @@ try {
     assert.ok(layout.slots.every(slot => slot.width > 0 && slot.height > 0 && slot.left >= -1 && slot.right <= viewport.width + 1),
       `${viewport.name}: every dashboard card must have visible, non-overflowing geometry: ${JSON.stringify(layout.slots)}`);
     assert.deepEqual(layout.summaries.map(summary => summary.mode), ['room-summary', 'presence-summary', 'cleaning', 'warnings']);
-    if (viewport.name === 'portrait') assert.ok(layout.summaries.every(summary => Math.abs(summary.width - layout.summaries[0].width) <= 1),
-      `Portrait home buttons must all have the same full width: ${JSON.stringify(layout.summaries)}`);
+    assert.ok(layout.summaries.every(summary => Math.abs(summary.width - layout.summaries[0].width) <= 1),
+      `${viewport.name}: home buttons must all have the same width: ${JSON.stringify(layout.summaries)}`);
     assert.ok(layout.summaries.every(summary => summary.width >= 44 && summary.height >= 44 && summary.left >= -1 && summary.right <= viewport.width + 1),
       `${viewport.name}: home summaries must remain visible and touchable: ${JSON.stringify(layout.summaries)}`);
     assert.ok(layout.summaries.every(summary => summary.cardHeight <= 80 && summary.headings === 0),

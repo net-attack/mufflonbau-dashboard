@@ -44,10 +44,10 @@ export const shellStyles = `
     :host([data-view=home]) .content { flex:none; min-height:0; align-items:start; align-content:start; grid-template-rows:auto auto auto; gap:12px; }
     :host([data-view=home]) .slot { min-height:0; }
     :host([data-view=home]) .slot.mode-header { grid-column:1/-1; grid-row:1; }
-    :host([data-view=home]) .slot.mode-room-summary { grid-column:span 7; grid-row:2; }
-    :host([data-view=home]) .slot.mode-presence-summary { grid-column:span 5; grid-row:2; }
-    :host([data-view=home]) .slot.mode-cleaning { grid-column:span 7; grid-row:3; height:auto; min-height:0; max-height:none; }
-    :host([data-view=home]) .slot.mode-warnings { grid-column:span 5; grid-row:3; }
+    :host([data-view=home]) .slot.mode-room-summary { grid-column:span 6; grid-row:2; }
+    :host([data-view=home]) .slot.mode-presence-summary { grid-column:span 6; grid-row:2; }
+    :host([data-view=home]) .slot.mode-cleaning { grid-column:span 6; grid-row:3; height:auto; min-height:0; max-height:none; }
+    :host([data-view=home]) .slot.mode-warnings { grid-column:span 6; grid-row:3; }
     :host([data-view=home]) .slot.mode-ventilation,:host([data-view=home]) .slot.laundry { grid-column:span 6; grid-row:auto; }
     :host([data-view=home][data-ventilation=true]) { height:auto; min-height:100dvh; overflow:visible; }
     :host([data-view=home][data-ventilation=true]) .shell,:host([data-view=home][data-ventilation=true]) main { height:auto; min-height:100dvh; }

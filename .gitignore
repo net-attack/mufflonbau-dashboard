@@ -5,3 +5,6 @@
 /test-results/
 /debug/*.local.json
 __pycache__/
+
+# Local floorplan sources are private and must not be committed.
+/private_/

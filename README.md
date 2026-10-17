@@ -100,7 +100,7 @@ sections are optional; omitted sections generate no corresponding view.
 | `title` | Dashboard title; default `Mufflonbau` |
 | `language` | `auto` (HA profile), `en`, or `de`; unsupported profile languages use English |
 | `entities` | Favorite entities on the home view; preserves the original minimal configuration |
-| `people` | Presence cards with translated states |
+| `people` | Compact presence cards with daily home time, recorded outings, last away time and a seven-day activity strip |
 | `weather` | Optional weather entity |
 | `calendars` | Calendar entities for the header summary and native calendar |
 | `rooms` | Room definitions, detailed below |
@@ -263,14 +263,24 @@ The Rooms overview dedicates the available screen to the map. Drag to pan and
 pinch with two fingers to zoom; trackpad pinch and the +/−/reset buttons work too.
 Zoom and position survive live entity updates. The cleaning camera uses the same
 gesture controls; ordinary mouse-wheel scrolling still reaches the page.
+Selecting a device marker or its entry in the device list zooms and centers the
+map on that device and opens its controls.
 Tap empty space outside the floorplan to return Home. Rooms, Presence, Climate,
 Cleaning and System check also provide a Home link or background shortcut;
 dragging the map and selecting a device never activate the background shortcut.
 Climate shows one room per row, with temperature and humidity in separate columns
 and a dew point column when configured. Tap a reading for its entity details or
 the room name to open the room; history stays below the table.
-Presence uses the page width for person cards; System check shows monitored,
-healthy and warning counts above its warning grid.
+Presence has compact person headers, time at home today, the current presence
+duration, recorded departures over seven calendar days, and the last recorded
+time away. A weekly strip and short factual quips fill out each person's card.
+It reads the configured people from HA Recorder, refreshes history every five
+minutes and elapsed times every minute, and uses HA's timezone, including DST.
+Unknown intervals remain gray and do not count as time home or away. If Recorder
+is unavailable or excludes a person, unrecorded statistics show a dash; current
+entity status and its details remain available. Outings count observed
+home-to-away transitions, so incomplete history can undercount them.
+System check shows monitored, healthy and warning counts above its warning grid.
 
 Disabled room cleaning buttons show whether their configured helper is missing
 or unavailable, including its entity ID. A never-pressed `input_button` has an

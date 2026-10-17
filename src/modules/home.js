@@ -16,6 +16,6 @@ export function homeView({ config, text, language }, otherViews) {
 export function presenceView({ config, text, language }) {
   if (!config.people.length) return [];
   return [view('presence', text.people, 'mdi:account-group-outline', [
-    liveCard('people', { people: config.people, appearance: config.appearance }, language),
+    { type: 'custom:mufflonbau-presence', people: config.people, appearance: config.appearance, language },
   ], { subview: true })];
 }

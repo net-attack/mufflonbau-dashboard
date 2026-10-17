@@ -33,7 +33,9 @@ export async function checkFlusenfels(sourcePage) {
     assert.equal(await shell.getAttribute('data-cleaning-theme'), 'flusenfels');
     assert.ok(await shell.locator('.saugfried-art img').evaluateAll(async images => {
       await Promise.all(images.map(img => img.decode()));
-      return images.length >= 6 && images.every(img => img.naturalWidth === 1448 && img.src.startsWith('data:image/png;base64,'));
+      return images.length >= 6 && images.every(img => img.naturalWidth > 0 && img.src.startsWith('data:image/png;base64,'))
+        && images.some(img => img.closest('.wordmark') && img.naturalWidth === 2172)
+        && images.filter(img => !img.closest('.wordmark')).every(img => img.naturalWidth === 1448);
     }), 'Original artwork must decode from the shipped bundle without external files');
     for (const theme of ['storybook', 'atmospheric', 'calm']) {
       for (const mode of ['ambient', 'night']) {

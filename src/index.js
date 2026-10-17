@@ -1,5 +1,6 @@
 import { MufflonbauAdmin } from './cards/admin.js';
 import { MufflonbauHistory } from './cards/history.js';
+import { MufflonbauPresence } from './cards/presence.js';
 import { MufflonbauCleaning } from './cards/cleaning.js';
 import { generateDashboard } from './strategy.js';
 import { MufflonbauShell } from './cards/shell.js';
@@ -10,6 +11,7 @@ export class MufflonbauDashboardStrategy extends HTMLElement {
 }
 if (!customElements.get('mufflonbau-admin')) customElements.define('mufflonbau-admin', MufflonbauAdmin);
 if (!customElements.get('mufflonbau-history')) customElements.define('mufflonbau-history', MufflonbauHistory);
+if (!customElements.get('mufflonbau-presence')) customElements.define('mufflonbau-presence', MufflonbauPresence);
 if (!customElements.get('mufflonbau-cleaning')) customElements.define('mufflonbau-cleaning', MufflonbauCleaning);
 if (!customElements.get('mufflonbau-shell')) customElements.define('mufflonbau-shell', MufflonbauShell);
 if (!customElements.get('mufflonbau-live')) customElements.define('mufflonbau-live', MufflonbauLiveCard);

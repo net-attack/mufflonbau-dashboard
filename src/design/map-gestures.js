@@ -4,6 +4,9 @@ export function mapGestures(viewport, content, camera = { zoom: 1, x: 0, y: 0 })
   let start, moved = false;
   const paint = () => {
     const rect = viewport.getBoundingClientRect();
+    // Re-renders construct a detached viewport before replacing the shadow DOM.
+    // Keep the camera until ResizeObserver sees the mounted dimensions.
+    if (!rect.width || !rect.height) return;
     camera.x = Math.max(-rect.width * (camera.zoom - 1) / 2, Math.min(rect.width * (camera.zoom - 1) / 2, camera.x));
     camera.y = Math.max(-rect.height * (camera.zoom - 1) / 2, Math.min(rect.height * (camera.zoom - 1) / 2, camera.y));
     content.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`;
@@ -17,6 +20,17 @@ export function mapGestures(viewport, content, camera = { zoom: 1, x: 0, y: 0 })
     camera.y = y - (y - camera.y) * next / camera.zoom;
     camera.zoom = next;
     paint();
+  };
+  const focus = (point, value = 2.5) => {
+    const frame = viewport.getBoundingClientRect();
+    const rect = content.getBoundingClientRect();
+    if (!frame.width || !frame.height || !rect.width || !rect.height) return;
+    const next = Math.max(camera.zoom, Math.min(6, value));
+    const centerX = rect.left + rect.width / 2, centerY = rect.top + rect.height / 2;
+    const baseX = centerX - camera.x, baseY = centerY - camera.y;
+    camera.x = frame.left + frame.width / 2 - baseX - (point.x - centerX) * next / camera.zoom;
+    camera.y = frame.top + frame.height * .42 - baseY - (point.y - centerY) * next / camera.zoom;
+    camera.zoom = next; paint();
   };
   const sample = () => {
     const [a, b] = [...pointers.values()];
@@ -68,7 +82,7 @@ export function mapGestures(viewport, content, camera = { zoom: 1, x: 0, y: 0 })
   const observer = new ResizeObserver(paint);
   observer.observe(viewport);
   paint();
-  return { zoom, reset: () => { camera.zoom = 1; camera.x = camera.y = 0; paint(); },
+  return { zoom, focus, reset: () => { camera.zoom = 1; camera.x = camera.y = 0; paint(); },
     destroy: () => {
       observer.disconnect();
       for (const [name, listener] of [['pointerdown', down], ['pointermove', move], ['pointerup', up], ['pointercancel', up], ['lostpointercapture', up], ['wheel', wheel]]) viewport.removeEventListener(name, listener);

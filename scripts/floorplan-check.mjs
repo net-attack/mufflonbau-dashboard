@@ -13,6 +13,10 @@ export async function checkFloorplan(page) {
     document.querySelector('main').replaceChildren(card);
   },{config:previewConfig,hass:previewHass});
   const card=page.locator('#interactive-test');
+  const choose = async id => {
+    await card.locator('.map-toolbar button[aria-label="Zoom zurücksetzen"]').click();
+    await card.locator(`[data-marker="${id}"]`).click();
+  };
   assert.equal(await card.locator('.map-room-label').count(),6);
   assert.match(await card.locator('.room-value').first().textContent(),/21,1 °C · 61,1 %/);
   // A room without sensors is intentional, not a pair of broken readings.
@@ -30,17 +34,25 @@ export async function checkFloorplan(page) {
     assert.equal(await card.locator('[data-room-label=living] .room-value').textContent(),only==='temperature'?'21,1 °C':'61,1 %');
   }
   await page.evaluate(()=>document.querySelector('#interactive-test').setConfig(window.mapConfig));
-  await card.locator('[data-marker=living-lamp]').click();
+  await choose('living-lamp');
   assert.equal(await page.evaluate(()=>window.mapCalls.length),0,'Selecting a marker must not toggle a light');
+  assert.ok(await card.evaluate(card => card._mapCamera.zoom >= 2.5), 'Selecting a device must zoom to it');
+  await page.waitForFunction(() => document.querySelector('#interactive-test').shadowRoot.querySelector('.floor-map').style.transform.includes('scale(2.5)'));
+  const focused = await card.locator('[data-marker=living-lamp] circle').evaluate(circle => {
+    const rect = circle.getBoundingClientRect(); const frame = circle.closest('ha-card').querySelector('.map-viewport').getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, cx: frame.left + frame.width / 2, cy: frame.top + frame.height * .42 };
+  });
+  assert.ok(Math.abs(focused.x - focused.cx) < 45 && Math.abs(focused.y - focused.cy) < 45, `Selected device must be centered: ${JSON.stringify(focused)}`);
+  assert.equal(await card.locator('[data-marker=living-lamp]').getAttribute('aria-pressed'), 'true');
   await card.locator('.map-device-detail button').filter({hasText:'Ausschalten'}).click();
   assert.deepEqual(await page.evaluate(()=>window.mapCalls[0]),['homeassistant','toggle',{}, {entity_id:'light.living'}]);
-  await card.locator('[data-marker=window]').click();
+  await choose('window');
   assert.match(await card.locator('.map-device-detail').innerText(),/Fenster geschlossen/);
   await page.evaluate(()=>{window.mapHass={...window.mapHass,states:{...window.mapHass.states,'binary_sensor.window':{state:'on',attributes:{}}}}; document.querySelector('#interactive-test').hass=window.mapHass;});
   assert.match(await card.locator('.map-device-detail').innerText(),/Fenster offen/);
   await card.locator('.map-device-detail button').filter({hasText:'Details ansehen'}).click();
   assert.equal(await page.evaluate(()=>window.mapMoreInfo.at(-1)),'binary_sensor.window');
-  await card.locator('[data-marker=unassigned]').click();
+  await choose('unassigned');
   assert.match(await card.locator('.map-device-detail').innerText(),/Noch nicht eingerichtet/);
   assert.equal(await card.locator('.map-device-detail button').count(),1);
   await card.locator('.map-toolbar select').selectOption('office');
@@ -48,22 +60,26 @@ export async function checkFloorplan(page) {
   const cropped=await card.locator('.floor-map').getAttribute('viewBox');
   await card.locator('.map-toolbar select').selectOption('');
   assert.notEqual(await card.locator('.floor-map').getAttribute('viewBox'),cropped);
-  await card.locator('[data-marker=living-lamp]').click();
+  await choose('living-lamp');
+  const cameraBeforeLiveUpdate = await card.evaluate(card => ({ ...card._mapCamera }));
   await page.evaluate(()=>{window.mapHass={...window.mapHass,states:{...window.mapHass.states,'light.living':{state:'unavailable',attributes:{}}}}; document.querySelector('#interactive-test').hass=window.mapHass;});
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  assert.deepEqual(await card.evaluate(card => ({ ...card._mapCamera })), cameraBeforeLiveUpdate, 'Live updates must preserve the selected device position and zoom');
   assert.equal(await card.locator('.map-device-detail button').first().isDisabled(),true);
   assert.match(await card.locator('.map-device-detail').innerText(),/Wandschalter möglicherweise aus/);
   assert.equal(await card.locator('[data-marker=living-lamp] .wall-switched').count(),1);
   assert.equal(await card.locator('[data-marker=living-lamp] .unavailable').count(),0);
   await page.evaluate(()=>{window.mapHass={...window.mapHass,states:{...window.mapHass.states,'sensor.outdoor':{state:'unavailable',attributes:{}}}}; document.querySelector('#interactive-test').hass=window.mapHass;});
-  await card.locator('[data-marker=outdoor]').click();
+  await choose('outdoor');
   assert.match(await card.locator('.map-device-detail').innerText(),/In Home Assistant nicht verfügbar/);
   assert.doesNotMatch(await card.locator('.map-device-detail').innerText(),/Wandschalter/);
-  await card.locator('[data-marker=living-lamp]').click();
+  await choose('living-lamp');
   await page.evaluate(()=>{window.mapHass={...window.mapHass,states:{...window.mapHass.states,'light.living':{state:'off',attributes:{}}},callService:async()=>{throw new Error('Offline')}}; document.querySelector('#interactive-test').hass=window.mapHass;});
   assert.equal(await card.locator('[data-marker=living-lamp] .wall-switched').count(),0);
   await card.locator('.map-device-detail button').filter({hasText:'Einschalten'}).click();
   assert.match(await card.locator('.map-device-detail').innerText(),/fehlgeschlagen/);
   await card.locator('.map-device-detail button').filter({hasText:'Schließen'}).click();
+  await card.locator('.map-toolbar button[aria-label="Zoom zurücksetzen"]').click();
   for(const mode of ['ambient','night']) for(const profile of galaxyProfiles) for(const viewport of profile.viewports) {
     await page.setViewportSize({width:viewport.width,height:viewport.height});
     await page.evaluate(mode=>{ const card=document.querySelector('#interactive-test'); card.setConfig({...window.mapConfig,appearance:{theme:'storybook',mode}}); card.hass=window.mapHass;},mode);

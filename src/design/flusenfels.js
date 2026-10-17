@@ -1,4 +1,5 @@
 import atlas from '../assets/saugfried-atlas.png';
+import wordmark from '../assets/saugfried-wordmark.png';
 import { element } from './dom.js';
 
 // CSS viewports select the original artwork; the supplied atlas stays unedited.
@@ -6,10 +7,17 @@ const sprites = {
   greeting: [0, 10, 502, 363], campaign: [500, 5, 432, 370], riding: [930, 0, 510, 400],
   resting: [0, 378, 423, 214], puzzled: [621, 397, 152, 180],
   crest: [855, 600, 239, 212], castle: [1134, 600, 240, 203],
-  name: [0, 731, 680, 202], title: [681, 781, 579, 142], dust: [47, 598, 261, 157],
+  title: [681, 781, 579, 142], dust: [47, 598, 261, 157],
 };
 
 export function saugfriedArt(kind, className = '') {
+  if (kind === 'name') {
+    const frame = element('span', undefined, `saugfried-art ${className}`);
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'aspect-ratio:2172/724;--sprite-width:100%;--sprite-left:0%;--sprite-top:0%';
+    const img = element('img'); img.src = wordmark; img.alt = ''; img.draggable = false; img.width = 2172; img.height = 724;
+    frame.append(img); return frame;
+  }
   const [x, y, width, height] = sprites[kind] ?? sprites.greeting;
   const frame = element('span', undefined, `saugfried-art ${className}`);
   frame.setAttribute('aria-hidden', 'true');
@@ -39,7 +47,7 @@ ${saugfriedArtStyles}
 .panel.flusenfels{position:relative;overflow:hidden;gap:16px;padding:22px;border:1px solid var(--mb-line);border-radius:24px;box-shadow:inset 0 0 0 5px var(--mb-soft),0 12px 28px #162c1912;background:radial-gradient(ellipse at top right,#d2af4a16,transparent 70%),var(--mb-surface)}
 .flusenfels-hero{display:grid;grid-template-columns:minmax(90px,.9fr) minmax(0,1.6fr);gap:12px;align-items:center;min-width:0}
 .flusenfels-hero .portrait{width:100%;max-width:190px;justify-self:center;filter:drop-shadow(0 8px 6px #302b1520)}
-.royal-identity{min-width:0;text-align:center}.royal-identity .wordmark{width:100%;max-width:350px;margin:0 auto;clip-path:polygon(0 20%,39% 20%,43% 0,58% 0,62% 20%,100% 20%,100% 100%,0 100%)}.royal-identity .title-mark{width:95%;max-width:300px;margin:-5px auto 0}
+.royal-identity{min-width:0;text-align:center}.royal-identity .wordmark{width:100%;max-width:350px;margin:0 auto}.royal-identity .title-mark{width:95%;max-width:300px;margin:-5px auto 0}
 .flusenfels .royal-motto{font-size:12px;line-height:1.5;color:var(--mb-muted);margin:8px 0 0;font-style:italic;font-family:Georgia,serif}
 .royal-status{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:15px}.royal-status .crest{width:40px}.royal-status-copy{min-width:0}.royal-status strong{font-family:Georgia,serif;font-size:18px;font-weight:600}.royal-status p{margin:4px 0 0;color:var(--mb-muted);font-size:11px;line-height:1.5}
 .flusenfels .meta{font-size:12px}.flusenfels .running-mode strong{font-family:Georgia,serif;font-size:20px}.flusenfels .room{border-radius:12px;min-height:58px}.flusenfels .room span{font-size:12px}.flusenfels .room svg{width:22px;height:22px}

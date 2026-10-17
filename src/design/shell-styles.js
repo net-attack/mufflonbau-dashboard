@@ -21,9 +21,9 @@ export const shellStyles = `
   .slot.cleaning { grid-column:span 7; height:min(520px,calc(100dvh - 280px)); min-height:300px; }
   .slot.cleaning-map { grid-column:span 5; height:min(520px,calc(100dvh - 280px)); min-height:260px; overflow:hidden; border-radius:24px; }
   .slot.cleaning-map > * { width:100%; height:100%; }
-  :host([data-view=calendar][data-full-view=true]) { height:calc(100dvh - 56px); min-height:0; }
+  :host([data-view=calendar][data-full-view=true]) { height:100dvh; min-height:0; }
   :host([data-view=calendar][data-full-view=true]) .shell,:host([data-view=calendar][data-full-view=true]) main { height:100%; min-height:0; }
-  :host([data-view=calendar][data-full-view=true]) main { display:flex; flex-direction:column; padding:20px clamp(18px,3vw,46px) 82px; }
+  :host([data-view=calendar][data-full-view=true]) main { display:flex; flex-direction:column; padding:20px clamp(18px,3vw,46px) max(90px,var(--mb-nav-space,110px)); }
   :host([data-view=calendar][data-full-view=true]) .topline { flex:none; margin-bottom:12px; }
   :host([data-view=calendar][data-full-view=true]) .heading { flex:none; margin:0 0 12px; }
   :host([data-view=calendar][data-full-view=true]) .content { flex:1; min-height:0; }

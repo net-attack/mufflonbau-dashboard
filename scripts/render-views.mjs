@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, copyFile } from 'node:fs/promises';
 import { galaxyProfiles } from './galaxy-tab-a11.mjs';
 
 const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -45,6 +45,11 @@ export async function renderViews(sourcePage, config, hass, { output = new URL('
   paths = await page.evaluate(async ({ config, hass }) => {
     window.renderHass = { ...hass, callService: async () => {}, callWS: async payload => {
       const now = Date.now() / 1000;
+      const start = Date.parse(payload.start_time) / 1000;
+      const end = Date.parse(payload.end_time) / 1000;
+      if ((payload.entity_ids ?? []).every(id => id.startsWith('person.'))) return Object.fromEntries(payload.entity_ids.map((id, person) => [id,
+        Array.from({ length: 28 }, (_, index) => ({ s: index === 27 ? hass.states[id]?.state : (index + person) % 4 === 2 ? 'not_home' : 'home',
+          lc: start + (end - start) * index / 28 }))]));
       return Object.fromEntries((payload.entity_ids ?? []).map(id => [id, Array.from({ length: 9 }, (_, index) => ({
         s: String(Number(hass.states[id]?.state) + Math.sin(index) * 2), lu: now - (8 - index) * 1800,
       }))]));
@@ -79,10 +84,12 @@ export async function renderViews(sourcePage, config, hass, { output = new URL('
           const cleaningPanel = cleaning?.shadowRoot.querySelector('.panel').getBoundingClientRect();
           const cleaningRooms = cleaning?.shadowRoot.querySelector('.rooms')?.getBoundingClientRect();
           return { cleaningFits: !cleaningRooms || cleaningRooms.bottom <= cleaningPanel.bottom,
+            hostBottom: shell.getBoundingClientRect().bottom, viewportHeight: innerHeight,
             overflow: document.documentElement.scrollWidth - innerWidth, width: innerWidth,
             scrollable: document.scrollingElement.scrollHeight > innerHeight, navTop: nav.top, slots };
         });
         const name = `${view.path}-${mode}-${profile.name}-${viewport.name}`;
+        if (view.path === 'calendar') assert.ok(geometry.hostBottom >= geometry.viewportHeight - 1, `${name}: calendar background must cover the bottom of the viewport`);
         assert.ok(geometry.cleaningFits, `${name}: cleaning controls must fit inside their panel`);
         assert.ok(geometry.overflow <= 1, `${name}: horizontal overflow: ${JSON.stringify(geometry)}`);
         assert.ok(geometry.slots.length && geometry.slots.every(slot => slot.width > 0 && slot.height > 0 && slot.left >= -1 && slot.right <= geometry.width + 1),
@@ -93,6 +100,7 @@ export async function renderViews(sourcePage, config, hass, { output = new URL('
         // Capture the real tablet viewport; fullPage changes the apparent placement
         // of fixed navigation/backgrounds and is not what the device actually shows.
         await page.screenshot({ path: new URL(file, output).pathname });
+        if (view.path === 'calendar' && profile.name === 'scaled') await copyFile(new URL(file, output), new URL(`${view.path}-${mode}-${viewport.name}.png`, output));
         captures.push({ ...view, profile: profile.name, mode, orientation: viewport.name, position: 'top', file });
         if (geometry.scrollable) {
           await page.evaluate(() => scrollTo(0, document.scrollingElement.scrollHeight));

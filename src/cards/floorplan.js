@@ -85,11 +85,16 @@ export function renderInteractiveFloorplan(host, card, text) {
     if (device.kind === 'window') return state.state === 'on' ? text.windowOpen : state.state === 'off' ? text.windowClosed : text.unknown;
     return device.kind === 'temperature' && numericState(state) !== null ? host._value(device.entity,'°C') : host._state(device.entity,text);
   };
-  const choose = device => { host._mapDevice = device.id; host._render(); host.shadowRoot.querySelector('.map-device-detail button')?.focus(); };
+  const choose = device => {
+    const matrix = svg.getScreenCTM();
+    if (matrix) gestures.focus(new DOMPoint(device.position.x, device.position.y).matrixTransform(matrix));
+    host._mapDevice = device.id; host._render(); host.shadowRoot.querySelector('.map-device-detail button')?.focus();
+  };
   for (const device of devices.filter(d => !selectedRoom || d.room === selectedRoom.id)) {
     const {x,y} = device.position; const state = device.entity && host._hass.states[device.entity];
     const label = `${localized(device.name,host._language)} · ${status(device)}`;
     const marker = svgElement('a',{href:'#',role:'button',tabindex:0,'data-marker':device.id,'aria-label':label});
+    marker.setAttribute('aria-pressed', String(host._mapDevice === device.id));
     const wallSwitched = isWallSwitchUnavailable(state, device);
     marker.append(svgElement('circle',{cx:x,cy:y,r:14,class:`map-marker${state?.state==='on'?' active':''}${wallSwitched?' wall-switched':!device.entity || isOffline(state)?' unavailable':''}`}));
     marker.append(svgElement('path',{d:iconPath(device.icon),transform:`translate(${x-8} ${y-8}) scale(.67)`,class:'map-marker-icon'}));

@@ -66,6 +66,7 @@ export const liveStyles = `
   .floor-map .map-marker.active { fill:var(--mb-active); stroke:var(--mb-accent); } .floor-map .map-marker.unavailable { stroke:#b67545; stroke-dasharray:3; }
   .floor-map .map-marker-icon { fill:none; stroke:var(--mb-accent); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
   .floor-map a[data-marker]:hover .map-marker,.floor-map a[data-marker]:focus-visible .map-marker { stroke:var(--mb-accent); stroke-width:3; }
+  .floor-map a[data-marker][aria-pressed=true] .map-marker { stroke:var(--mb-accent); stroke-width:3; }
   .floor-map .floor-wall { fill:none; stroke:var(--mb-ink); stroke-width:8; stroke-linecap:square; stroke-linejoin:miter; opacity:.65; vector-effect:non-scaling-stroke; pointer-events:none; }
   .interactive-plan { --mb-map-floor:#f8f4e8; --mb-map-furniture:#c9d1be; --mb-map-cushion:#e5e8dc; --mb-map-wood:#d6c59d; --mb-map-water:#b7d3d5; --mb-map-light:#edcf83; --mb-map-radiator:#dfc19a; }
   .interactive-plan.night { --mb-map-floor:#25352f; --mb-map-furniture:#516455; --mb-map-cushion:#738471; --mb-map-wood:#827454; --mb-map-water:#56828a; --mb-map-light:#bd9951; --mb-map-radiator:#967c59; }

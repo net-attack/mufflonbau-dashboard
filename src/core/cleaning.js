@@ -1,8 +1,9 @@
 import { translations } from './i18n.js';
 import { isOffline } from './state.js';
+import { maintenanceEntities } from './maintenance.js';
 
 export function cleaningEntities(cleaning = {}) {
-  return ['entity', 'battery', 'current_room', 'map'].map(key => cleaning[key]).filter(Boolean);
+  return [...['entity', 'battery', 'current_room', 'map'].map(key => cleaning[key]), ...maintenanceEntities(cleaning.maintenance)].filter(Boolean);
 }
 
 // UI command names are separate from HA's registered vacuum actions.

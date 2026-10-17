@@ -96,12 +96,13 @@ export class MufflonbauShell extends HTMLElement {
       const layout = { ventilation: config.compact ? 'compact' : 'wide', header: 'wide', climate: 'rooms', 'room-summary': 'compact', people: 'compact', 'presence-summary': 'compact', devices: 'devices', cleaning: 'cleaning', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
       if (layout) slot.classList.add(layout);
       let card;
-      if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning', 'custom:mufflonbau-presence', 'custom:mufflonbau-shopping'].includes(config.type)) {
+      if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning', 'custom:mufflonbau-presence', 'custom:mufflonbau-shopping', 'custom:mufflonbau-maintenance'].includes(config.type)) {
         card = document.createElement(config.type.slice(7)); card.setConfig(config);
         if (config.type === 'custom:mufflonbau-admin') slot.classList.add('wide');
         if (config.type === 'custom:mufflonbau-presence') slot.classList.add('wide');
         if (config.type === 'custom:mufflonbau-cleaning') slot.classList.add('cleaning');
         if (config.type === 'custom:mufflonbau-shopping') slot.classList.add('shopping-summary');
+        if (config.type === 'custom:mufflonbau-maintenance') slot.classList.add('wide');
       } else if (helpers) card = helpers.createCardElement(config);
       else card = element('p', translations[this._config.language ?? 'en'].cardLoadError);
       if (this._hass) card.hass = this._hass;

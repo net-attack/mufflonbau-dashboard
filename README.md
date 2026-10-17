@@ -105,7 +105,7 @@ sections are optional; omitted sections generate no corresponding view.
 | `shopping` | Explicit existing `todo` entity, compact quick-add card and native list details; [iCloud setup](docs/ICLOUD-SHOPPING.de.md) |
 | `calendars` | Calendar entities for the header summary and native calendar |
 | `rooms` | Room definitions, detailed below |
-| `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, and `map` (camera) IDs |
+| `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, `map` (camera) IDs and `maintenance` sensor mappings |
 | `ventilation` | Optional ventilation traffic light using explicit outdoor temperature/humidity pairs with automatic failover and existing room readings; [configuration](docs/VENTILATION.de.md) |
 | `monitors` | Objects containing `entity`, optional `name`, and optional `battery_below` threshold |
 | `admin` | Optional arrays of entity IDs in `internet`, `network`, `host`, and router-backed `clients` |
@@ -172,6 +172,32 @@ and action targets. Home, Climate, Rooms and the other pages keep their selected
 theme. Omit the option or use `theme: default` for the regular cleaning page.
 The supplied transparent artwork is embedded in the JavaScript bundle; no
 additional `/local/` uploads or external image requests are needed.
+
+Add an optional `maintenance` list under `cleaning` to show the maintenance
+workshop below the existing cleaning controls and map. It follows the current
+theme, including Flusenfels, and opens native sensor details when tapped:
+
+```yaml
+cleaning:
+  entity: vacuum.robot
+  theme: flusenfels
+  maintenance:
+    - name: { en: Filter, de: Filter }
+      percent: sensor.robot_filter_left
+      remaining: sensor.robot_filter_time_left
+      warning_below: 10
+```
+
+These are synthetic IDs; use the actual sensors exposed by your robot's
+integration. Each item needs a `name` and at least one of `percent` or `remaining`.
+`percent` must report remaining life in `%`; `remaining` displays the sensor's
+reported unit exactly, such as `h` or `d`. Values at or below `warning_below`
+(default 10%) show **Due soon**; zero remaining life or time shows **Due**.
+Warnings sort first. Unknown, missing, invalid and unavailable readings remain
+explicit and never become a healthy zero. Without a percentage sensor, a positive
+time alone cannot establish health; zero time can still flag a due item.
+Remaining times are robot counters, not predicted calendar dates. There are no
+reset controls or device actions. See [the German test notes](docs/MAINTENANCE.de.md).
 
 Monitors flag missing, `unknown`, and `unavailable` entities. With `battery_below`,
 invalid numeric readings also count as unavailable; values strictly below the

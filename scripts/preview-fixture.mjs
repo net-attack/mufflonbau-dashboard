@@ -23,7 +23,10 @@ export const previewConfig = {
   ],
   people: ['person.alex', 'person.sam'], weather: 'weather.home', calendars: ['calendar.family'],
   shopping: { entity: 'todo.family_shopping', name: 'Einkaufsliste' },
-  cleaning: { entity: 'vacuum.robot', battery: 'sensor.robot_battery', map: 'camera.robot_map' },
+  cleaning: { entity: 'vacuum.robot', battery: 'sensor.robot_battery', map: 'camera.robot_map', maintenance: [
+    { name: 'Filter', percent: 'sensor.robot_filter_left', remaining: 'sensor.robot_filter_time' },
+    { name: { en: 'Main brush', de: 'Hauptbürste' }, percent: 'sensor.robot_brush_left', remaining: 'sensor.robot_brush_time' },
+  ] },
   monitors: [{ entity: 'sensor.device_battery', battery_below: 20 }],
   admin: { internet: ['binary_sensor.internet'], host: ['sensor.panel_cpu', 'sensor.panel_temperature'], clients: ['device_tracker.tablet'] },
 };
@@ -47,6 +50,10 @@ export const previewHass = {
     'calendar.family': { state: 'off', attributes: { message: 'Abendessen mit Freunden', start_time: '2026-10-17T19:00:00+02:00' } },
     'vacuum.robot': { state: 'docked', attributes: { friendly_name: 'Fürst Saugfried von Flusenfels', supported_features: 8220 } },
     'sensor.robot_battery': { state: '92', attributes: { unit_of_measurement: '%' } },
+    'sensor.robot_filter_left': { state: '1', attributes: { unit_of_measurement: '%' } },
+    'sensor.robot_filter_time': { state: '1', attributes: { unit_of_measurement: 'h' } },
+    'sensor.robot_brush_left': { state: '50', attributes: { unit_of_measurement: '%' } },
+    'sensor.robot_brush_time': { state: '151', attributes: { unit_of_measurement: 'h' } },
     'sensor.device_battery': { state: '85', attributes: {} },
     'binary_sensor.internet': { state: 'on', attributes: { friendly_name: 'Internet' } },
     'sensor.panel_cpu': { state: '24', attributes: { friendly_name: 'CPU-Auslastung', unit_of_measurement: '%' } },

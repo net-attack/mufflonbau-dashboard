@@ -686,9 +686,72 @@ ${trees}${houses}
     return [...groups.values()];
   }
 
+  // src/core/maintenance.js
+  var maintenanceText = {
+    de: {
+      title: "Wartungsstube",
+      royalTitle: "Saugfrieds Wartungsstube",
+      subtitle: "Restwerte laut Roboter · antippen für Sensordetails",
+      healthy: "Kein Wartungshinweis",
+      attention: "Wartung im Blick behalten",
+      unknown: "Wartungsdaten prüfen",
+      due: "Fällig",
+      soon: "Bald fällig",
+      okay: "In Ordnung",
+      noPercent: "Prozentwert nicht eingerichtet",
+      remaining: "Restzeit",
+      percent: "Restlebensdauer",
+      missingUnit: "Einheit fehlt",
+      invalid: "Ungültiger Messwert",
+      note: "Restzeiten sind Gerätezähler, keine Kalendertermine. Nach der Wartung den Zähler in der Geräteintegration zurücksetzen."
+    },
+    en: {
+      title: "Maintenance",
+      royalTitle: "Saugfried’s maintenance workshop",
+      subtitle: "Remaining values reported by the robot · tap for sensor details",
+      healthy: "No maintenance reminder",
+      attention: "Keep an eye on maintenance",
+      unknown: "Check maintenance data",
+      due: "Due",
+      soon: "Due soon",
+      okay: "Okay",
+      noPercent: "Percentage not configured",
+      remaining: "Time remaining",
+      percent: "Life remaining",
+      missingUnit: "Unit missing",
+      invalid: "Invalid reading",
+      note: "Remaining times are device counters, not calendar dates. Reset the counter in the device integration after maintenance."
+    }
+  };
+  function maintenanceEntities(items = []) {
+    return items.flatMap((item) => [item.percent, item.remaining]).filter(Boolean);
+  }
+  function reading(entity2, states, language, percent) {
+    if (!entity2) return null;
+    const state = states[entity2];
+    const text = maintenanceText[language];
+    const problem = stateProblem(state, language);
+    if (problem) return { entity: entity2, problem };
+    const value = numericState(state);
+    const unit = state.attributes?.unit_of_measurement;
+    if (value === null || value < 0 || percent && (unit !== "%" || value > 100)) return { entity: entity2, problem: text.invalid };
+    if (typeof unit !== "string" || !unit.trim()) return { entity: entity2, problem: text.missingUnit };
+    return { entity: entity2, value, unit, display: `${new Intl.NumberFormat(language).format(value)} ${unit}` };
+  }
+  function maintenanceStatus(item, states, language) {
+    const percent = reading(item.percent, states, language, true);
+    const remaining = reading(item.remaining, states, language, false);
+    const valid = percent && !percent.problem;
+    const due = valid && percent.value === 0 || remaining && !remaining.problem && remaining.value === 0;
+    const soon = valid && percent.value <= (item.warning_below ?? 10);
+    const incomplete = !valid || Boolean(remaining?.problem);
+    const status = due ? "due" : soon ? "soon" : incomplete ? "unknown" : "okay";
+    return { percent, remaining, status, incomplete };
+  }
+
   // src/core/cleaning.js
   function cleaningEntities(cleaning = {}) {
-    return ["entity", "battery", "current_room", "map"].map((key2) => cleaning[key2]).filter(Boolean);
+    return [...["entity", "battery", "current_room", "map"].map((key2) => cleaning[key2]), ...maintenanceEntities(cleaning.maintenance)].filter(Boolean);
   }
   function vacuumCommand(command, state, services) {
     const service = command === "start_pause" ? ["cleaning", "returning"].includes(state?.state) ? "pause" : "start" : command === "return_home" ? "return_to_base" : command === "stop" ? "stop" : null;
@@ -1898,6 +1961,96 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
     }
   };
 
+  // src/cards/maintenance.js
+  var styles6 = `
+:host{display:block;min-width:0;color:var(--mb-ink);font-family:Inter,'Avenir Next',system-ui,sans-serif}*{box-sizing:border-box}
+.workshop{padding:20px;border:1px solid var(--mb-line);border-radius:24px;background:var(--mb-surface)}
+header{display:flex;align-items:center;gap:12px;margin-bottom:16px}header>svg{flex:none;color:var(--mb-accent)}h2{margin:0;font-size:20px}.royal h2{font-family:Georgia,serif;font-weight:500}
+header p,.note,.meta{font-size:12px;color:var(--mb-muted);line-height:1.5;margin:5px 0 0}.summary{font-size:14px;margin:0 0 14px;font-weight:600;line-height:1.5}
+.items{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px}.item{padding:14px;border:1px solid var(--mb-line);border-radius:16px;background:var(--mb-soft);min-width:0}
+.item[data-status=due],.item[data-status=soon]{border-color:var(--mb-accent);background:var(--mb-active)}.item h3{font-size:16px;margin:0;overflow-wrap:anywhere}.badge{display:flex;align-items:center;gap:6px;font-size:12px;margin:8px 0;color:var(--mb-muted)}.badge svg{width:16px;height:16px}
+.reading{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:44px;padding:8px 0;border:0;background:transparent;font:inherit;font-size:13px;color:var(--mb-ink);cursor:pointer;text-align:left}.reading span{min-width:0}.reading strong{text-align:right;overflow-wrap:anywhere}.reading:focus-visible{outline:2px solid var(--mb-accent);outline-offset:2px;border-radius:6px}
+progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margin:4px 0 8px}.note{margin-top:16px}.entity-id{display:block;font-size:10px;overflow-wrap:anywhere;color:var(--mb-muted)}
+.reading.problem{display:grid;grid-template-columns:1fr;gap:5px}.reading.problem strong{text-align:left;font-weight:500}
+@media(max-width:560px){.workshop{padding:16px}.items{grid-template-columns:1fr}}
+`;
+  var MufflonbauMaintenance = class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+    }
+    setConfig(config) {
+      this._config = config;
+      this._render();
+    }
+    set hass(hass) {
+      const previous = this._hass;
+      this._hass = hass;
+      if (!previous || maintenanceEntities(this._config?.cleaning?.maintenance).some((id) => previous.states[id] !== hass.states[id]) || previous.states["sun.sun"] !== hass.states["sun.sun"] || previous.themes !== hass.themes) this._render();
+    }
+    getCardSize() {
+      return 4;
+    }
+    _render() {
+      if (!this._hass || !this._config) return;
+      const { cleaning = {}, language = "en", appearance } = this._config;
+      const text = maintenanceText[language];
+      const mode = appearanceMode(appearance, this._hass.states, this._hass.themes?.darkMode);
+      applyTheme(this, mode, appearance?.theme);
+      const royal = cleaning.theme === "flusenfels";
+      if (royal) applyFlusenfelsTheme(this, mode);
+      const section = element("section", void 0, `workshop${royal ? " royal" : ""}`);
+      const header = element("header");
+      const copy2 = element("div");
+      copy2.append(element("h2", royal ? text.royalTitle : text.title), element("p", text.subtitle));
+      header.append(icon("system"), copy2);
+      section.append(header);
+      const entries = (cleaning.maintenance ?? []).map((item) => ({ item, ...maintenanceStatus(item, this._hass.states, language) }));
+      const attention = entries.filter((entry) => ["due", "soon"].includes(entry.status));
+      const unknown = entries.filter((entry) => entry.incomplete);
+      const summary = element("p", [
+        attention.length ? `${text.attention}: ${attention.map((entry) => localized(entry.item.name, language)).join(", ")}` : unknown.length ? "" : text.healthy,
+        unknown.length ? `${text.unknown}: ${unknown.map((entry) => localized(entry.item.name, language)).join(", ")}` : ""
+      ].filter(Boolean).join(" · "), "summary");
+      summary.setAttribute("role", "status");
+      section.append(summary);
+      const items = element("div", void 0, "items");
+      const order = { due: 0, soon: 1, unknown: 2, okay: 3 };
+      for (const entry of [...entries].sort((a, b) => order[a.status] - order[b.status])) {
+        const item = element("article", void 0, "item");
+        item.dataset.status = entry.status;
+        item.append(element("h3", localized(entry.item.name, language)));
+        const badge = element("div", void 0, "badge");
+        badge.append(icon(["due", "soon", "unknown"].includes(entry.status) ? "warning" : "system"), element("span", text[entry.status]));
+        item.append(badge);
+        for (const [kind, reading3] of [["percent", entry.percent], ["remaining", entry.remaining]]) {
+          if (!reading3) continue;
+          const button = element("button", void 0, "reading");
+          button.type = "button";
+          button.dataset.entity = reading3.entity;
+          if (reading3.problem) button.classList.add("problem");
+          const label2 = element("span", text[kind]);
+          if (reading3.problem) label2.append(element("small", reading3.entity, "entity-id"));
+          button.append(label2, element("strong", reading3.problem ?? reading3.display));
+          button.setAttribute("aria-label", `${localized(entry.item.name, language)} · ${text[kind]} · ${reading3.problem ?? reading3.display}`);
+          button.addEventListener("click", () => this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: reading3.entity }, bubbles: true, composed: true })));
+          item.append(button);
+          if (kind === "percent" && !reading3.problem) {
+            const bar = element("progress");
+            bar.max = 100;
+            bar.value = reading3.value;
+            bar.setAttribute("aria-label", `${localized(entry.item.name, language)} · ${text.percent}`);
+            item.append(bar);
+          }
+        }
+        if (!entry.percent) item.append(element("p", text.noPercent, "meta"));
+        items.append(item);
+      }
+      section.append(items, element("p", text.note, "note"));
+      this.shadowRoot.replaceChildren(element("style", styles6), section);
+    }
+  };
+
   // src/core/floorplan.js
   var drawingTags = /* @__PURE__ */ new Set(["g", "path", "rect", "circle", "ellipse", "line", "polyline", "text"]);
   var drawingAttributes = /* @__PURE__ */ new Set(["d", "x", "y", "width", "height", "cx", "cy", "r", "rx", "ry", "x1", "x2", "y1", "y2", "points", "transform", "fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "opacity", "fill-opacity", "font-size", "text-anchor"]);
@@ -1981,7 +2134,7 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
       dewPoint: humidity === 0 ? null : 243.5 * gamma / (17.67 - gamma)
     };
   }
-  function reading(id, states, kind, now, maxAge) {
+  function reading2(id, states, kind, now, maxAge) {
     const state = states[id];
     const status = availability(state);
     if (status !== "available") return { entity: id, problem: id ? status : "notConfigured" };
@@ -2001,7 +2154,7 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
     return { entity: id, value, timestamp };
   }
   function pair(temperature, humidity, states, now, maxAge) {
-    const readings = [reading(temperature, states, "temperature", now, maxAge), reading(humidity, states, "humidity", now, maxAge)];
+    const readings = [reading2(temperature, states, "temperature", now, maxAge), reading2(humidity, states, "humidity", now, maxAge)];
     const issues = readings.filter((item) => item.problem);
     return issues.length ? { issues } : { ...moisture(readings[0].value, readings[1].value), readings, issues };
   }
@@ -2206,6 +2359,24 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
       for (const key2 of ["entity", "battery", "current_room", "map"]) {
         if (result.cleaning[key2] !== void 0) entity(result.cleaning[key2], `cleaning.${key2}`);
       }
+      if (result.cleaning.maintenance !== void 0) {
+        list(result.cleaning.maintenance, "cleaning.maintenance");
+        const maintenanceIds = /* @__PURE__ */ new Set();
+        result.cleaning.maintenance.forEach((item, index) => {
+          const path = `cleaning.maintenance[${index}]`;
+          object(item, path);
+          label(item.name, `${path}.name`);
+          if (!item.percent && !item.remaining) fail(path, "requires percent or remaining.");
+          for (const key2 of ["percent", "remaining"]) {
+            if (item[key2] === void 0) continue;
+            entity(item[key2], `${path}.${key2}`);
+            if (!item[key2].startsWith("sensor.")) fail(`${path}.${key2}`, "must reference a sensor.");
+            if (maintenanceIds.has(item[key2])) fail(`${path}.${key2}`, "must not duplicate another maintenance sensor.");
+            maintenanceIds.add(item[key2]);
+          }
+          if (item.warning_below !== void 0 && (!item.percent || !Number.isFinite(item.warning_below) || item.warning_below < 0 || item.warning_below > 100)) fail(`${path}.warning_below`, "requires percent and a number between 0 and 100.");
+        });
+      }
     }
     if (result.kiosk_mode !== void 0) {
       object(result.kiosk_mode, "kiosk_mode");
@@ -2308,6 +2479,7 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
       cards.push({ type: "custom:mufflonbau-cleaning", cleaning, rooms: config.rooms, language, appearance: config.appearance });
     }
     if (cleaning.map) cards.push({ type: "picture-entity", entity: cleaning.map, camera_view: "live", show_name: false, show_state: false });
+    if (cleaning.maintenance?.length) cards.push({ type: "custom:mufflonbau-maintenance", cleaning, language, appearance: config.appearance });
     return [view("cleaning", text.cleaning, "mdi:robot-vacuum", cards)];
   }
 
@@ -2774,8 +2946,8 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
       this.shadowRoot.replaceChildren(element("style", `${shellStyles}
 ${flusenfelsShellStyles}`), shell);
       this._navObserver = new ResizeObserver(() => {
-        const styles6 = getComputedStyle(nav);
-        const space = styles6.position === "fixed" ? nav.getBoundingClientRect().height + parseFloat(styles6.bottom || 0) + 12 : 16;
+        const styles7 = getComputedStyle(nav);
+        const space = styles7.position === "fixed" ? nav.getBoundingClientRect().height + parseFloat(styles7.bottom || 0) + 12 : 16;
         this.style.setProperty("--mb-nav-space", `${space}px`);
       });
       this._navObserver.observe(nav);
@@ -2796,13 +2968,14 @@ ${flusenfelsShellStyles}`), shell);
         const layout = { ventilation: config.compact ? "compact" : "wide", header: "wide", climate: "rooms", "room-summary": "compact", people: "compact", "presence-summary": "compact", devices: "devices", cleaning: "cleaning", warnings: "compact", floorplan: "wide", message: "wide" }[config.mode];
         if (layout) slot.classList.add(layout);
         let card;
-        if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history", "custom:mufflonbau-cleaning", "custom:mufflonbau-presence", "custom:mufflonbau-shopping"].includes(config.type)) {
+        if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history", "custom:mufflonbau-cleaning", "custom:mufflonbau-presence", "custom:mufflonbau-shopping", "custom:mufflonbau-maintenance"].includes(config.type)) {
           card = document.createElement(config.type.slice(7));
           card.setConfig(config);
           if (config.type === "custom:mufflonbau-admin") slot.classList.add("wide");
           if (config.type === "custom:mufflonbau-presence") slot.classList.add("wide");
           if (config.type === "custom:mufflonbau-cleaning") slot.classList.add("cleaning");
           if (config.type === "custom:mufflonbau-shopping") slot.classList.add("shopping-summary");
+          if (config.type === "custom:mufflonbau-maintenance") slot.classList.add("wide");
         } else if (helpers) card = helpers.createCardElement(config);
         else card = element("p", translations[this._config.language ?? "en"].cardLoadError);
         if (this._hass) card.hass = this._hass;
@@ -3245,8 +3418,8 @@ ${flusenfelsShellStyles}`), shell);
       navigateLink(link, `room-${room.id}`);
       const label2 = svgElement("g", { class: "map-room-label", "data-room-label": room.id });
       const labelWidth = Math.min(164, b2.right - b2.x - 10);
-      const reading2 = (id, unit) => id && numericState(host._hass.states[id]) !== null ? host._value(id, unit) : `— ${unit}`;
-      const readings = [[room.temperature, "°C"], [room.humidity, "%"]].filter(([id]) => id).map(([id, unit]) => reading2(id, unit));
+      const reading3 = (id, unit) => id && numericState(host._hass.states[id]) !== null ? host._value(id, unit) : `— ${unit}`;
+      const readings = [[room.temperature, "°C"], [room.humidity, "%"]].filter(([id]) => id).map(([id, unit]) => reading3(id, unit));
       label2.append(svgElement("rect", { x: x - labelWidth / 2, y: y - (readings.length ? 19 : 13), width: labelWidth, height: readings.length ? 44 : 26, rx: 8 }));
       label2.append(svgElement("text", { x, y: y + (readings.length ? -2 : 4), "text-anchor": "middle", class: "room-name" }, localized(room.name, host._language)));
       if (readings.length) label2.append(svgElement("text", { x, y: y + 16, "text-anchor": "middle", class: "room-value" }, readings.join(" · ")));
@@ -3492,9 +3665,9 @@ ${ventilationStyles}`);
       const humidities = (this._config.rooms ?? []).map((room) => numericState(this._hass.states[room.humidity])).filter((value) => value !== null);
       if (compatible.length) {
         const average = compatible.reduce((sum, state) => sum + numericState(state), 0) / compatible.length;
-        const reading2 = element("div", void 0, "reading");
-        reading2.append(icon("climate"), element("strong", `${new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(average)} ${unit}`));
-        climate.append(reading2);
+        const reading3 = element("div", void 0, "reading");
+        reading3.append(icon("climate"), element("strong", `${new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(average)} ${unit}`));
+        climate.append(reading3);
         const pills = element("div", void 0, "climate-pills");
         pills.append(element("span", `${compatible.length} · ${text.rooms}`, "chip"));
         if (humidities.length) pills.append(element("span", `${Math.round(humidities.reduce((a, b) => a + b, 0) / humidities.length)}% · ${text.humidity}`, "chip"));
@@ -3598,10 +3771,10 @@ ${ventilationStyles}`);
         button.dataset.entity = room.temperature ?? room.humidity ?? room.dew_point ?? "";
         button.append(element("strong", localized(room.name, this._language)));
         if (room.temperature) {
-          const reading2 = element("div", void 0, `value${numericState(this._hass.states[room.temperature]) === null ? " status-value" : ""}`);
-          if (numericState(this._hass.states[room.temperature]) === null) reading2.append(this._statusIcon(stateProblem(this._hass.states[room.temperature], this._language) ?? text.invalidValue));
-          else reading2.textContent = this._value(room.temperature, "°C");
-          button.append(reading2);
+          const reading3 = element("div", void 0, `value${numericState(this._hass.states[room.temperature]) === null ? " status-value" : ""}`);
+          if (numericState(this._hass.states[room.temperature]) === null) reading3.append(this._statusIcon(stateProblem(this._hass.states[room.temperature], this._language) ?? text.invalidValue));
+          else reading3.textContent = this._value(room.temperature, "°C");
+          button.append(reading3);
         }
         if (room.humidity) {
           const value = numericState(this._hass.states[room.humidity]);
@@ -3662,16 +3835,16 @@ ${ventilationStyles}`);
           const cell = element("td");
           const id = room[column.key];
           if (id) {
-            const reading2 = element("button", void 0, "climate-reading");
-            reading2.type = "button";
-            reading2.dataset.entity = id;
+            const reading3 = element("button", void 0, "climate-reading");
+            reading3.type = "button";
+            reading3.dataset.entity = id;
             const value = this._value(id, column.unit);
-            reading2.setAttribute("aria-label", `${name} · ${column.label}: ${value}`);
-            reading2.title = value;
-            if (numericState(this._hass.states[id]) === null) reading2.append(this._statusIcon(value));
-            else reading2.textContent = value;
-            reading2.addEventListener("click", () => this._moreInfo(id));
-            cell.append(reading2);
+            reading3.setAttribute("aria-label", `${name} · ${column.label}: ${value}`);
+            reading3.title = value;
+            if (numericState(this._hass.states[id]) === null) reading3.append(this._statusIcon(value));
+            else reading3.textContent = value;
+            reading3.addEventListener("click", () => this._moreInfo(id));
+            cell.append(reading3);
           } else {
             const missing = element("span", "—", "climate-empty");
             missing.setAttribute("aria-label", text.notConfigured);
@@ -3972,6 +4145,7 @@ ${ventilationStyles}`);
   if (!customElements.get("mufflonbau-presence")) customElements.define("mufflonbau-presence", MufflonbauPresence);
   if (!customElements.get("mufflonbau-cleaning")) customElements.define("mufflonbau-cleaning", MufflonbauCleaning);
   if (!customElements.get("mufflonbau-shopping")) customElements.define("mufflonbau-shopping", MufflonbauShopping);
+  if (!customElements.get("mufflonbau-maintenance")) customElements.define("mufflonbau-maintenance", MufflonbauMaintenance);
   if (!customElements.get("mufflonbau-shell")) customElements.define("mufflonbau-shell", MufflonbauShell);
   if (!customElements.get("mufflonbau-live")) customElements.define("mufflonbau-live", MufflonbauLiveCard);
   if (!customElements.get("ll-strategy-dashboard-mufflonbau")) customElements.define("ll-strategy-dashboard-mufflonbau", MufflonbauDashboardStrategy);

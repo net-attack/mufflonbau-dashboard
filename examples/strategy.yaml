@@ -32,6 +32,11 @@ cleaning:
   battery: sensor.robot_battery
   current_room: sensor.robot_room
   map: camera.robot_map
+  maintenance:
+    - name: { en: Filter, de: Filter }
+      percent: sensor.robot_filter_left
+      remaining: sensor.robot_filter_time_left
+      warning_below: 10
 monitors:
   - entity: sensor.living_temperature
   - entity: sensor.living_battery

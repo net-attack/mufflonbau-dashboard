@@ -208,3 +208,46 @@ verification in your installation. Choose a license before the first tagged rele
 - [Native card features](https://www.home-assistant.io/dashboards/features/)
 - [Dashboard actions](https://www.home-assistant.io/dashboards/actions/)
 - [HACS dashboard requirements](https://www.hacs.xyz/docs/publish/plugin/)
+
+### Admin / nerd panel
+
+The **Admin** destination keeps technical data separate from the daily home overview.
+Open Internet, Network, or Home Assistant / Raspberry Pi to see individual readings,
+Recorder history (6 hours, 24 hours, or 7 days), and native entity details.
+Select existing entity IDs under your dashboard's `strategy` configuration:
+
+```yaml
+admin:
+  internet:
+    - binary_sensor.your_router_connection
+    - sensor.your_download_measurement
+    - sensor.your_upload_measurement
+    - sensor.your_ping_measurement
+  network:
+    - sensor.your_router_throughput
+  clients:
+    - device_tracker.your_tablet
+  host:
+    - sensor.your_processor_temperature
+    - sensor.your_processor_use
+    - sensor.your_memory_use_percent
+    - sensor.your_disk_use_percent
+```
+
+These IDs are placeholders: replace them with your actual entities. Omit groups you
+haven't configured yet; their detail pages explain how to add sources. No network
+scan, speed test, or host polling is started by this dashboard.
+
+Use router-backed device trackers for `clients`. Tracker presence may be delayed
+and does not distinguish Ethernet from Wi-Fi. Open a device to inspect the
+connection attributes actually supplied by your integration. Internet readings
+include their update timestamp: a speed-test result is a measurement, not current
+link throughput. The dashboard's own HA connection is never used to infer WAN
+connectivity.
+
+[System monitor](https://www.home-assistant.io/integrations/systemmonitor/) provides
+host readings; enable the desired entities (disabled by default).
+[FRITZ!Box Tools](https://www.home-assistant.io/integrations/fritz/) or your router's
+integration can supply connectivity and device trackers. History requires Recorder
+and read access to the selected sensors. Charts separate units and device classes,
+preserve unknown/unavailable gaps, and refresh every five minutes while open.

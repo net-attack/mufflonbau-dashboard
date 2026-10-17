@@ -1,3 +1,5 @@
+import { MufflonbauAdmin } from './cards/admin.js';
+import { MufflonbauHistory } from './cards/history.js';
 import { generateDashboard } from './strategy.js';
 import { MufflonbauShell } from './cards/shell.js';
 import { MufflonbauLiveCard } from './cards/live-card.js';
@@ -5,6 +7,8 @@ export class MufflonbauDashboardStrategy extends HTMLElement {
   static getCreateSuggestions() { return { title: 'Mufflonbau', icon: 'mdi:home' }; }
   static async generate(config, hass) { return generateDashboard(config, hass); }
 }
+if (!customElements.get('mufflonbau-admin')) customElements.define('mufflonbau-admin', MufflonbauAdmin);
+if (!customElements.get('mufflonbau-history')) customElements.define('mufflonbau-history', MufflonbauHistory);
 if (!customElements.get('mufflonbau-shell')) customElements.define('mufflonbau-shell', MufflonbauShell);
 if (!customElements.get('mufflonbau-live')) customElements.define('mufflonbau-live', MufflonbauLiveCard);
 if (!customElements.get('ll-strategy-dashboard-mufflonbau')) customElements.define('ll-strategy-dashboard-mufflonbau', MufflonbauDashboardStrategy);

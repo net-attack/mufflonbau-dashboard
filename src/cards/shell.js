@@ -70,8 +70,9 @@ export class MufflonbauShell extends HTMLElement {
       const layout = { header: 'wide', climate: 'rooms', people: 'compact', devices: 'devices', cleaning: 'compact', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
       if (layout) slot.classList.add(layout);
       let card;
-      if (config.type === 'custom:mufflonbau-live') {
-        card = document.createElement('mufflonbau-live'); card.setConfig(config);
+      if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history'].includes(config.type)) {
+        card = document.createElement(config.type.slice(7)); card.setConfig(config);
+        if (config.type === 'custom:mufflonbau-admin') slot.classList.add('wide');
       } else if (helpers) card = helpers.createCardElement(config);
       else card = element('p', translations[this._config.language ?? 'en'].cardLoadError);
       if (this._hass) card.hass = this._hass;

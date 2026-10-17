@@ -21,6 +21,7 @@ const paths = {
   climate: 'M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0ZM12 8v10',
   cleaning: 'M4 9h16v10H4zM9 9V5h6v4M8 19v2m8-2v2M8 13h.01M16 13h.01M9 16h6',
   system: 'M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Zm-4 9 3 3 5-6',
+  admin: 'M3 3h18v7H3zM3 14h18v7H3zM7 6h.01M7 17h.01M12 6h6M12 17h6',
   expert: 'M4 7h16M4 17h16M8 4v6m8 4v6',
   light: 'M9 18h6m-6 3h6M8 13a6 6 0 1 1 8 0l-1 2H9l-1-2Z',
   arrow: 'M5 12h14m-6-6 6 6-6 6',

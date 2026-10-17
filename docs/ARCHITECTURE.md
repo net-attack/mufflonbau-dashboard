@@ -84,8 +84,26 @@ settings belong to the dashboard owner and stay separate from strategy output.
 
 No backend integration, persisted credentials, helper creation, auto-discovery,
 or service execution during generation. Native cards provide device actions,
-availability, history, and state translations. The custom live card provides
+availability and state translations. The custom history element reads authenticated
+Recorder history over HA WebSocket, groups compatible units/classes, preserves
+unknown/unavailable gaps, and bounds chart marker counts. Its refresh timer and
+stale requests are cleaned up on disconnect. The custom live card provides
 presentation, navigation, entity detail requests, and explicit light/switch
 toggles using HA services. Controls are disabled for missing/unavailable entities;
 action failures are displayed instead of assuming success. The existing minimal
 `entities` configuration remains supported.
+
+
+## Technical drill-down
+
+`core/admin.js` validates explicit data sources, counts router tracker presence
+without inferring WAN or Wi-Fi status, and groups numeric entities by unit and
+device class. `modules/system.js` creates one Admin navigation destination plus
+Internet, Network and Host subviews. `cards/admin.js` renders current readings
+and emits standard entity-detail events. The expert entity list is a further
+subview, reachable from Admin. Missing sources render setup guidance; there is
+no guessed entity discovery or network scanning.
+
+`core/history.js` handles the compact Recorder response independently of the DOM.
+`cards/history.js` owns time ranges, retry, SVG rendering and five-minute refresh.
+No backend, chart dependency, external request or credentials are introduced.

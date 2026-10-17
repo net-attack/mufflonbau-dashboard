@@ -1,0 +1,47 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { normalizeConfig, collectEntities } from '../src/core/config.js';
+import { clientSummary, numericGroups } from '../src/core/admin.js';
+import { generateDashboard } from '../src/strategy.js';
+import { fetchHistory, historyPoints, historyPath } from '../src/core/history.js';
+
+test('admin validates explicit sources, deduplicates and includes them in expert details', () => {
+  const config = normalizeConfig({ admin: { internet: ['binary_sensor.wan'], host: ['sensor.cpu', 'sensor.cpu'], clients: ['device_tracker.tablet'] } });
+  assert.deepEqual(config.admin.host, ['sensor.cpu']);
+  assert.ok(collectEntities(config).includes('device_tracker.tablet'));
+  assert.throws(() => normalizeConfig({ admin: { clients: ['person.phone'] } }), /admin.clients\[0\].*device_tracker/);
+  assert.throws(() => normalizeConfig({ admin: { host: 'sensor.cpu' } }), /admin.host/);
+  assert.throws(() => normalizeConfig({ admin: { internet: [null] } }), /admin.internet\[0\]/);
+});
+test('network counts retain unknowns and do not equate arbitrary locations with disconnected Wi-Fi', () => {
+  const states = Object.fromEntries(['home', 'not_home', 'unknown', 'unavailable', 'office'].map((state, index) => [`device_tracker.d${index}`, { state }]));
+  assert.deepEqual(clientSummary([...Object.keys(states), 'device_tracker.missing'], states), { connected: 1, away: 1, unknown: 4, total: 6 });
+});
+test('admin is one high-level destination; technical subviews are reached by drill-down', () => {
+  const dashboard = generateDashboard({ admin: { host: ['sensor.cpu', 'sensor.temp'] } }, { states: {
+    'sensor.cpu': { state: '20', attributes: { unit_of_measurement: '%' } },
+    'sensor.temp': { state: '48', attributes: { unit_of_measurement: '°C' } },
+  } });
+  const navigation = dashboard.views[0].cards[0].navigation;
+  assert.ok(navigation.some(item => item.path === 'admin'));
+  assert.ok(!navigation.some(item => /^admin-|expert/.test(item.path)));
+  assert.equal(dashboard.views.find(item => item.path === 'admin-host').cards[0].cards.filter(card => card.type === 'custom:mufflonbau-history').length, 2);
+});
+test('history groups never mix units or unrelated device classes', () => {
+  const states = { a: { state: '10', attributes: { unit_of_measurement: '%' } }, b: { state: '20', attributes: { unit_of_measurement: '%' } }, c: { state: '10', attributes: { unit_of_measurement: '%', device_class: 'battery' } }, d: { state: 'unavailable' }, e: { state: 'unavailable', attributes: { unit_of_measurement: '°C' } } };
+  assert.deepEqual(numericGroups(['a', 'b', 'c', 'd', 'e', 'missing'], states), [['a', 'b'], ['c'], ['e']]);
+});
+test('compact Recorder history preserves gaps, zero and the initial state', () => {
+  const points = historyPoints([{ s: '2', lu: 1 }, { s: '0', lu: 3 }, { s: 'unavailable', lu: 4 }, { s: '5', lu: 5 }, { s: '6', lu: 7 }], 2000, 6000);
+  assert.deepEqual(points, [{ time: 2000, value: 2 }, { time: 3000, value: 0 }, { time: 4000, value: null }, { time: 5000, value: 5 }]);
+  const path = historyPath(points, 2000, 6000, 0, 5);
+  assert.equal((path.match(/M/g) ?? []).length, 2);
+  assert.ok(!/NaN|Infinity/.test(path));
+});
+test('history requests only selected entities and uses the authenticated HA connection', async () => {
+  const calls = []; const hass = { callWS: async payload => { calls.push(payload); return {}; } };
+  await fetchHistory(hass, [], 0, 1000);
+  assert.equal(calls.length, 0);
+  await fetchHistory(hass, ['sensor.cpu'], 0, 1000);
+  assert.deepEqual(calls[0], { type: 'history/history_during_period', entity_ids: ['sensor.cpu'], start_time: '1970-01-01T00:00:00.000Z', end_time: '1970-01-01T00:00:01.000Z', minimal_response: true, no_attributes: true });
+});

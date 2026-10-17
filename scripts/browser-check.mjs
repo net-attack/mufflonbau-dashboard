@@ -195,8 +195,63 @@ try {
   await page.locator('#dashboard .native-surface').waitFor();
   assert.equal(await page.locator('#dashboard .native-surface').evaluate(node => getComputedStyle(node).backgroundColor),
     await page.locator('#dashboard mufflonbau-live ha-card').evaluate(node => getComputedStyle(node).backgroundColor));
+  // Admin uses explicit sources and authenticated Recorder history, with no WAN inference.
+  await page.evaluate(async () => {
+    const now = Date.now(); window.historyCalls = []; window.rejectHistory = false;
+    window.adminHass = { ...window.previewHass, states: {
+      'sensor.cpu': { state: '24', attributes: { friendly_name: 'CPU load', unit_of_measurement: '%' }, last_updated: new Date(now).toISOString() },
+      'sensor.temperature': { state: '49', attributes: { friendly_name: 'CPU temperature', unit_of_measurement: '°C' } },
+      'binary_sensor.wan': { state: 'off', attributes: { friendly_name: 'Internet' } },
+      'device_tracker.tablet': { state: 'home', attributes: { friendly_name: 'Galaxy Tab' } },
+      'device_tracker.unknown': { state: 'unknown', attributes: { friendly_name: 'Unknown device' } },
+    }, callWS: async payload => {
+      window.historyCalls.push(payload);
+      if (window.rejectHistory) throw new Error('Recorder unavailable');
+      return Object.fromEntries(payload.entity_ids.map(id => [id, Array.from({ length: 13 }, (_, index) => ({ s: index === 7 ? 'unknown' : String((id === 'sensor.cpu' ? 24 : 49) + Math.sin(index * .8) * 4), lu: (now - (12 - index) * 1800000) / 1000 }))]));
+    } };
+    window.adminDashboard = await customElements.get('ll-strategy-dashboard-mufflonbau').generate({ language: 'en', admin: {
+      internet: ['binary_sensor.wan'], host: ['sensor.cpu', 'sensor.temperature'], clients: ['device_tracker.tablet', 'device_tracker.unknown'],
+    } }, window.adminHass);
+    window.showAdminView = path => {
+      const shell = document.querySelector('#dashboard'); shell.setConfig(window.adminDashboard.views.find(view => view.path === path).cards[0]); shell.hass = window.adminHass;
+    };
+    window.showAdminView('admin');
+  });
+  assert.equal(await page.locator('#dashboard mufflonbau-admin .group').count(), 3);
+  assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /Internet: Off/);
+  await page.locator('#dashboard mufflonbau-admin .group').filter({ hasText: 'Raspberry Pi' }).click();
+  assert.match(page.url(), /admin-host$/);
+  await page.evaluate(() => window.showAdminView('admin-host'));
+  await page.locator('#dashboard mufflonbau-history svg').first().waitFor();
+  assert.equal(await page.locator('#dashboard mufflonbau-history').count(), 2);
+  assert.equal(await page.locator('#dashboard mufflonbau-history').first().locator('circle').count(), 12);
+  await page.locator('#dashboard mufflonbau-admin button[data-entity="sensor.cpu"]').click();
+  assert.equal(await page.evaluate(() => window.moreInfo.at(-1)), 'sensor.cpu');
+  await page.locator('#dashboard mufflonbau-history select').first().selectOption('6');
+  await page.waitForFunction(() => window.historyCalls.length === 3);
+  const request = await page.evaluate(() => window.historyCalls.at(-1));
+  assert.equal(request.type, 'history/history_during_period');
+  assert.equal(new Date(request.end_time) - new Date(request.start_time), 6 * 3600000);
+  await page.evaluate(() => { window.rejectHistory = true; });
+  await page.locator('#dashboard mufflonbau-history select').first().selectOption('168');
+  await page.locator('#dashboard mufflonbau-history button').first().waitFor();
+  assert.match(await page.locator('#dashboard mufflonbau-history .panel').first().innerText(), /Recorder/);
+  await page.evaluate(() => { window.rejectHistory = false; });
+  await page.locator('#dashboard mufflonbau-history button').first().click();
+  await page.locator('#dashboard mufflonbau-history svg').first().waitFor();
+  for (const viewport of [{ width: 1340, height: 800 }, { width: 893, height: 533 }]) {
+    await page.setViewportSize(viewport);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await page.screenshot({ path: `test-results/admin-host-${viewport.width}.png`, fullPage: true });
+  }
+  const oldChart = await page.locator('#dashboard mufflonbau-history').first().elementHandle();
+  await page.evaluate(() => window.showAdminView('admin-network'));
+  assert.equal(await oldChart.evaluate(card => card._loading), false);
+  assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /Network devices · 1\/2/);
+  assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /State unknown/);
+  assert.ok(!await page.locator('#dashboard mufflonbau-admin .panel').innerText().then(value => value.includes('Offline')));
   assert.deepEqual(errors, []);
-  console.log('Browser checks passed: rendering, live updates, localization, warnings, navigation, mobile layout, safe labels, clock cleanup, actual YAML examples, complete dashboard layouts, theme consistency, device controls, and action errors.');
+  console.log('Browser checks passed: rendering, live updates, localization, warnings, navigation, mobile layout, safe labels, clock cleanup, actual YAML examples, complete dashboard layouts, theme consistency, device controls, action errors, admin drill-down, Recorder ranges/retry/gaps, and Galaxy Tab A11 viewport overflow.');
 } catch (error) {
   const page = browser?.contexts()[0]?.pages()[0];
   if (page) await page.screenshot({ path: 'test-results/failure.png', fullPage: true }).catch(() => {});

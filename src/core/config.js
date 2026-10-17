@@ -1,3 +1,4 @@
+import { normalizeAdmin } from './admin.js';
 function fail(path, message) {
   throw new Error(`Mufflonbau: ${path} ${message}`);
 }
@@ -95,12 +96,13 @@ export function normalizeConfig(config) {
       if (result.appearance[key] !== undefined) entity(result.appearance[key], `appearance.${key}`);
     }
   }
+  result.admin = normalizeAdmin(result.admin ?? {}, entity);
   return result;
 }
 
 export function collectEntities(config) {
   return [...new Set([
-    ...config.entities, ...config.people, ...config.calendars, ...config.expert_entities,
+    ...Object.values(config.admin ?? {}).flat(), ...config.entities, ...config.people, ...config.calendars, ...config.expert_entities,
     config.weather, ...config.monitors.map(monitor => monitor.entity),
     ...config.rooms.flatMap(room => [room.temperature, room.humidity, room.dew_point,
       ...room.lights, ...room.entities, ...Object.values(room.cleaning ?? {})]),

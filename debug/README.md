@@ -33,3 +33,11 @@ Group member IDs and ordinary vacuum errors remain available for normal entities
 Entities absent from HA's state machine, including disabled entities without a
 state, are not listed. This is a state snapshot, not a physical connection test.
 The dashboard uses HA states/services rather than a separate Nanoleaf/vacuum API.
+
+
+For the Admin panel, use `section = 'network'` and reset `offset = 0`.
+This includes network device trackers plus sensors, binary sensors and switches
+for router, speed-test and host readings. Save each page as
+`debug/ha-network-OFFSET.local.json` and continue using `next_offset`.
+The export includes reported IP/SSID/interface attributes; keep these local.
+Disabled System monitor entities must be enabled before they can appear here.

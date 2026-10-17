@@ -62,6 +62,14 @@ class DiagnosticTemplateTest(unittest.TestCase):
         self.assertEqual(entities['sensor.cyclic']['attributes']['error'], {'self': '[nested value omitted]'})
         self.assertEqual(entities['sensor.cyclic']['attributes']['rgb_color'], ['[nested value omitted]'])
 
+    def test_network_export_keeps_connection_sources_without_credentials(self):
+        fixture = [state('device_tracker.tablet', 'home', {'ip': '192.0.2.1', 'ssid': 'Example network', 'source_type': 'router', 'access_token': 'SECRET'}),
+            state('sensor.cpu_temperature', '49', {'unit_of_measurement': '°C'}), state('person.resident', 'home')]
+        result, rendered = self.render(fixture, 'network')
+        self.assertEqual([item['entity_id'] for item in result['entities']], ['device_tracker.tablet', 'sensor.cpu_temperature'])
+        self.assertEqual(result['entities'][0]['attributes']['ip'], '192.0.2.1')
+        self.assertNotIn('SECRET', rendered)
+
     def test_large_installation_pages_without_skipping_or_duplicating_entities(self):
         fixture = [state(f'light.lamp_{index:04}', 'off') for index in range(135)]
         fixture += [state(f'sensor.value_{index:04}', '0') for index in range(2000)]

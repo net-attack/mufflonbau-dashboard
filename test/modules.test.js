@@ -37,8 +37,8 @@ test('generates connected feature views with explicit types and localized room n
   assert.deepEqual(history.entities, ['sensor.temperature', 'sensor.humidity', 'sensor.dew_point']);
   const climate = result.views.find(view => view.path === 'climate').cards[0].cards;
   assert.equal(climate.filter(card => card.mode === 'climate').length, 1);
-  assert.equal(climate[0].layout, 'table');
-  assert.equal(climate[0].rooms.length, 1);
+  assert.equal(climate.find(card => card.mode === 'climate').layout, 'table');
+  assert.equal(climate.find(card => card.mode === 'climate').rooms.length, 1);
   const links = cards.filter(card => card.tap_action?.action === 'navigate');
   assert.ok(links.every(card => result.views.some(view => view.path === card.tap_action.navigation_path)));
 });

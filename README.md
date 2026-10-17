@@ -106,8 +106,9 @@ sections are optional; omitted sections generate no corresponding view.
 | `language` | `auto` (HA profile), `en`, or `de`; unsupported profile languages use English |
 | `entities` | Favorite entities on the home view; preserves the original minimal configuration |
 | `people` | Compact presence cards with daily home time, recorded outings, last away time and a seven-day activity strip |
-| `weather` | Optional weather entity |
+| `weather` | Optional weather entity; current conditions and five-day forecast in Climate |
 | `shopping` | Explicit existing `todo` entity, compact quick-add card and native list details; [iCloud setup](docs/ICLOUD-SHOPPING.de.md) |
+| `weather_alerts` | Optional warning package sensor and compact DWD radar access; [setup](docs/WEATHER-ALERTS.de.md) |
 | `calendars` | Calendar entities for the header summary and native calendar |
 | `rooms` | Room definitions, detailed below |
 | `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, `map` (camera) IDs and `maintenance` sensor mappings |
@@ -322,7 +323,9 @@ or unavailable, including its entity ID. A never-pressed `input_button` has an
 Modes without a configured room action show a setup hint. CleanGenius requires a real per-room helper or script;
 the dashboard cannot infer the vacuum's integration-specific settings.
 
-The dashboard needs no Button Card, Bubble Card, or Card Mod resources.
+The standard dashboard needs no Button Card, Bubble Card, or Card Mod resources.
+The optional `weather_alerts` extension uses Bubble Card 3.2+ standalone popups
+and an additional Home Assistant backend (MQTT blueprint or YAML package); see [weather setup](docs/WEATHER-ALERTS.de.md).
 Kiosk Mode requires the separately installed Kiosk Mode plugin. By default this
 dashboard passes `kiosk: true` and `hide_header: true` to the plugin; `kiosk: true`
 hides both the Home Assistant header and sidebar.

@@ -6,6 +6,7 @@ import { translations } from '../core/i18n.js';
 import { mapGestures } from '../design/map-gestures.js';
 import { applyFlusenfelsTheme, flusenfelsShellStyles, saugfriedArt } from '../design/flusenfels.js';
 import { cleaningPageText } from '../core/cleaning-theme.js';
+import { alertSnapshot } from '../core/weather-alerts.js';
 export class MufflonbauShell extends HTMLElement {
   constructor() { super(); this.attachShadow({ mode: 'open' }); this._children = []; this._generation = 0; this._mapControls = []; }
   disconnectedCallback() { for (const control of this._mapControls) control.destroy(); this._navObserver?.disconnect(); }
@@ -20,6 +21,7 @@ export class MufflonbauShell extends HTMLElement {
   }
   set hass(hass) {
     this._hass = hass;
+    this.toggleAttribute('data-weather-alerts', Boolean(this._config?.weather_alerts && alertSnapshot(hass.states[this._config.weather_alerts.entity]).warnings.length));
     const mode = appearanceMode(this._config?.appearance, hass.states, hass.themes?.darkMode);
     applyTheme(this, mode, this._config?.appearance?.theme);
     if (this._config?.path === 'cleaning' && this._config.cleaning_theme === 'flusenfels') applyFlusenfelsTheme(this, mode);
@@ -92,12 +94,17 @@ export class MufflonbauShell extends HTMLElement {
     }
     if (generation !== this._generation) return;
     for (const config of this._config.cards) {
-      const slot = element('section', undefined, 'slot');
+      // Bubble must stop its wrapper search here, before the hui-card owning the
+      // entire strategy shell. Otherwise closing a popup can hide the whole view.
+      const slot = element(config.card_type === 'pop-up' ? 'mufflonbau-popup-view' : 'section', undefined, 'slot');
+      if (config.card_type === 'pop-up') slot.style.display = 'contents';
+      if (config.mode === 'observer') slot.style.display = 'none';
+      if (config.type === 'weather-forecast' || (config.type === 'custom:mufflonbau-weather-alerts' && config.mode === 'status')) slot.classList.add('wide');
       if (config.mode) slot.classList.add(`mode-${config.mode}`);
       const layout = { ventilation: config.compact ? 'compact' : 'wide', header: 'wide', climate: 'rooms', 'room-summary': 'compact', people: 'compact', 'presence-summary': 'compact', devices: 'devices', cleaning: 'cleaning', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
       if (layout) slot.classList.add(layout);
       let card;
-      if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning', 'custom:mufflonbau-presence', 'custom:mufflonbau-shopping', 'custom:mufflonbau-maintenance', 'custom:mufflonbau-laundry'].includes(config.type)) {
+      if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning', 'custom:mufflonbau-presence', 'custom:mufflonbau-shopping', 'custom:mufflonbau-maintenance', 'custom:mufflonbau-laundry', 'custom:mufflonbau-weather-alerts'].includes(config.type)) {
         card = document.createElement(config.type.slice(7)); card.setConfig(config);
         if (config.type === 'custom:mufflonbau-admin') slot.classList.add('wide');
         if (config.type === 'custom:mufflonbau-presence') slot.classList.add('wide');

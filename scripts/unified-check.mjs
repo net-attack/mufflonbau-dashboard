@@ -11,6 +11,7 @@ export async function checkUnified(sourcePage, config, hass) {
       document.body.style.margin = '0';
       document.querySelector('main').style.cssText = 'max-width:none;margin:0';
       window.unifiedHass = { ...hass, callService: async () => {} };
+      window.unifiedConfig = config;
       window.unifiedDashboard = await customElements.get('ll-strategy-dashboard-mufflonbau').generate(config, window.unifiedHass);
       const shell = document.createElement('mufflonbau-shell'); shell.id = 'unified-dashboard';
       document.querySelector('main').replaceChildren(shell);
@@ -68,6 +69,37 @@ export async function checkUnified(sourcePage, config, hass) {
     await shell.locator('.mode-cleaning a').tap();
     assert.match(page.url(), /\/dashboard-mufflonbau\/cleaning$/);
     assert.equal(await shell.locator('mufflonbau-maintenance').count(), 1);
+    await page.evaluate(async () => {
+      window.loadCardHelpers = async () => ({ createCardElement: config => {
+        const card = document.createElement('div'); card.testConfig = config;
+        if (config.card_type === 'pop-up') card.style.display = 'none';
+        else { card.textContent = config.name ?? config.type; card.style.minHeight = '100px'; }
+        return card;
+      } });
+      window.unifiedHass = { ...window.unifiedHass, states: { ...window.unifiedHass.states,
+        'sensor.test_weather_alerts': { state: '0', attributes: { warnings: [], problems: [] } },
+      } };
+      window.unifiedDashboard = await customElements.get('ll-strategy-dashboard-mufflonbau').generate({
+        ...window.unifiedConfig, weather_alerts: { entity: 'sensor.test_weather_alerts', radar: { image_url: 'https://example.test/radar.gif' } },
+      }, window.unifiedHass);
+      window.unifiedShow('climate');
+    });
+    await page.waitForFunction(() => document.querySelector('#unified-dashboard')._children.some(card => card.testConfig?.type === 'weather-forecast'));
+    assert.match((await shell.locator('.mode-status button').allTextContents()).join(' '), /NINA & DWD.*Keine aktiven Warnungen/s);
+    assert.match((await shell.locator('.mode-status button').allTextContents()).join(' '), /Regenradar/);
+    for (const viewport of [{ width: 893, height: 533 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      assert.ok(await shell.locator('.mode-status button').evaluateAll(buttons => buttons.length === 2
+        && buttons.every(button => button.getBoundingClientRect().width >= 44 && button.getBoundingClientRect().height >= 44)));
+    }
+    await page.screenshot({ path: 'test-results/unified-climate-weather.png', fullPage: true });
+    await page.evaluate(() => window.unifiedShow('home'));
+    await page.waitForFunction(() => document.querySelector('#unified-dashboard')._children.some(card => card._config?.mode === 'header'));
+    assert.equal(await shell.locator('mufflonbau-weather-alerts .warning').count(), 0);
+    assert.match(await shell.locator('mufflonbau-weather-alerts button').first().innerText(), /Regenradar/);
+    assert.equal(await shell.locator('mufflonbau-shopping').count(), 1);
+    assert.equal(await shell.locator('mufflonbau-laundry').count(), 1);
     assert.deepEqual(errors, []);
     console.log('Unified board: ventilation, laundry, shopping, maintenance, shared navigation and non-overlapping touch layouts passed.');
   } finally { await context.close(); }

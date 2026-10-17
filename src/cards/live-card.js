@@ -17,7 +17,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     if (!['ventilation', 'header', 'climate', 'room-summary', 'floorplan', 'warnings', 'people', 'presence-summary', 'devices', 'cleaning', 'message'].includes(config.mode)) throw new Error('Mufflonbau: unsupported live card mode.');
     this._config = config;
     this._watched = [...new Set([
-      ...ventilationEntities(config.ventilation), config.weather, ...(config.calendars ?? []), ...(config.entities ?? []), ...(config.people ?? []),
+      ...ventilationEntities(config.ventilation), config.weather, config.weather_alerts?.entity, ...(config.calendars ?? []), ...(config.entities ?? []), ...(config.people ?? []),
       ...(config.objects ?? []).map(item => item.entity),
       ...cleaningEntities(config.cleaning), ...(config.monitors ?? []).map(item => item.entity),
       ...(config.rooms ?? []).flatMap(room => [room.temperature, room.humidity, room.dew_point, ...(room.lights ?? []), ...(room.objects ?? []).map(item => item.entity)]),
@@ -72,6 +72,11 @@ export class MufflonbauLiveCard extends HTMLElement {
     applyTheme(card, mode, this._config.appearance?.theme);
     if (this._config.mode === 'ventilation') renderVentilation(this, card, text);
     if (this._config.mode === 'header') this._header(card, text);
+    if (this._config.mode === 'header' && this._config.weather_alerts) {
+      const alerts = element('mufflonbau-weather-alerts');
+      alerts.setConfig({ mode: 'compact', weather_alerts: this._config.weather_alerts, language, appearance: this._config.appearance });
+      alerts.hass = this._hass; card.append(alerts);
+    }
     if (this._config.mode === 'climate') this._climate(card, text);
     if (this._config.mode === 'room-summary') this._roomSummary(card, text);
     if (this._config.mode === 'warnings') this._warnings(card, text);

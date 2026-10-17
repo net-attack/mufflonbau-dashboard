@@ -2051,6 +2051,198 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
     }
   };
 
+  // src/core/weather-alerts.js
+  var warningHash = "#mufflonbau-weather-warnings";
+  var radarHash = "#mufflonbau-rain-radar";
+  function alertSnapshot(state, now = Date.now()) {
+    const available = state && !["unknown", "unavailable"].includes(state.state);
+    const warnings = (available && Array.isArray(state.attributes?.warnings) ? state.attributes.warnings : []).filter((w) => w && typeof w.title === "string" && Number(w.level) > 0 && (!w.end || !Number.isFinite(Date.parse(w.end)) || Date.parse(w.end) > now)).sort((a, b) => Number(b.level) - Number(a.level) || a.title.localeCompare(b.title));
+    return { available: Boolean(available), warnings, problems: state?.attributes?.problems ?? [] };
+  }
+  function weatherPopups(config, language, appearance) {
+    if (!config) return [];
+    const de = language === "de";
+    const popup = (hash, name, icon2, mode) => ({
+      type: "custom:bubble-card",
+      card_type: "pop-up",
+      hash,
+      name,
+      icon: icon2,
+      popup_mode: "adaptive-dialog",
+      width_desktop: "min(760px, 94vw)",
+      styles: ".bubble-pop-up { --bubble-pop-up-main-background-color: var(--mb-surface); --bubble-main-background-color: var(--mb-soft); color: var(--mb-ink); }",
+      close_by_clicking_outside: true,
+      cards: [{ type: "custom:mufflonbau-weather-alerts", mode, weather_alerts: config, language, appearance }]
+    });
+    return [
+      popup(warningHash, de ? "Warnungen" : "Warnings", "mdi:alert-outline", "details"),
+      ...config.radar ? [popup(radarHash, de ? "DWD Regenradar" : "DWD rain radar", "mdi:radar", "radar")] : []
+    ];
+  }
+  function openWeatherPopup(hash) {
+    if (window.location.hash === hash) return;
+    window.history.pushState(null, "", hash);
+    window.dispatchEvent(new Event("location-changed"));
+    window.dispatchEvent(new Event("hashchange"));
+  }
+
+  // src/cards/weather-alerts.js
+  var styles7 = `
+:host{display:block;color:var(--mb-ink);font-family:inherit}*{box-sizing:border-box}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}button,a{font:inherit;min-height:44px;border:1px solid var(--mb-line);border-radius:16px;background:var(--mb-soft);color:var(--mb-ink);padding:10px 14px;text-decoration:none;cursor:pointer}
+button{display:flex;align-items:center;gap:10px;text-align:left;max-width:100%}button svg{flex:none;width:22px;height:22px}button strong{display:block;font-size:14px}small{display:block;color:var(--mb-muted);font-size:12px;line-height:1.6}
+.warning{border-left:5px solid var(--mb-accent)}.level-2{border-left-color:#b47b17}.level-3{border-left-color:#d15b21}.level-4{border-left-color:#b52e44}.problem{margin:8px 0;font-size:13px;color:var(--mb-muted)}
+article{padding:18px;margin-bottom:14px;border:1px solid var(--mb-line);border-left-width:5px;border-radius:18px;background:var(--mb-surface)}h2{font-size:21px;margin:0 0 12px;overflow-wrap:anywhere}h3{font-size:17px;margin:18px 0 8px}p{font-size:16px;line-height:1.6;white-space:pre-line;overflow-wrap:anywhere}dl{font-size:15px;line-height:1.6;margin:0}dt{font-weight:600}dd{margin:0 0 8px}
+img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:inline-block;margin-top:12px}button:focus-visible,a:focus-visible{outline:2px solid var(--mb-accent);outline-offset:3px}
+`;
+  var MufflonbauWeatherAlerts = class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+    }
+    setConfig(config) {
+      this._config = config;
+      this._render();
+    }
+    set hass(value) {
+      const previous = this._hass;
+      this._hass = value;
+      if (!previous || previous.states[this._config?.weather_alerts?.entity] !== value.states[this._config?.weather_alerts?.entity] || previous.themes !== value.themes) this._render();
+      this._autoOpen();
+    }
+    connectedCallback() {
+      this._render();
+    }
+    getCardSize() {
+      return ["compact", "status"].includes(this._config?.mode) ? 1 : 5;
+    }
+    _autoOpen() {
+      if (!["compact", "observer"].includes(this._config?.mode) || !this._hass) return;
+      const config = this._config.weather_alerts;
+      const state = this._hass.states[config.entity];
+      const token = state?.attributes?.popup_token;
+      if (!token || !alertSnapshot(state).warnings.some((w) => Number(w.level) >= 3)) return;
+      const key2 = `mufflonbau-warning:${window.location.pathname.split("/")[1]}:${this._hass.user?.id ?? ""}:${config.entity}`;
+      try {
+        if (window.localStorage.getItem(key2) === token) return;
+      } catch {
+        if (this._lastToken === token) return;
+      }
+      if (this._pendingToken === token || this._lastToken === token) return;
+      this._pendingToken = token;
+      clearTimeout(this._openTimer);
+      this._openTimer = setTimeout(() => {
+        this._pendingToken = void 0;
+        if (!this.isConnected) return;
+        this._lastToken = token;
+        try {
+          window.localStorage.setItem(key2, token);
+        } catch {
+        }
+        openWeatherPopup(warningHash);
+      }, 500);
+    }
+    disconnectedCallback() {
+      clearTimeout(this._openTimer);
+    }
+    _render() {
+      if (!this._config || !this._hass) return;
+      if (this._config.mode === "observer") {
+        this.shadowRoot.replaceChildren();
+        return;
+      }
+      const config = this._config.weather_alerts;
+      const de = this._config.language === "de";
+      applyTheme(this, appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode), this._config.appearance?.theme);
+      const { available, warnings, problems } = alertSnapshot(this._hass.states[config.entity]);
+      const content = element("div");
+      const date = (value) => {
+        if (!value || !Number.isFinite(Date.parse(value))) return "–";
+        return new Intl.DateTimeFormat(de ? "de-DE" : "en-GB", { dateStyle: "short", timeStyle: "short", timeZone: this._hass.config?.time_zone }).format(new Date(value));
+      };
+      if (["compact", "status"].includes(this._config.mode)) {
+        const controls = element("div", void 0, "controls");
+        if (this._config.mode === "status" && !warnings.length) {
+          const status = element("button");
+          status.type = "button";
+          const clear = available && !problems.length;
+          status.append(icon("warning"), element("strong", `NINA & DWD · ${de ? clear ? "Keine aktiven Warnungen" : "Warnstatus prüfen" : clear ? "No active warnings" : "Check warning status"}`));
+          status.addEventListener("click", () => openWeatherPopup(warningHash));
+          controls.append(status);
+        }
+        if (config.radar) {
+          const rain = element("button");
+          rain.type = "button";
+          rain.append(icon("drop"), element("strong", de ? "Regenradar" : "Rain radar"));
+          rain.addEventListener("click", () => openWeatherPopup(radarHash));
+          controls.append(rain);
+        }
+        for (const source of ["NINA", "DWD"]) {
+          const items = warnings.filter((w) => w.source === source);
+          if (!items.length) continue;
+          const first = items[0];
+          const button = element("button", void 0, `warning level-${first.level}`);
+          button.type = "button";
+          const copy2 = element("span");
+          copy2.append(
+            element("strong", `${source} · ${first.title}`),
+            element("small", `${first.severity} · ${first.area}${first.end ? ` · ${de ? "bis" : "until"} ${date(first.end)}` : ""}`),
+            element("small", String(first.description ?? "").slice(0, 160))
+          );
+          if (items.length > 1) copy2.append(element("small", `+${items.length - 1}`));
+          button.append(icon("warning"), copy2);
+          button.addEventListener("click", () => openWeatherPopup(warningHash));
+          controls.append(button);
+        }
+        content.append(controls);
+      } else if (this._config.mode === "radar") {
+        const radar = config.radar;
+        if (radar?.image_url) {
+          const img = element("img");
+          img.src = radar.image_url;
+          img.alt = de ? "Animiertes DWD Niederschlagsradar" : "Animated DWD precipitation radar";
+          img.addEventListener("error", () => {
+            img.remove();
+            content.prepend(element("p", de ? "Radarbild nicht erreichbar." : "Radar image unavailable."));
+          });
+          content.append(img);
+        }
+        content.append(element("p", radar?.caption ?? "Daten: Deutscher Wetterdienst (DWD)"));
+        if (radar?.url) {
+          const link = element("a", de ? "Beim DWD öffnen" : "Open DWD radar", "radar-link");
+          link.href = radar.url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          content.append(link);
+        }
+      } else {
+        if (!warnings.length && available && !problems.length) content.append(element("p", de ? "Keine aktiven Warnungen." : "No active warnings."));
+        for (const w of warnings) {
+          const section = element("article", void 0, `level-${w.level}`);
+          section.append(element("h2", `${w.source} · ${w.title}`));
+          const meta = element("dl");
+          for (const [label2, value] of [
+            [de ? "Warnstufe" : "Severity", w.severity],
+            [de ? "Art" : "Type", w.type],
+            [de ? "Betroffenes Gebiet" : "Affected area", w.area],
+            [de ? "Beginn" : "Start", date(w.start)],
+            [de ? "Gültig bis" : "Valid until", date(w.end)]
+          ]) {
+            if (value) meta.append(element("dt", label2), element("dd", String(value)));
+          }
+          section.append(meta, element("p", w.description ?? ""));
+          if (w.instruction) section.append(element("h3", de ? "Verhaltensempfehlung" : "Recommended action"), element("p", w.instruction));
+          content.append(section);
+        }
+      }
+      if (this._config.mode !== "radar") {
+        if (!available) content.append(element("p", de ? "Warnsystem nicht verfügbar – Einrichtung oder Verbindung prüfen." : "Warning system unavailable – check setup or connection.", "problem"));
+        for (const problem of problems) content.append(element("p", String(problem), "problem"));
+      }
+      this.shadowRoot.replaceChildren(element("style", styles7), content);
+    }
+  };
+
   // src/core/laundry.js
   var laundryText = {
     de: { title: "Wäschekammer", idle: "Bereit", starting: "Start wird erkannt", running: "Läuft", finishing: "Programmende wird geprüft", finished: "Fertig · Wäsche wartet", missing: "Erkennung noch nicht eingerichtet", unavailable: "Messung nicht verfügbar", unknown: "Status unbekannt", power: "Leistung", last: "Zuletzt fertig", acknowledge: "Wäsche erledigt", close: "Schließen", error: "Bestätigung fehlgeschlagen", inferred: "Programmstatus aus dem Stromverbrauch geschätzt. Keine Restzeit verfügbar." },
@@ -2268,6 +2460,17 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
       if (item.last_finished && !item.last_finished.startsWith("input_datetime.")) fail(`${path}.last_finished`, "must reference an input_datetime helper.");
       if (item.plug && !item.plug.startsWith("switch.")) fail(`${path}.plug`, "must reference the monitored plug switch.");
     });
+    if (result.weather_alerts !== void 0) {
+      object(result.weather_alerts, "weather_alerts");
+      entity(result.weather_alerts.entity, "weather_alerts.entity");
+      if (result.weather_alerts.radar !== void 0) {
+        object(result.weather_alerts.radar, "weather_alerts.radar");
+        for (const key2 of ["image_url", "url"]) {
+          const value = result.weather_alerts.radar[key2];
+          if (value !== void 0 && (typeof value !== "string" || !/^https:\/\//.test(value))) fail(`weather_alerts.radar.${key2}`, "must be an HTTPS URL.");
+        }
+      }
+    }
     list(result.rooms, "rooms");
     if (config.floorplan_drawing !== void 0) validateDrawing(config.floorplan_drawing);
     if (config.floorplan_bounds !== void 0 && (!Array.isArray(config.floorplan_bounds) || config.floorplan_bounds.length !== 4 || config.floorplan_bounds.some((n) => !Number.isFinite(n)) || config.floorplan_bounds[2] <= 0 || config.floorplan_bounds[3] <= 0)) fail("floorplan_bounds", "must contain x, y, positive width and height.");
@@ -2446,6 +2649,7 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
       ...config.expert_entities,
       config.weather,
       config.shopping?.entity,
+      config.weather_alerts?.entity,
       ...ventilationEntities(config.ventilation),
       ...config.monitors.map((monitor) => monitor.entity),
       ...config.rooms.flatMap((room) => [
@@ -2499,9 +2703,25 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
   }
   function climateViews({ config, text, language }) {
     const rooms = config.rooms.filter((room) => room.temperature || room.humidity || room.dew_point);
-    if (!rooms.length) return [];
+    if (!rooms.length && !config.weather && !config.weather_alerts) return [];
     return [view("climate", text.climate, "mdi:home-thermometer-outline", [
-      liveCard("climate", { rooms, layout: "table", appearance: config.appearance }, language),
+      ...config.weather ? [{
+        type: "weather-forecast",
+        entity: config.weather,
+        name: language === "de" ? "Wetter" : "Weather",
+        show_current: true,
+        show_forecast: true,
+        forecast_type: "daily",
+        forecast_slots: 5
+      }] : [],
+      ...config.weather_alerts ? [{
+        type: "custom:mufflonbau-weather-alerts",
+        mode: "status",
+        weather_alerts: config.weather_alerts,
+        appearance: config.appearance,
+        language
+      }] : [],
+      ...rooms.length ? [liveCard("climate", { rooms, layout: "table", appearance: config.appearance }, language)] : [],
       ...rooms.map((room) => {
         const ids = [room.temperature, room.humidity, room.dew_point].filter(Boolean);
         return { type: "history-graph", title: `${localized(room.name, language)} · ${text.history}`, hours_to_show: 24, entities: ids };
@@ -2562,7 +2782,7 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
   // src/modules/home.js
   function homeView({ config, text, language }, otherViews) {
     const shared = { appearance: config.appearance };
-    const cards = [liveCard("header", { ...shared, compact: true, title: config.title ?? "Mufflonbau", weather: config.weather, calendars: config.calendars, rooms: config.rooms }, language)];
+    const cards = [liveCard("header", { ...shared, compact: true, title: config.title ?? "Mufflonbau", weather: config.weather, weather_alerts: config.weather_alerts, calendars: config.calendars, rooms: config.rooms }, language)];
     if (config.rooms.length) cards.push(liveCard("room-summary", { ...shared, compact: true, rooms: config.rooms }, language));
     if (config.ventilation) cards.push(liveCard("ventilation", { ...shared, compact: true, ventilation: config.ventilation, rooms: config.rooms }, language));
     if (config.people.length) cards.push(liveCard("presence-summary", { ...shared, compact: true, people: config.people }, language));
@@ -2643,7 +2863,12 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
       full_view: item.fullView,
       navigation,
       shopping_enabled: Boolean(config.shopping),
-      cards: item.cards
+      weather_alerts: config.weather_alerts,
+      cards: [
+        ...item.cards,
+        ...weatherPopups(config.weather_alerts, language, config.appearance),
+        ...config.weather_alerts && item.path !== "home" ? [{ type: "custom:mufflonbau-weather-alerts", mode: "observer", weather_alerts: config.weather_alerts, language, appearance: config.appearance }] : []
+      ]
     }] }));
     return { ...config.kiosk_mode ? { kiosk_mode: config.kiosk_mode } : {}, title: config.title || "Mufflonbau", views: styledViews };
   }
@@ -2654,6 +2879,8 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
   :host([data-view=home][data-has-shopping]) .shell,:host([data-view=home][data-has-shopping]) main,:host([data-view=home][data-has-laundry]) .shell,:host([data-view=home][data-has-laundry]) main { height:auto !important; min-height:100dvh; }
   .slot.shopping-summary { grid-column:1/-1; grid-row:auto; }
   :host([data-view=shopping]) .slot { grid-column:1/-1; }
+  :host([data-view=home][data-weather-alerts]) { height:auto !important; min-height:100dvh; overflow:visible !important; }
+  :host([data-view=home][data-weather-alerts]) .shell,:host([data-view=home][data-weather-alerts]) main { height:auto !important; min-height:100dvh; }
   :host { display:block; min-width:0; min-height:calc(100dvh - 56px); background:var(--mb-canvas); background-image:var(--mb-wallpaper); background-size:cover; background-position:center bottom; background-attachment:fixed; color:var(--mb-ink); font-family:Inter,'Avenir Next',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
   * { box-sizing:border-box; } .shell { display:grid; grid-template-columns:210px minmax(0,1fr); min-height:inherit; }
   aside { padding:38px 22px; border-right:1px solid var(--mb-line); display:flex; flex-direction:column; gap:48px; }
@@ -2920,6 +3147,7 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
     }
     set hass(hass) {
       this._hass = hass;
+      this.toggleAttribute("data-weather-alerts", Boolean(this._config?.weather_alerts && alertSnapshot(hass.states[this._config.weather_alerts.entity]).warnings.length));
       const mode = appearanceMode(this._config?.appearance, hass.states, hass.themes?.darkMode);
       applyTheme(this, mode, this._config?.appearance?.theme);
       if (this._config?.path === "cleaning" && this._config.cleaning_theme === "flusenfels") applyFlusenfelsTheme(this, mode);
@@ -2987,8 +3215,8 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
       this.shadowRoot.replaceChildren(element("style", `${shellStyles}
 ${flusenfelsShellStyles}`), shell);
       this._navObserver = new ResizeObserver(() => {
-        const styles8 = getComputedStyle(nav);
-        const space = styles8.position === "fixed" ? nav.getBoundingClientRect().height + parseFloat(styles8.bottom || 0) + 12 : 16;
+        const styles9 = getComputedStyle(nav);
+        const space = styles9.position === "fixed" ? nav.getBoundingClientRect().height + parseFloat(styles9.bottom || 0) + 12 : 16;
         this.style.setProperty("--mb-nav-space", `${space}px`);
       });
       this._navObserver.observe(nav);
@@ -3004,12 +3232,15 @@ ${flusenfelsShellStyles}`), shell);
       }
       if (generation !== this._generation) return;
       for (const config of this._config.cards) {
-        const slot = element("section", void 0, "slot");
+        const slot = element(config.card_type === "pop-up" ? "mufflonbau-popup-view" : "section", void 0, "slot");
+        if (config.card_type === "pop-up") slot.style.display = "contents";
+        if (config.mode === "observer") slot.style.display = "none";
+        if (config.type === "weather-forecast" || config.type === "custom:mufflonbau-weather-alerts" && config.mode === "status") slot.classList.add("wide");
         if (config.mode) slot.classList.add(`mode-${config.mode}`);
         const layout = { ventilation: config.compact ? "compact" : "wide", header: "wide", climate: "rooms", "room-summary": "compact", people: "compact", "presence-summary": "compact", devices: "devices", cleaning: "cleaning", warnings: "compact", floorplan: "wide", message: "wide" }[config.mode];
         if (layout) slot.classList.add(layout);
         let card;
-        if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history", "custom:mufflonbau-cleaning", "custom:mufflonbau-presence", "custom:mufflonbau-shopping", "custom:mufflonbau-maintenance", "custom:mufflonbau-laundry"].includes(config.type)) {
+        if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history", "custom:mufflonbau-cleaning", "custom:mufflonbau-presence", "custom:mufflonbau-shopping", "custom:mufflonbau-maintenance", "custom:mufflonbau-laundry", "custom:mufflonbau-weather-alerts"].includes(config.type)) {
           card = document.createElement(config.type.slice(7));
           card.setConfig(config);
           if (config.type === "custom:mufflonbau-admin") slot.classList.add("wide");
@@ -3582,6 +3813,7 @@ ${flusenfelsShellStyles}`), shell);
       this._watched = [...new Set([
         ...ventilationEntities(config.ventilation),
         config.weather,
+        config.weather_alerts?.entity,
         ...config.calendars ?? [],
         ...config.entities ?? [],
         ...config.people ?? [],
@@ -3650,6 +3882,12 @@ ${ventilationStyles}`);
       applyTheme(card, mode, this._config.appearance?.theme);
       if (this._config.mode === "ventilation") renderVentilation(this, card, text);
       if (this._config.mode === "header") this._header(card, text);
+      if (this._config.mode === "header" && this._config.weather_alerts) {
+        const alerts = element("mufflonbau-weather-alerts");
+        alerts.setConfig({ mode: "compact", weather_alerts: this._config.weather_alerts, language, appearance: this._config.appearance });
+        alerts.hass = this._hass;
+        card.append(alerts);
+      }
       if (this._config.mode === "climate") this._climate(card, text);
       if (this._config.mode === "room-summary") this._roomSummary(card, text);
       if (this._config.mode === "warnings") this._warnings(card, text);
@@ -4174,7 +4412,7 @@ ${ventilationStyles}`);
   };
 
   // src/cards/laundry.js
-  var styles7 = `
+  var styles8 = `
 :host{display:block;min-width:0;color:var(--mb-ink);font-family:Inter,'Avenir Next',system-ui,sans-serif}*{box-sizing:border-box}
 .panel{display:block;padding:0;background:transparent;border:0;border-radius:16px;box-shadow:none}
 button{font:inherit;color:inherit;cursor:pointer}button:focus-visible{outline:2px solid var(--mb-accent);outline-offset:3px}
@@ -4279,7 +4517,7 @@ dialog{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 24px);paddin
         }
       });
       dialog.addEventListener("close", () => open.focus());
-      this.shadowRoot.replaceChildren(element("style", styles7), panel, dialog);
+      this.shadowRoot.replaceChildren(element("style", styles8), panel, dialog);
       if (wasOpen) dialog.showModal();
       if (focused) [...this.shadowRoot.querySelectorAll("[data-action]")].find((item) => item.dataset.action === focused)?.focus();
     }
@@ -4300,6 +4538,7 @@ dialog{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 24px);paddin
   if (!customElements.get("mufflonbau-cleaning")) customElements.define("mufflonbau-cleaning", MufflonbauCleaning);
   if (!customElements.get("mufflonbau-shopping")) customElements.define("mufflonbau-shopping", MufflonbauShopping);
   if (!customElements.get("mufflonbau-maintenance")) customElements.define("mufflonbau-maintenance", MufflonbauMaintenance);
+  if (!customElements.get("mufflonbau-weather-alerts")) customElements.define("mufflonbau-weather-alerts", MufflonbauWeatherAlerts);
   if (!customElements.get("mufflonbau-shell")) customElements.define("mufflonbau-shell", MufflonbauShell);
   if (!customElements.get("mufflonbau-live")) customElements.define("mufflonbau-live", MufflonbauLiveCard);
   if (!customElements.get("mufflonbau-laundry")) customElements.define("mufflonbau-laundry", MufflonbauLaundry);

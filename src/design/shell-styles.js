@@ -3,6 +3,8 @@ export const shellStyles = `
   :host([data-view=home][data-has-shopping]) .shell,:host([data-view=home][data-has-shopping]) main,:host([data-view=home][data-has-laundry]) .shell,:host([data-view=home][data-has-laundry]) main { height:auto !important; min-height:100dvh; }
   .slot.shopping-summary { grid-column:1/-1; grid-row:auto; }
   :host([data-view=shopping]) .slot { grid-column:1/-1; }
+  :host([data-view=home][data-weather-alerts]) { height:auto !important; min-height:100dvh; overflow:visible !important; }
+  :host([data-view=home][data-weather-alerts]) .shell,:host([data-view=home][data-weather-alerts]) main { height:auto !important; min-height:100dvh; }
   :host { display:block; min-width:0; min-height:calc(100dvh - 56px); background:var(--mb-canvas); background-image:var(--mb-wallpaper); background-size:cover; background-position:center bottom; background-attachment:fixed; color:var(--mb-ink); font-family:Inter,'Avenir Next',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
   * { box-sizing:border-box; } .shell { display:grid; grid-template-columns:210px minmax(0,1fr); min-height:inherit; }
   aside { padding:38px 22px; border-right:1px solid var(--mb-line); display:flex; flex-direction:column; gap:48px; }

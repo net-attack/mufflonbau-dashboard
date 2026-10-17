@@ -4,6 +4,7 @@ import { MufflonbauPresence } from './cards/presence.js';
 import { MufflonbauCleaning } from './cards/cleaning.js';
 import { MufflonbauShopping } from './cards/shopping.js';
 import { MufflonbauMaintenance } from './cards/maintenance.js';
+import { MufflonbauWeatherAlerts } from './cards/weather-alerts.js';
 import { generateDashboard } from './strategy.js';
 import { MufflonbauShell } from './cards/shell.js';
 import { MufflonbauLiveCard } from './cards/live-card.js';
@@ -18,6 +19,7 @@ if (!customElements.get('mufflonbau-presence')) customElements.define('mufflonba
 if (!customElements.get('mufflonbau-cleaning')) customElements.define('mufflonbau-cleaning', MufflonbauCleaning);
 if (!customElements.get('mufflonbau-shopping')) customElements.define('mufflonbau-shopping', MufflonbauShopping);
 if (!customElements.get('mufflonbau-maintenance')) customElements.define('mufflonbau-maintenance', MufflonbauMaintenance);
+if (!customElements.get('mufflonbau-weather-alerts')) customElements.define('mufflonbau-weather-alerts', MufflonbauWeatherAlerts);
 if (!customElements.get('mufflonbau-shell')) customElements.define('mufflonbau-shell', MufflonbauShell);
 if (!customElements.get('mufflonbau-live')) customElements.define('mufflonbau-live', MufflonbauLiveCard);
 if (!customElements.get('mufflonbau-laundry')) customElements.define('mufflonbau-laundry', MufflonbauLaundry);

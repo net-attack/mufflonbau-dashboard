@@ -7,6 +7,7 @@ import { translations } from '../src/core/i18n.js';
 import { renderViews } from './render-views.mjs';
 import { checkCleaning } from './cleaning-check.mjs';
 import { checkShopping } from './shopping-check.mjs';
+import { checkWeatherAlerts } from './weather-alerts-check.mjs';
 import { checkFlusenfels } from './flusenfels-check.mjs';
 import { checkMaintenance } from './maintenance-check.mjs';
 import { checkFloorplan } from './floorplan-check.mjs';
@@ -143,6 +144,7 @@ try {
   assert.equal(await diagnostics.getByRole('switch', { name: 'Recovered', exact: true }).isEnabled(), true);
   await checkCleaning(page, previewConfig, previewHass);
   await checkShopping(page, previewConfig, previewHass);
+  await checkWeatherAlerts(page, previewHass);
   await checkFloorplan(page);
   await checkDetailViews(page);
   await checkFlusenfels(page);

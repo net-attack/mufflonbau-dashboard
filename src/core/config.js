@@ -57,6 +57,17 @@ export function normalizeConfig(config) {
     if (item.last_finished && !item.last_finished.startsWith('input_datetime.')) fail(`${path}.last_finished`, 'must reference an input_datetime helper.');
     if (item.plug && !item.plug.startsWith('switch.')) fail(`${path}.plug`, 'must reference the monitored plug switch.');
   });
+  if (result.weather_alerts !== undefined) {
+    object(result.weather_alerts, 'weather_alerts');
+    entity(result.weather_alerts.entity, 'weather_alerts.entity');
+    if (result.weather_alerts.radar !== undefined) {
+      object(result.weather_alerts.radar, 'weather_alerts.radar');
+      for (const key of ['image_url', 'url']) {
+        const value = result.weather_alerts.radar[key];
+        if (value !== undefined && (typeof value !== 'string' || !/^https:\/\//.test(value))) fail(`weather_alerts.radar.${key}`, 'must be an HTTPS URL.');
+      }
+    }
+  }
   list(result.rooms, 'rooms');
   if (config.floorplan_drawing !== undefined) validateDrawing(config.floorplan_drawing);
   if (config.floorplan_bounds !== undefined && (!Array.isArray(config.floorplan_bounds) || config.floorplan_bounds.length !== 4 || config.floorplan_bounds.some(n => !Number.isFinite(n)) || config.floorplan_bounds[2] <= 0 || config.floorplan_bounds[3] <= 0)) fail('floorplan_bounds', 'must contain x, y, positive width and height.');
@@ -231,7 +242,7 @@ export function normalizeConfig(config) {
 export function collectEntities(config) {
   return [...new Set([
     ...Object.values(config.admin ?? {}).flat(), ...config.entities, ...config.people, ...config.calendars, ...config.expert_entities,
-    config.weather, config.shopping?.entity, ...ventilationEntities(config.ventilation), ...config.monitors.map(monitor => monitor.entity),
+    config.weather, config.shopping?.entity, config.weather_alerts?.entity, ...ventilationEntities(config.ventilation), ...config.monitors.map(monitor => monitor.entity),
     ...config.rooms.flatMap(room => [room.temperature, room.humidity, room.dew_point,
       ...room.lights, ...(room.member_lights ?? []), ...room.entities, ...Object.values(room.cleaning ?? {})]),
     ...config.rooms.flatMap(room => (room.objects ?? []).map(item => item.entity)),

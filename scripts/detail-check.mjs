@@ -110,7 +110,7 @@ export async function checkDetailViews(sourcePage) {
     }
     await show('climate');
     await page.evaluate(() => {
-      const card = document.querySelector('#detail-dashboard')._children[0];
+      const card = document.querySelector('#detail-dashboard')._children.find(card => card._config?.mode === 'climate');
       const rooms = [
         { id: 'living', name: 'Wohnzimmer', temperature: 'sensor.probe_temperature', humidity: 'sensor.probe_humidity' },
         { id: 'kitchen', name: 'Küche', humidity: 'sensor.kitchen_humidity', dew_point: 'sensor.kitchen_dew_point' },
@@ -130,7 +130,7 @@ export async function checkDetailViews(sourcePage) {
     await shell.locator('button[data-entity="sensor.probe_temperature"]').tap();
     assert.equal(await page.evaluate(() => window.detailEntity), 'sensor.probe_temperature');
     await page.evaluate(() => {
-      const card = document.querySelector('#detail-dashboard')._children[0];
+      const card = document.querySelector('#detail-dashboard')._children.find(card => card._config?.mode === 'climate');
       card.hass = { ...card._hass, states: { ...card._hass.states,
         'sensor.probe_temperature': { state: '21.5', attributes: { unit_of_measurement: '°C' } },
         'sensor.kitchen_dew_point': { state: '11.3', attributes: { unit_of_measurement: '°C' } },

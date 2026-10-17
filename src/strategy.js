@@ -21,5 +21,5 @@ export function generateDashboard(rawConfig, hass) {
     type: 'custom:mufflonbau-shell', title: config.title || 'Mufflonbau', language, appearance: config.appearance,
     path: item.path, view_title: item.title, full_view: item.fullView, navigation, cards: item.cards,
   }] }));
-  return { title: config.title || 'Mufflonbau', views: styledViews };
+  return { ...(config.kiosk_mode ? { kiosk_mode: config.kiosk_mode } : {}), title: config.title || 'Mufflonbau', views: styledViews };
 }

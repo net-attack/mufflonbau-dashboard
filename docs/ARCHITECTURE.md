@@ -79,8 +79,9 @@ HACS receives one file and does not need to resolve source-module downloads.
 
 ## Deliberate boundaries
 
-The strategy never enables kiosk mode or hides the HA header/sidebar. Those
-settings belong to the dashboard owner and stay separate from strategy output.
+Kiosk Mode is an optional pass-through for the separately installed Kiosk Mode
+plugin. It remains disabled unless the strategy configuration explicitly sets
+`kiosk_mode`.
 
 No backend integration, persisted credentials, helper creation, auto-discovery,
 or service execution during generation. Native cards provide device actions,

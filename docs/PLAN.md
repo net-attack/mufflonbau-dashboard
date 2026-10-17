@@ -11,7 +11,7 @@ for source ownership and [MIGRATION.md](MIGRATION.md) for the feature mapping.
 - Presence, weather, calendar, and live clock summary.
 - Vacuum controls, camera map, and per-room helper actions.
 - Configurable battery/offline warnings and expert entity inventory.
-- Configurable ambient/night appearance; header and kiosk behavior stay under dashboard settings.
+- Configurable ambient/night appearance and optional Kiosk Mode header hiding.
 - A single HACS bundle built from small source modules; stale-bundle checks,
   generation/state tests, HA-compatible YAML example tests, and Chromium checks
   running locally and on GitHub Actions.

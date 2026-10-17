@@ -115,6 +115,14 @@ export function normalizeConfig(config) {
       if (result.cleaning[key] !== undefined) entity(result.cleaning[key], `cleaning.${key}`);
     }
   }
+  if (result.kiosk_mode !== undefined) {
+    object(result.kiosk_mode, 'kiosk_mode');
+    for (const [key, value] of Object.entries(result.kiosk_mode)) {
+      if (!['kiosk', 'hide_header', 'hide_sidebar'].includes(key) || typeof value !== 'boolean') {
+        fail('kiosk_mode', 'supports boolean kiosk, hide_header, and hide_sidebar options.');
+      }
+    }
+  }
   if (result.appearance !== undefined) {
     object(result.appearance, 'appearance');
     if (!['calm', 'atmospheric', 'storybook'].includes(result.appearance.theme ?? 'atmospheric')) fail('appearance.theme', 'must be calm, atmospheric, or storybook.');

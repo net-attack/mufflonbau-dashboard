@@ -164,6 +164,23 @@ export function normalizeConfig(config) {
     for (const key of ['entity', 'battery', 'current_room', 'map']) {
       if (result.cleaning[key] !== undefined) entity(result.cleaning[key], `cleaning.${key}`);
     }
+    if (result.cleaning.maintenance !== undefined) {
+      list(result.cleaning.maintenance, 'cleaning.maintenance');
+      const maintenanceIds = new Set();
+      result.cleaning.maintenance.forEach((item, index) => {
+        const path = `cleaning.maintenance[${index}]`;
+        object(item, path); label(item.name, `${path}.name`);
+        if (!item.percent && !item.remaining) fail(path, 'requires percent or remaining.');
+        for (const key of ['percent', 'remaining']) {
+          if (item[key] === undefined) continue;
+          entity(item[key], `${path}.${key}`);
+          if (!item[key].startsWith('sensor.')) fail(`${path}.${key}`, 'must reference a sensor.');
+          if (maintenanceIds.has(item[key])) fail(`${path}.${key}`, 'must not duplicate another maintenance sensor.');
+          maintenanceIds.add(item[key]);
+        }
+        if (item.warning_below !== undefined && (!item.percent || !Number.isFinite(item.warning_below) || item.warning_below < 0 || item.warning_below > 100)) fail(`${path}.warning_below`, 'requires percent and a number between 0 and 100.');
+      });
+    }
   }
   if (result.kiosk_mode !== undefined) {
     object(result.kiosk_mode, 'kiosk_mode');

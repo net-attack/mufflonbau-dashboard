@@ -7,6 +7,7 @@ import { translations } from '../src/core/i18n.js';
 import { renderViews } from './render-views.mjs';
 import { checkCleaning } from './cleaning-check.mjs';
 import { checkFlusenfels } from './flusenfels-check.mjs';
+import { checkMaintenance } from './maintenance-check.mjs';
 import { checkFloorplan } from './floorplan-check.mjs';
 import { checkDetailViews } from './detail-check.mjs';
 import { checkPresence } from './presence-check.mjs';
@@ -140,6 +141,7 @@ try {
   await checkFloorplan(page);
   await checkDetailViews(page);
   await checkFlusenfels(page);
+  await checkMaintenance(page);
   // Render the actual YAML examples through the shipped shell. A minimal native
   // card double checks the helper boundary and inherited theme variables.
   await page.evaluate(() => {

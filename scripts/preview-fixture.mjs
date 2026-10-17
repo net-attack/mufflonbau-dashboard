@@ -27,6 +27,7 @@ export const previewConfig = {
   admin: { internet: ['binary_sensor.internet'], host: ['sensor.panel_cpu', 'sensor.panel_temperature'], clients: ['device_tracker.tablet'] },
 };
 export const previewHass = {
+  services: { vacuum: { start: {}, pause: {}, stop: {}, return_to_base: {} } },
   locale: { language: 'de' }, config: { time_zone: 'Europe/Berlin' }, themes: { darkMode: false },
   states: {
     'binary_sensor.window': { state: 'off', attributes: { device_class: 'window' } },
@@ -42,7 +43,7 @@ export const previewHass = {
     'person.sam': { state: 'not_home', attributes: { friendly_name: 'Sam' } },
     'weather.home': { state: 'sunny', attributes: { temperature: 18, temperature_unit: '°C' } },
     'calendar.family': { state: 'off', attributes: { message: 'Abendessen mit Freunden', start_time: '2026-10-17T19:00:00+02:00' } },
-    'vacuum.robot': { state: 'docked', attributes: { friendly_name: 'Fürst Saugfried von Flusenfels' } },
+    'vacuum.robot': { state: 'docked', attributes: { friendly_name: 'Fürst Saugfried von Flusenfels', supported_features: 8220 } },
     'sensor.robot_battery': { state: '92', attributes: { unit_of_measurement: '%' } },
     'sensor.device_battery': { state: '85', attributes: {} },
     'binary_sensor.internet': { state: 'on', attributes: { friendly_name: 'Internet' } },

@@ -1,8 +1,8 @@
 import { element, icon } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
-import { appearanceMode, isCleaningActionUnavailable, isOffline, stateProblem } from '../core/state.js';
+import { appearanceMode, isCleaningActionUnavailable, stateProblem } from '../core/state.js';
 import { localized, translations } from '../core/i18n.js';
-import { cleaningActivity } from '../core/cleaning.js';
+import { cleaningActivity, vacuumCommand } from '../core/cleaning.js';
 import { cleaningPageText, saugfriedMood } from '../core/cleaning-theme.js';
 import { applyFlusenfelsTheme, flusenfelsCardStyles, saugfriedArt } from '../design/flusenfels.js';
 
@@ -32,7 +32,7 @@ export class MufflonbauCleaning extends HTMLElement {
     const previous = this._hass; this._hass = value;
     const ids = [this._config?.cleaning?.entity, this._config?.cleaning?.battery, this._config?.cleaning?.current_room,
       ...(this._config?.rooms ?? []).flatMap(room => Object.values(room.cleaning ?? {}))].filter(Boolean);
-    if (!previous || ids.some(id => previous.states[id] !== value.states[id]) || previous.states['sun.sun'] !== value.states['sun.sun'] || previous.themes !== value.themes) this._render();
+    if (!previous || previous.services !== value.services || ids.some(id => previous.states[id] !== value.states[id]) || previous.states['sun.sun'] !== value.states['sun.sun'] || previous.themes !== value.themes) this._render();
   }
   getCardSize() { return 5; }
   async _service(domain, service, entity, text) {
@@ -92,10 +92,11 @@ export class MufflonbauCleaning extends HTMLElement {
     const feedback = element('p', this._error ?? '', 'feedback'); feedback.setAttribute('role', this._error ? 'alert' : 'status');
     if (cleaning.entity) {
       const controls = element('div', undefined, 'actions');
-      for (const [service, symbol, label] of commands) {
-        const button = element('button', undefined, 'command'); button.type = 'button'; button.dataset.command = service;
+      for (const [command, symbol, label] of commands) {
+        const service = vacuumCommand(command, this._hass.states[cleaning.entity], this._hass.services);
+        const button = element('button', undefined, 'command'); button.type = 'button'; button.dataset.command = command;
         button.setAttribute('aria-label', `${translations[language][label]}${royal ? ` · ${text[label]}` : ''}`);
-        button.disabled = this._busy || isOffline(this._hass.states[cleaning.entity]);
+        button.disabled = this._busy || !service;
         button.append(icon(symbol), element('span', text[label]));
         button.addEventListener('click', () => this._service('vacuum', service, cleaning.entity, text));
         controls.append(button);

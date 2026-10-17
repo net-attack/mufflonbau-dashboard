@@ -1,6 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleaningActivity } from '../src/core/cleaning.js';
+import { cleaningActivity, vacuumCommand } from '../src/core/cleaning.js';
+
+test('vacuum controls use registered actions supported by the robot', () => {
+  const services = { vacuum: { start: {}, pause: {}, stop: {}, return_to_base: {} } };
+  const robot = state => ({ state, attributes: { supported_features: 8220 } });
+  for (const [state, expected] of [['docked', 'start'], ['idle', 'start'], ['paused', 'start'], ['cleaning', 'pause'], ['returning', 'pause']]) {
+    assert.equal(vacuumCommand('start_pause', robot(state), services), expected);
+  }
+  assert.equal(vacuumCommand('return_home', robot('cleaning'), services), 'return_to_base');
+  assert.equal(vacuumCommand('stop', robot('cleaning'), services), 'stop');
+  assert.equal(vacuumCommand('stop', robot('unavailable'), services), null);
+  assert.equal(vacuumCommand('stop', undefined, services), null);
+  assert.equal(vacuumCommand('stop', { state: 'idle', attributes: { supported_features: 8192 } }, services), null);
+  assert.equal(vacuumCommand('stop', robot('idle'), { vacuum: { start: {} } }), null);
+  assert.equal(vacuumCommand('start_pause', robot('idle'), undefined), null);
+});
 
 test('running cleaning type comes from robot attributes', () => {
   for (const [mode, label] of [

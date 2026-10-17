@@ -5,6 +5,17 @@ export function cleaningEntities(cleaning = {}) {
   return ['entity', 'battery', 'current_room', 'map'].map(key => cleaning[key]).filter(Boolean);
 }
 
+// UI command names are separate from HA's registered vacuum actions.
+export function vacuumCommand(command, state, services) {
+  const service = command === 'start_pause'
+    ? ['cleaning', 'returning'].includes(state?.state) ? 'pause' : 'start'
+    : command === 'return_home' ? 'return_to_base' : command === 'stop' ? 'stop' : null;
+  const feature = { start: 8192, pause: 4, stop: 8, return_to_base: 16 }[service];
+  if (!service || isOffline(state) || !services?.vacuum?.[service] ||
+    !(Number(state.attributes?.supported_features) & feature)) return null;
+  return service;
+}
+
 const key = value => typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]+/g, '_') : value;
 const cleaningLabels = {
   sweeping: 'vacuum', vacuum: 'vacuum', vacuuming: 'vacuum',

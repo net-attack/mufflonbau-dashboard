@@ -630,6 +630,12 @@ ${trees}${houses}
   function cleaningEntities(cleaning = {}) {
     return ["entity", "battery", "current_room", "map"].map((key2) => cleaning[key2]).filter(Boolean);
   }
+  function vacuumCommand(command, state, services) {
+    const service = command === "start_pause" ? ["cleaning", "returning"].includes(state?.state) ? "pause" : "start" : command === "return_home" ? "return_to_base" : command === "stop" ? "stop" : null;
+    const feature = { start: 8192, pause: 4, stop: 8, return_to_base: 16 }[service];
+    if (!service || isOffline(state) || !services?.vacuum?.[service] || !(Number(state.attributes?.supported_features) & feature)) return null;
+    return service;
+  }
   var key = (value) => typeof value === "string" ? value.trim().toLowerCase().replace(/[\s-]+/g, "_") : value;
   var cleaningLabels = {
     sweeping: "vacuum",
@@ -1536,7 +1542,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         this._config?.cleaning?.current_room,
         ...(this._config?.rooms ?? []).flatMap((room) => Object.values(room.cleaning ?? {}))
       ].filter(Boolean);
-      if (!previous || ids.some((id) => previous.states[id] !== value.states[id]) || previous.states["sun.sun"] !== value.states["sun.sun"] || previous.themes !== value.themes) this._render();
+      if (!previous || previous.services !== value.services || ids.some((id) => previous.states[id] !== value.states[id]) || previous.states["sun.sun"] !== value.states["sun.sun"] || previous.themes !== value.themes) this._render();
     }
     getCardSize() {
       return 5;
@@ -1623,12 +1629,13 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       feedback.setAttribute("role", this._error ? "alert" : "status");
       if (cleaning.entity) {
         const controls = element("div", void 0, "actions");
-        for (const [service, symbol, label2] of commands) {
+        for (const [command, symbol, label2] of commands) {
+          const service = vacuumCommand(command, this._hass.states[cleaning.entity], this._hass.services);
           const button = element("button", void 0, "command");
           button.type = "button";
-          button.dataset.command = service;
+          button.dataset.command = command;
           button.setAttribute("aria-label", `${translations[language][label2]}${royal ? ` · ${text[label2]}` : ""}`);
-          button.disabled = this._busy || isOffline(this._hass.states[cleaning.entity]);
+          button.disabled = this._busy || !service;
           button.append(icon(symbol), element("span", text[label2]));
           button.addEventListener("click", () => this._service("vacuum", service, cleaning.entity, text));
           controls.append(button);

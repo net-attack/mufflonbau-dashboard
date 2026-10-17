@@ -36,6 +36,27 @@ export async function checkCleaning(page, config, hass) {
   }
   await page.evaluate(() => { document.querySelector('#cleaning-controls').hass = window.cleaningHass; document.querySelector('#cleaning-summary').remove(); });
   assert.equal(await panel.locator('.running-mode').count(), 0, 'Docked robots must not show a running cleaning type');
+  for (const [state, command, service] of [
+    ['docked', 'start_pause', 'start'], ['cleaning', 'start_pause', 'pause'],
+    ['paused', 'start_pause', 'start'], ['returning', 'start_pause', 'pause'],
+    ['cleaning', 'stop', 'stop'], ['cleaning', 'return_home', 'return_to_base'],
+  ]) {
+    await page.evaluate(state => {
+      const robot = window.cleaningHass.states['vacuum.robot'];
+      document.querySelector('#cleaning-controls').hass = { ...window.cleaningHass, states: {
+        ...window.cleaningHass.states, 'vacuum.robot': { ...robot, state },
+      } };
+    }, state);
+    await panel.locator(`[data-command="${command}"]`).click();
+    assert.deepEqual(await page.evaluate(() => window.cleaningCalls.at(-1)), ['vacuum', service, {}, { entity_id: config.cleaning.entity }]);
+  }
+  await page.evaluate(() => {
+    const vacuum = { ...window.cleaningHass.services.vacuum }; delete vacuum.stop;
+    document.querySelector('#cleaning-controls').hass = { ...window.cleaningHass, services: { vacuum } };
+  });
+  assert.equal(await panel.locator('[data-command=stop]').isDisabled(), true, 'Unregistered actions must not be invoked');
+  await page.evaluate(() => { document.querySelector('#cleaning-controls').hass = window.cleaningHass; });
+  assert.equal(await panel.locator('[data-command=stop]').isEnabled(), true, 'Service registration changes must update controls');
   for (const [mode, domain, service] of [['vacuum', 'input_button', 'press'], ['mop', 'input_button', 'press'], ['clean_genius', 'script', 'turn_on']]) {
     const count = await page.evaluate(() => window.cleaningCalls.length);
     await panel.locator(`[data-mode="${mode}"]`).click();

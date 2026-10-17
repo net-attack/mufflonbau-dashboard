@@ -9,7 +9,7 @@ export async function checkFloorplan(page) {
     document.addEventListener('hass-more-info',e=>window.mapMoreInfo.push(e.detail.entityId));
     const result=await customElements.get('ll-strategy-dashboard-mufflonbau').generate(config,window.mapHass);
     window.mapConfig=result.views.find(v=>v.path==='rooms').cards[0].cards.find(c=>c.mode==='floorplan');
-    const card=document.createElement('mufflonbau-live'); card.id='interactive-test'; card.setConfig(window.mapConfig); card.hass=window.mapHass;
+    const card=document.createElement('mufflonbau-live'); card.id='interactive-test'; card.style.height='calc(100dvh - 64px)'; card.setConfig(window.mapConfig); card.hass=window.mapHass;
     document.querySelector('main').replaceChildren(card);
   },{config:previewConfig,hass:previewHass});
   const card=page.locator('#interactive-test');
@@ -82,7 +82,7 @@ export async function checkFloorplan(page) {
   await card.locator('.map-device-list summary').click();
   assert.ok(await card.locator('.map-device-list button').first().evaluate(b=>b.getBoundingClientRect().height>=44));
   await card.locator('.map-toolbar button[aria-label=Vergrößern]').click();
-  assert.equal(await card.locator('.floor-map').evaluate(svg=>svg.style.width),'150%');
+  assert.match(await card.locator('.floor-map').evaluate(svg=>svg.style.transform),/scale\(1\.5\)/);
   await card.locator('.map-toolbar button[aria-label="Zoom zurücksetzen"]').click();
   console.log('Interactive map: controls, live contact, unknown entities, climate, outside markers and tablet layouts passed.');
 }

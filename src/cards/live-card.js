@@ -31,7 +31,7 @@ export class MufflonbauLiveCard extends HTMLElement {
   }
   getCardSize() { return this._config?.mode === 'floorplan' ? 7 : 3; }
   connectedCallback() { this._startClock(); this._render(); }
-  disconnectedCallback() { clearInterval(this._timer); this._timer = undefined; }
+  disconnectedCallback() { clearInterval(this._timer); this._timer = undefined; this._mapGestures?.destroy(); }
   _startClock() {
     clearInterval(this._timer);
     this._timer = undefined;
@@ -53,6 +53,7 @@ export class MufflonbauLiveCard extends HTMLElement {
   }
   _render() {
     if (!this._config || !this._hass) return;
+    this._mapGestures?.destroy();
     const language = resolveLanguage(this._config, this._hass);
     this._language = language;
     const text = translations[language];
@@ -169,6 +170,7 @@ export class MufflonbauLiveCard extends HTMLElement {
   }
   _climate(card, text) {
     card.classList.add('room-board');
+    if (this._config.square_tiles) card.classList.add('square-tiles');
     this._section(card, text.rooms, String((this._config.rooms ?? []).length).padStart(2, '0'));
     const grid = element('div', undefined, 'grid');
     for (const room of this._config.rooms ?? []) {
@@ -249,17 +251,26 @@ export class MufflonbauLiveCard extends HTMLElement {
         warnings.length ? `${warnings.length} ${warnings.length === 1 ? text.warning : text.warnings} · ${warnings[0].name}: ${warnings[0].detail}` : text.healthy);
       return;
     }
+    card.classList.add('system-board');
     this._section(card, text.system, warnings.length ? warnings.length : '✓');
+    const summary = element('div', undefined, 'system-summary');
+    const total = (this._config.monitors ?? []).length;
+    for (const [value, label] of [[total, text.monitored], [total - warnings.length, text.healthyDevices], [warnings.length, text.warnings]]) {
+      const stat = element('div', undefined, 'system-stat'); stat.append(element('strong', String(value)), element('span', label)); summary.append(stat);
+    }
+    card.append(summary);
     if (!warnings.length) {
       const healthy = element('div', undefined, 'healthy'); healthy.append(icon('system'), element('span', text.healthy)); card.append(healthy);
     }
+    const grid = element('div', undefined, 'warnings-grid');
     for (const warning of warnings) {
       const button = element('button', undefined, 'warning'); button.type = 'button'; button.dataset.entity = warning.entity;
       const disc = element('span', undefined, 'icon-disc'); disc.append(icon('system'));
       const detail = element('span'); detail.append(element('strong', warning.name), element('small', warning.detail));
       if (warning.name !== warning.entity) detail.append(element('small', warning.entity, 'entity-id'));
-      button.append(disc, detail); button.addEventListener('click', () => this._moreInfo(warning.entity)); card.append(button);
+      button.append(disc, detail); button.addEventListener('click', () => this._moreInfo(warning.entity)); grid.append(button);
     }
+    card.append(grid);
   }
   _name(id) { return this._hass.states[id]?.attributes?.friendly_name ?? id.split('.').at(-1).replaceAll('_', ' '); }
   _state(id, text) {
@@ -269,14 +280,22 @@ export class MufflonbauLiveCard extends HTMLElement {
     return this._hass.formatEntityState?.(state) ?? `${state.state}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : ''}`;
   }
   _people(card, text) {
-    this._section(card, text.people);
+    card.classList.add('people-board');
+    const home = (this._config.people ?? []).filter(id => this._hass.states[id]?.state === 'home').length;
+    this._section(card, text.people, `${home} ${text.peopleHome}`);
+    const grid = element('div', undefined, 'people-grid');
     for (const id of this._config.people ?? []) {
-      const row = element('div', undefined, 'people');
-      const name = this._name(id); const info = element('button'); info.type = 'button'; info.dataset.entity = id;
-      info.append(element('strong', name)); info.addEventListener('click', () => this._moreInfo(id));
-      row.append(element('span', name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase(), 'avatar'), info,
-        element('span', this._state(id, text), `person-state${this._hass.states[id]?.state === 'home' ? ' home' : ''}`)); card.append(row);
+      const row = element('button', undefined, 'people'); row.type = 'button'; row.dataset.entity = id;
+      const name = this._name(id);
+      row.addEventListener('click', () => this._moreInfo(id));
+      row.append(element('span', name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase(), 'avatar'), element('strong', name),
+        element('span', this._state(id, text), `person-state${this._hass.states[id]?.state === 'home' ? ' home' : ''}`));
+      const changed = this._hass.states[id]?.last_changed;
+      const date = changed && new Date(changed);
+      if (date && Number.isFinite(date.getTime())) row.append(element('small', `${text.stateSince}: ${new Intl.DateTimeFormat(this._language, { dateStyle: 'short', timeStyle: 'short', timeZone: this._hass.config?.time_zone }).format(date)}`));
+      grid.append(row);
     }
+    card.append(grid);
   }
   _presenceSummary(card, text) {
     card.classList.add('dashboard-summary');
@@ -330,8 +349,8 @@ export class MufflonbauLiveCard extends HTMLElement {
     row.append(disc, detail); card.append(row); this._link(card, 'cleaning', text.allDetails);
   }
   _floorplan(card, text) {
-    this._section(card, text.rooms, text.floorplan);
-    if (this._config.drawing?.length || this._config.objects?.length) { renderInteractiveFloorplan(this, card, text); return; }
+    if (!this._config.map_only) this._section(card, text.rooms, text.floorplan);
+    if (this._config.map_only || this._config.drawing?.length || this._config.objects?.length) { renderInteractiveFloorplan(this, card, text); return; }
     const rooms = this._config.rooms ?? [];
     const positions = rooms.map((room, index) => room.position ?? { x: (index % 3) * 280, y: Math.floor(index / 3) * 180, width: 260, height: 160 });
     const polygons = positions.map(position => position.points ? [position.points] : position.parts ?? [[

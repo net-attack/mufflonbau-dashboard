@@ -7,6 +7,7 @@ import { translations } from '../src/core/i18n.js';
 import { renderViews } from './render-views.mjs';
 import { checkCleaning } from './cleaning-check.mjs';
 import { checkFloorplan } from './floorplan-check.mjs';
+import { checkDetailViews } from './detail-check.mjs';
 import { galaxyTabA11 } from './galaxy-tab-a11.mjs';
 import { load, YAML11_SCHEMA } from 'js-yaml';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -135,6 +136,7 @@ try {
   assert.equal(await diagnostics.getByRole('switch', { name: 'Recovered', exact: true }).isEnabled(), true);
   await checkCleaning(page, previewConfig, previewHass);
   await checkFloorplan(page);
+  await checkDetailViews(page);
   // Render the actual YAML examples through the shipped shell. A minimal native
   // card double checks the helper boundary and inherited theme variables.
   await page.evaluate(() => {
@@ -355,7 +357,7 @@ try {
   await page.setViewportSize({ width: 1340, height: 800 });
   await page.evaluate(() => {
     const shell = document.querySelector('#dashboard');
-    shell.setConfig(window.previewDashboard.views.find(view => view.path === 'rooms').cards[0]);
+    shell.setConfig(window.previewDashboard.views.find(view => view.path === 'climate').cards[0]);
     shell.hass = window.previewHass;
   });
   const toggle = page.locator('#dashboard button[role=switch]').first();

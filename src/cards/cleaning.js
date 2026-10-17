@@ -1,6 +1,6 @@
 import { element, icon } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
-import { appearanceMode, isOffline, stateProblem } from '../core/state.js';
+import { appearanceMode, isCleaningActionUnavailable, isOffline, stateProblem } from '../core/state.js';
 import { localized, translations } from '../core/i18n.js';
 
 const styles = `
@@ -10,6 +10,7 @@ header{display:flex;align-items:center;gap:12px;min-width:0}.robot-icon{display:
 h2{font-size:18px;margin:0}header small,.meta{font-size:11px;color:var(--mb-muted);line-height:1.5}header .state{margin-left:auto;text-align:right;max-width:40%;overflow-wrap:anywhere}
 .actions,.modes{display:flex;gap:8px}.command{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 10px;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:14px;color:var(--mb-ink);font:inherit;font-size:12px;cursor:pointer}.command svg{width:18px;height:18px;color:var(--mb-accent)}
 .command[aria-pressed=true]{background:var(--mb-active);border-color:var(--mb-accent);color:var(--mb-accent)}.room-copy{min-width:0}.room-copy small{display:block;font-size:10px;color:var(--mb-muted);margin-top:3px}.rooms-label{margin:0}
+.mode-note{font-size:11px;color:var(--mb-muted);margin:0;line-height:1.5}.room-copy .entity-id{font-family:ui-monospace,monospace;font-size:9px;overflow-wrap:anywhere}
 .rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;align-content:start;min-height:0}.room{min-height:52px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:13px;color:var(--mb-ink);font:inherit;cursor:pointer}.room svg{width:18px;height:18px;color:var(--mb-accent);flex:none}.room span{font-size:11px;line-height:1.3;overflow-wrap:anywhere}
 button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid var(--mb-accent);outline-offset:2px}
 .feedback{min-height:16px;margin:0;color:var(--mb-muted);font-size:11px}.feedback[role=alert]{color:#a45440}
@@ -86,14 +87,21 @@ export class MufflonbauCleaning extends HTMLElement {
         modes.append(button);
       }
       panel.append(element('p', text.cleaningMode, 'meta rooms-label'), modes, element('p', text.chooseCleaningRoom, 'meta rooms-label'));
+      const missingModes = roomCommands.filter(([kind]) => !actionRooms.some(room => room.cleaning?.[kind])).map(([, , label]) => text[label]);
+      if (missingModes.length) panel.append(element('p', `${missingModes.join(', ')}: ${text.missingCleaningHelper}`, 'mode-note'));
       const roomGrid = element('div', undefined, 'rooms');
       for (const room of actionRooms) {
         const entity = room.cleaning?.[this._mode];
         const button = element('button', undefined, 'room'); button.type = 'button'; button.dataset.room = room.id;
-        button.disabled = this._busy || !entity || isOffline(this._hass.states[entity]);
+        const unavailable = !entity || isCleaningActionUnavailable(entity, this._hass.states[entity]);
+        button.disabled = this._busy || unavailable;
         const label = roomCommands.find(([kind]) => kind === this._mode)[2];
         const name = localized(room.name, language); button.setAttribute('aria-label', `${name} · ${text[label]}`);
-        const copy = element('span', name, 'room-copy'); copy.append(element('small', !entity ? text.notConfigured : stateProblem(this._hass.states[entity], language) ?? text[label]));
+        const copy = element('span', name, 'room-copy'); copy.append(element('small', !entity ? text.notConfigured : unavailable ? stateProblem(this._hass.states[entity], language) : text[label]));
+        if (entity && unavailable) {
+          button.title = `${stateProblem(this._hass.states[entity], language)}: ${entity}`;
+          copy.append(element('small', entity, 'entity-id'));
+        }
         button.append(icon('rooms'), copy);
         button.addEventListener('click', () => this._service(entity.startsWith('script.') ? 'script' : 'input_button', entity.startsWith('script.') ? 'turn_on' : 'press', entity, text)); roomGrid.append(button);
       }

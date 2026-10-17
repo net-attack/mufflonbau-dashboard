@@ -1,0 +1,104 @@
+import assert from 'node:assert/strict';
+import { previewConfig, previewHass } from './preview-fixture.mjs';
+
+export async function checkDetailViews(sourcePage) {
+  const context = await sourcePage.context().browser().newContext({ viewport: { width: 893, height: 533 }, hasTouch: true, isMobile: true });
+  try {
+    const page = await context.newPage();
+    const errors = []; page.on('pageerror', error => errors.push(error.message));
+    await page.goto(new URL('/dashboard-test/home', sourcePage.url()).href);
+    await page.addScriptTag({ url: '/bundle.js' });
+    await page.evaluate(async ({ config, hass }) => {
+      document.body.style.margin = '0';
+      document.querySelector('main').style.cssText = 'max-width:none;margin:0';
+      window.detailHass = { ...hass, callService: async () => {} };
+      window.detailDashboard = await customElements.get('ll-strategy-dashboard-mufflonbau').generate(config, window.detailHass);
+      window.loadCardHelpers = async () => ({ createCardElement: () => {
+        const native = document.createElement('div'); native.textContent = 'Camera / history'; native.style.cssText = 'height:100%;min-height:100px;background:var(--mb-soft)'; return native;
+      } });
+      const shell = document.createElement('mufflonbau-shell'); shell.id = 'detail-dashboard'; document.querySelector('main').replaceChildren(shell);
+      window.addEventListener('location-changed', () => {
+        const path = location.pathname.split('/').at(-1);
+        const view = window.detailDashboard.views.find(view => view.path === path);
+        if (view) { shell.setConfig(view.cards[0]); shell.hass = window.detailHass; scrollTo(0, 0); }
+      });
+      document.addEventListener('hass-more-info', () => window.detailMoreInfo = (window.detailMoreInfo ?? 0) + 1);
+    }, { config: previewConfig, hass: previewHass });
+    const shell = page.locator('#detail-dashboard');
+    const show = async path => {
+      await page.evaluate(path => {
+        const shell = document.querySelector('#detail-dashboard');
+        history.replaceState(null, '', `/dashboard-test/${path}`);
+        shell.setConfig(window.detailDashboard.views.find(view => view.path === path).cards[0]); shell.hass = window.detailHass; scrollTo(0, 0);
+      }, path);
+      await page.waitForFunction(() => { const s = document.querySelector('#detail-dashboard'); return s._children.length === s._config.cards.length; });
+    };
+    const pinch = async viewport => {
+      await viewport.scrollIntoViewIfNeeded();
+      const box = await viewport.boundingBox();
+      const x = box.x + box.width / 2, y = box.y + box.height / 2;
+      const client = await context.newCDPSession(page);
+      const touch = (a, b) => [{ x: x - a, y, id: 1 }, { x: x + b, y, id: 2 }];
+      await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: touch(35, 35) });
+      for (const distance of [45, 60, 80]) await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touch(distance, distance) });
+      await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await client.detach();
+    };
+    for (const size of [{ width: 893, height: 533 }, { width: 533, height: 893 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(size);
+      await show('home');
+      await shell.locator('.mode-room-summary .summary-link').tap();
+      assert.match(page.url(), /\/rooms$/);
+      assert.equal(await shell.locator('.map-only').count(), 1, 'Rooms must open the full map directly from Home');
+      await shell.locator('[data-room-label=living]').tap();
+      assert.match(page.url(), /\/room-living$/, 'One tap on the map must open the room directly');
+      assert.equal(await shell.locator('.map-toolbar select').inputValue(), 'living');
+      await show('rooms');
+      const frame = shell.locator('.map-viewport');
+      const bounds = await frame.boundingBox();
+      assert.ok(bounds.height > size.height * .7, `The room map should fill the screen: ${JSON.stringify({ size, bounds })}`);
+      assert.equal(await shell.locator('.mode-climate').count(), 0);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1), 'Rooms must fit without page scrolling');
+      await pinch(frame);
+      assert.ok(await shell.locator('mufflonbau-live').evaluate(card => card._mapCamera.zoom > 1.5), 'Two-finger pinch must enlarge the floorplan');
+      assert.match(page.url(), /\/rooms$/, 'Pinch must not trigger background navigation');
+      const before = await shell.locator('mufflonbau-live').evaluate(card => ({ ...card._mapCamera }));
+      await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+      await page.mouse.down(); await page.mouse.move(bounds.x + bounds.width / 2 + 35, bounds.y + bounds.height / 2 + 20, { steps: 5 }); await page.mouse.up();
+      assert.match(page.url(), /\/rooms$/, 'Dragging must not navigate to a room or home');
+      assert.notEqual(await shell.locator('mufflonbau-live').evaluate(card => card._mapCamera.x), before.x);
+      await page.evaluate(() => {
+        const card = document.querySelector('#detail-dashboard')._children[0];
+        card.hass = { ...window.detailHass, states: { ...window.detailHass.states, 'light.living': { state: 'off', attributes: {} } } };
+      });
+      assert.ok(await shell.locator('mufflonbau-live').evaluate(card => card._mapCamera.zoom > 1.5), 'Live updates must preserve zoom');
+      await shell.locator('.map-toolbar button[aria-label="Zoom zurücksetzen"]').click();
+      assert.equal(await shell.locator('mufflonbau-live').evaluate(card => card._mapCamera.zoom), 1);
+      await frame.tap({ position: { x: bounds.width - 3, y: bounds.height / 2 } });
+      assert.match(page.url(), /\/home$/, 'Tapping empty map space must return home');
+      await show('climate');
+      const tiles = await shell.locator('.square-tiles .room-tile').evaluateAll(tiles => tiles.map(tile => { const r = tile.getBoundingClientRect(); return { width: r.width, height: r.height }; }));
+      assert.equal(tiles.length, 6);
+      assert.ok(tiles.every(tile => Math.abs(tile.width - tile.height) < 2 && tile.width <= 212), `Climate tiles must stay compact and square: ${JSON.stringify(tiles)}`);
+    }
+    for (const path of ['presence', 'system', 'climate', 'cleaning']) {
+      await show(path);
+      await shell.locator('main').click({ position: { x: 2, y: 100 } });
+      assert.match(page.url(), /\/home$/, `${path}: empty background must return home`);
+      await show(path);
+      await shell.locator('.back-link').click();
+      assert.match(page.url(), /\/home$/, `${path}: explicit home link must work`);
+    }
+    await show('presence');
+    await shell.locator('.people').first().click();
+    assert.match(page.url(), /\/presence$/);
+    assert.equal(await page.evaluate(() => window.detailMoreInfo), 1, 'Person cards must still open entity details');
+    await show('cleaning');
+    await shell.locator('.camera-toolbar button[aria-label=Vergrößern]').click();
+    assert.match(await shell.locator('.camera-content').getAttribute('style'), /scale\(1\.5\)/);
+    await pinch(shell.locator('.camera-viewport'));
+    assert.ok(await shell.locator('.camera-content').evaluate(node => new DOMMatrix(getComputedStyle(node).transform).a > 2), 'The cleaning camera must also support pinch zoom');
+    assert.deepEqual(errors, []);
+    console.log('Detail views: full-screen map, real touch pinch, pan, live zoom persistence, background return, camera zoom and square climate tiles passed.');
+  } finally { await context.close(); }
+}

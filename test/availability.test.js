@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { availability, isOffline, isWallSwitchUnavailable, numericState, stateProblem, monitorWarnings } from '../src/core/state.js';
+import { availability, isCleaningActionUnavailable, isOffline, isWallSwitchUnavailable, numericState, stateProblem, monitorWarnings } from '../src/core/state.js';
+test('never-pressed input buttons remain usable without weakening script or device availability', () => {
+  assert.equal(isCleaningActionUnavailable('input_button.vacuum_bathroom', { state: 'unknown' }), false);
+  assert.equal(isCleaningActionUnavailable('input_button.vacuum_bathroom', { state: '2026-10-17T10:00:00Z' }), false);
+  for (const state of [undefined, { state: 'unavailable' }, { state: null }]) assert.equal(isCleaningActionUnavailable('input_button.vacuum_bathroom', state), true);
+  for (const entity of ['script.clean_bathroom', 'vacuum.robot', 'sensor.temperature']) assert.equal(isCleaningActionUnavailable(entity, { state: 'unknown' }), true);
+});
 test('on and off remain usable states; missing, unknown, and unavailable have distinct reasons', () => {
   for (const value of ['on', 'off', 'docked', 'paused']) {
     assert.equal(availability({ state: value }), 'available');

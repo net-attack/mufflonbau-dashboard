@@ -12,6 +12,10 @@ export function stateProblem(state, language) {
 export function isOffline(state) {
   return availability(state) !== 'available';
 }
+// Input buttons have no on/off state: unknown means no press timestamp yet.
+export function isCleaningActionUnavailable(entity, state) {
+  return isOffline(state) && !(entity?.startsWith('input_button.') && state?.state === 'unknown');
+}
 // A wall switch is a possible explanation, not a measured power state.
 // Do not apply this to missing/unknown entities or unrelated sensors.
 export function isWallSwitchUnavailable(state, device) {

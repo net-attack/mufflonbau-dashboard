@@ -38,6 +38,19 @@ export async function checkCleaning(page, config, hass) {
     document.querySelector('#cleaning-controls').setConfig({ ...window.cleaningConfig, rooms });
   });
   assert.equal(await panel.locator('[data-mode=clean_genius]').isDisabled(), true, 'CleanGenius must not pretend to work without a configured helper');
+  assert.match(await panel.locator('.mode-note').innerText(), /CleanGenius.*Keine Raumaktion eingerichtet/);
+  await page.evaluate(() => {
+    const states = { ...window.cleaningHass.states };
+    delete states['input_button.vacuum_kitchen'];
+    states['input_button.vacuum_bathroom'] = { state: 'unknown', attributes: {} };
+    document.querySelector('#cleaning-controls').hass = { ...window.cleaningHass, states };
+  });
+  assert.equal(await panel.locator('[data-room=kitchen]').isDisabled(), true);
+  assert.match(await panel.locator('[data-room=kitchen]').innerText(), /Entity nicht gefunden.*input_button\.vacuum_kitchen/s);
+  assert.equal(await panel.locator('[data-room=bathroom]').isEnabled(), true, 'A never-pressed input button must stay usable');
+  assert.doesNotMatch(await panel.locator('[data-room=bathroom]').innerText(), /Zustand unbekannt/);
+  await panel.locator('[data-room=bathroom]').click();
+  assert.deepEqual(await page.evaluate(() => window.cleaningCalls.at(-1)), ['input_button', 'press', {}, { entity_id: 'input_button.vacuum_bathroom' }]);
   await page.evaluate(() => {
     window.cleaningHass = { ...window.cleaningHass, states: { ...window.cleaningHass.states, 'input_button.vacuum_living': { state: 'unavailable', attributes: {} } } };
     document.querySelector('#cleaning-controls').hass = window.cleaningHass;

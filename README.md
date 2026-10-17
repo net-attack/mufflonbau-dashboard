@@ -197,6 +197,23 @@ and existing room controls. `room.label_position: {x: 0.5, "y": 0.5}` moves the
 climate label within the room bounds to avoid furniture. Missing readings show
 an em dash, never a fabricated zero. Existing simple floorplans remain supported.
 
+The Rooms overview dedicates the available screen to the map. Drag to pan and
+pinch with two fingers to zoom; trackpad pinch and the +/−/reset buttons work too.
+Zoom and position survive live entity updates. The cleaning camera uses the same
+gesture controls; ordinary mouse-wheel scrolling still reaches the page.
+Tap empty space outside the floorplan to return Home. Rooms, Presence, Climate,
+Cleaning and System check also provide a Home link or background shortcut;
+dragging the map and selecting a device never activate the background shortcut.
+Climate readings share a compact grid of square room tiles, with history below.
+Presence uses the page width for person cards; System check shows monitored,
+healthy and warning counts above its warning grid.
+
+Disabled room cleaning buttons show whether their configured helper is missing
+or unavailable, including its entity ID. A never-pressed `input_button` has an
+`unknown` timestamp and remains usable; an unknown script remains disabled.
+Modes without a configured room action show a setup hint. CleanGenius requires a real per-room helper or script;
+the dashboard cannot infer the vacuum's integration-specific settings.
+
 The dashboard needs no Button Card, Bubble Card, or Card Mod resources.
 Kiosk Mode requires the separately installed Kiosk Mode plugin. By default this
 dashboard enables kiosk mode and hides the Home Assistant header. Set

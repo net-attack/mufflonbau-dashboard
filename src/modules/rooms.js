@@ -1,13 +1,12 @@
 import { localized } from '../core/i18n.js';
-import { entityCards, entityList, liveCard, view } from '../core/cards.js';
+import { entityCards, liveCard, view } from '../core/cards.js';
 export function roomViews(context) {
   const { config, text, language } = context;
   if (!config.rooms.length) return [];
   const plan = { rooms: config.rooms, walls: config.floorplan_walls, drawing: config.floorplan_drawing, bounds: config.floorplan_bounds, objects: config.floorplan_objects, appearance: config.appearance };
   const overview = view('rooms', text.rooms, 'mdi:floor-plan', [
-    liveCard('floorplan', plan, language),
-    liveCard('climate', { rooms: config.rooms, appearance: config.appearance }, language),
-  ]);
+    liveCard('floorplan', { ...plan, map_only: true }, language),
+  ], { fullView: true });
   return [overview, ...config.rooms.map(room => view(`room-${room.id}`, localized(room.name, language), room.icon ?? 'mdi:door', [
     ...(config.floorplan_drawing?.length ? [liveCard('floorplan', { ...plan, focus_room: room.id }, language)] : []),
     liveCard('climate', { rooms: [room], appearance: config.appearance }, language),
@@ -18,10 +17,11 @@ export function roomViews(context) {
 export function climateViews({ config, text, language }) {
   const rooms = config.rooms.filter(room => room.temperature || room.humidity || room.dew_point);
   if (!rooms.length) return [];
-  return [view('climate', text.climate, 'mdi:home-thermometer-outline', rooms.flatMap(room => {
-    const ids = [room.temperature, room.humidity, room.dew_point].filter(Boolean);
-    return [liveCard('climate', { rooms: [room], appearance: config.appearance }, language),
-      ...entityList(ids, localized(room.name, language)),
-      { type: 'history-graph', title: `${localized(room.name, language)} · ${text.history}`, hours_to_show: 24, entities: ids }];
-  }))];
+  return [view('climate', text.climate, 'mdi:home-thermometer-outline', [
+    liveCard('climate', { rooms, square_tiles: true, appearance: config.appearance }, language),
+    ...rooms.map(room => {
+      const ids = [room.temperature, room.humidity, room.dew_point].filter(Boolean);
+      return { type: 'history-graph', title: `${localized(room.name, language)} · ${text.history}`, hours_to_show: 24, entities: ids };
+    }),
+  ])];
 }

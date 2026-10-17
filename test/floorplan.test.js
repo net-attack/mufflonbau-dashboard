@@ -10,6 +10,8 @@ test('interactive drawing, outdoor devices and room maps propagate without mutat
   assert.ok(collectEntities(config).includes('sensor.outdoor'));
   const result=generateDashboard(base,{states:{}});
   const card=result.views.find(v=>v.path==='rooms').cards[0].cards.find(c=>c.mode==='floorplan');
+  assert.equal(card.map_only,true);
+  assert.equal(result.views.find(v=>v.path==='rooms').cards[0].cards.length,1);
   assert.deepEqual(card.drawing,base.floorplan_drawing); assert.deepEqual(card.objects,base.floorplan_objects);
   assert.equal(result.views.find(v=>v.path==='room-room').cards[0].cards[0].focus_room,'room');
   assert.equal(JSON.stringify(base),before);

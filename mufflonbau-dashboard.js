@@ -144,6 +144,10 @@ ${trees}${houses}
   // src/core/i18n.js
   var translations = {
     en: {
+      monitored: "Monitored devices",
+      healthyDevices: "Healthy",
+      stateSince: "State since",
+      missingCleaningHelper: "No room action configured",
       wallSwitchUnavailable: "Unreachable · wall switch may be off",
       checkWallSwitch: "Turn on the wall switch to control this light.",
       allRooms: "All rooms",
@@ -232,6 +236,10 @@ ${trees}${houses}
       dewPoint: "Dew point"
     },
     de: {
+      monitored: "Überwachte Geräte",
+      healthyDevices: "In Ordnung",
+      stateSince: "Status seit",
+      missingCleaningHelper: "Keine Raumaktion eingerichtet",
       wallSwitchUnavailable: "Nicht erreichbar · Wandschalter möglicherweise aus",
       checkWallSwitch: "Zum Steuern zuerst den Wandschalter einschalten.",
       allRooms: "Alle Räume",
@@ -448,6 +456,9 @@ ${trees}${houses}
   }
   function isOffline(state) {
     return availability(state) !== "available";
+  }
+  function isCleaningActionUnavailable(entity2, state) {
+    return isOffline(state) && !(entity2?.startsWith("input_button.") && state?.state === "unknown");
   }
   function isWallSwitchUnavailable(state, device) {
     return device?.wall_switch === true && device.entity?.startsWith("light.") === true && state?.state === "unavailable";
@@ -844,6 +855,7 @@ header{display:flex;align-items:center;gap:12px;min-width:0}.robot-icon{display:
 h2{font-size:18px;margin:0}header small,.meta{font-size:11px;color:var(--mb-muted);line-height:1.5}header .state{margin-left:auto;text-align:right;max-width:40%;overflow-wrap:anywhere}
 .actions,.modes{display:flex;gap:8px}.command{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 10px;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:14px;color:var(--mb-ink);font:inherit;font-size:12px;cursor:pointer}.command svg{width:18px;height:18px;color:var(--mb-accent)}
 .command[aria-pressed=true]{background:var(--mb-active);border-color:var(--mb-accent);color:var(--mb-accent)}.room-copy{min-width:0}.room-copy small{display:block;font-size:10px;color:var(--mb-muted);margin-top:3px}.rooms-label{margin:0}
+.mode-note{font-size:11px;color:var(--mb-muted);margin:0;line-height:1.5}.room-copy .entity-id{font-family:ui-monospace,monospace;font-size:9px;overflow-wrap:anywhere}
 .rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;align-content:start;min-height:0}.room{min-height:52px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:13px;color:var(--mb-ink);font:inherit;cursor:pointer}.room svg{width:18px;height:18px;color:var(--mb-accent);flex:none}.room span{font-size:11px;line-height:1.3;overflow-wrap:anywhere}
 button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid var(--mb-accent);outline-offset:2px}
 .feedback{min-height:16px;margin:0;color:var(--mb-muted);font-size:11px}.feedback[role=alert]{color:#a45440}
@@ -958,18 +970,25 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
           modes.append(button);
         }
         panel.append(element("p", text.cleaningMode, "meta rooms-label"), modes, element("p", text.chooseCleaningRoom, "meta rooms-label"));
+        const missingModes = roomCommands.filter(([kind]) => !actionRooms.some((room) => room.cleaning?.[kind])).map(([, , label2]) => text[label2]);
+        if (missingModes.length) panel.append(element("p", `${missingModes.join(", ")}: ${text.missingCleaningHelper}`, "mode-note"));
         const roomGrid = element("div", void 0, "rooms");
         for (const room of actionRooms) {
           const entity2 = room.cleaning?.[this._mode];
           const button = element("button", void 0, "room");
           button.type = "button";
           button.dataset.room = room.id;
-          button.disabled = this._busy || !entity2 || isOffline(this._hass.states[entity2]);
+          const unavailable = !entity2 || isCleaningActionUnavailable(entity2, this._hass.states[entity2]);
+          button.disabled = this._busy || unavailable;
           const label2 = roomCommands.find(([kind]) => kind === this._mode)[2];
           const name = localized(room.name, language);
           button.setAttribute("aria-label", `${name} · ${text[label2]}`);
           const copy = element("span", name, "room-copy");
-          copy.append(element("small", !entity2 ? text.notConfigured : stateProblem(this._hass.states[entity2], language) ?? text[label2]));
+          copy.append(element("small", !entity2 ? text.notConfigured : unavailable ? stateProblem(this._hass.states[entity2], language) : text[label2]));
+          if (entity2 && unavailable) {
+            button.title = `${stateProblem(this._hass.states[entity2], language)}: ${entity2}`;
+            copy.append(element("small", entity2, "entity-id"));
+          }
           button.append(icon("rooms"), copy);
           button.addEventListener("click", () => this._service(entity2.startsWith("script.") ? "script" : "input_button", entity2.startsWith("script.") ? "turn_on" : "press", entity2, text));
           roomGrid.append(button);
@@ -1259,9 +1278,8 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     if (!config.rooms.length) return [];
     const plan = { rooms: config.rooms, walls: config.floorplan_walls, drawing: config.floorplan_drawing, bounds: config.floorplan_bounds, objects: config.floorplan_objects, appearance: config.appearance };
     const overview = view("rooms", text.rooms, "mdi:floor-plan", [
-      liveCard("floorplan", plan, language),
-      liveCard("climate", { rooms: config.rooms, appearance: config.appearance }, language)
-    ]);
+      liveCard("floorplan", { ...plan, map_only: true }, language)
+    ], { fullView: true });
     return [overview, ...config.rooms.map((room) => view(`room-${room.id}`, localized(room.name, language), room.icon ?? "mdi:door", [
       ...config.floorplan_drawing?.length ? [liveCard("floorplan", { ...plan, focus_room: room.id }, language)] : [],
       liveCard("climate", { rooms: [room], appearance: config.appearance }, language),
@@ -1273,14 +1291,13 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
   function climateViews({ config, text, language }) {
     const rooms = config.rooms.filter((room) => room.temperature || room.humidity || room.dew_point);
     if (!rooms.length) return [];
-    return [view("climate", text.climate, "mdi:home-thermometer-outline", rooms.flatMap((room) => {
-      const ids = [room.temperature, room.humidity, room.dew_point].filter(Boolean);
-      return [
-        liveCard("climate", { rooms: [room], appearance: config.appearance }, language),
-        ...entityList(ids, localized(room.name, language)),
-        { type: "history-graph", title: `${localized(room.name, language)} · ${text.history}`, hours_to_show: 24, entities: ids }
-      ];
-    }))];
+    return [view("climate", text.climate, "mdi:home-thermometer-outline", [
+      liveCard("climate", { rooms, square_tiles: true, appearance: config.appearance }, language),
+      ...rooms.map((room) => {
+        const ids = [room.temperature, room.humidity, room.dew_point].filter(Boolean);
+        return { type: "history-graph", title: `${localized(room.name, language)} · ${text.history}`, hours_to_show: 24, entities: ids };
+      })
+    ])];
   }
 
   // src/modules/cleaning.js
@@ -1491,7 +1508,119 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     :host([data-view=cleaning]) .content > .slot { grid-column:1/-1; }
   }
   @media(prefers-reduced-motion:no-preference) { a { transition:background .15s,color .15s; } }
+  .view-header { display:flex; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px; }
+  .view-header .heading { margin:0; }
+  .back-link { display:inline-flex; flex-direction:row; flex:none; min-height:44px; padding:10px 14px; font-size:13px; background:var(--mb-surface); border:1px solid var(--mb-line); }
+  :host([data-view=rooms]) { height:100dvh; min-height:0; overflow:hidden; }
+  :host([data-view=rooms]) .shell { height:100%; min-height:0; }
+  :host([data-view=rooms]) main { height:100%; min-height:0; max-width:none; padding:12px 16px var(--mb-nav-space,140px); display:flex; flex-direction:column; }
+  :host([data-view=rooms]) .content { display:flex; flex:1; min-height:0; }
+  :host([data-view=rooms]) .slot { width:100%; height:100%; min-height:0; }
+  :host([data-view=presence]) main,:host([data-view=system]) main,:host([data-view=climate]) main { padding:20px clamp(16px,3vw,46px) max(120px,var(--mb-nav-space,140px)); }
+  :host([data-view=cleaning]) main { padding-bottom:max(128px,var(--mb-nav-space,140px)); }
+  :host([data-view=presence]) .slot,:host([data-view=system]) .slot,:host([data-view=climate]) .slot.rooms { grid-column:1/-1; }
+  :host([data-view=presence]),:host([data-view=system]) { min-height:100dvh; --mb-detail-height:max(320px,calc(100dvh - 230px)); }
+  .slot.cleaning-map { position:relative; }
+  .camera-viewport { overflow:hidden; touch-action:none; cursor:grab; }
+  .camera-content,.camera-content > * { display:block; height:100%; width:100%; transform-origin:center; }
+  .camera-toolbar { position:absolute; top:10px; right:10px; display:flex; gap:6px; }
+  .slot.cleaning-map > .camera-toolbar { width:auto; height:auto; }
+  .camera-toolbar button { min-width:44px; min-height:44px; font:inherit; color:var(--mb-ink); background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:12px; cursor:pointer; }
+  .camera-toolbar button:focus-visible { outline:2px solid var(--mb-accent); outline-offset:2px; }
+  @media(min-width:701px) {
+    :host([data-view=rooms][data-theme=calm]) main { padding-bottom:16px; }
+  }
+  @media(max-width:700px) {
+    :host([data-view=rooms]) main { padding:8px 8px var(--mb-nav-space,110px); }
+    :host([data-view=presence]) main,:host([data-view=system]) main,:host([data-view=climate]) main { padding:16px 12px max(110px,var(--mb-nav-space,110px)); }
+  }
 `;
+
+  // src/design/map-gestures.js
+  function mapGestures(viewport, content, camera = { zoom: 1, x: 0, y: 0 }) {
+    const pointers = /* @__PURE__ */ new Map();
+    let start, moved = false;
+    const paint = () => {
+      const rect = viewport.getBoundingClientRect();
+      camera.x = Math.max(-rect.width * (camera.zoom - 1) / 2, Math.min(rect.width * (camera.zoom - 1) / 2, camera.x));
+      camera.y = Math.max(-rect.height * (camera.zoom - 1) / 2, Math.min(rect.height * (camera.zoom - 1) / 2, camera.y));
+      content.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`;
+    };
+    const zoom = (value, point) => {
+      const rect = viewport.getBoundingClientRect();
+      const next = Math.max(1, Math.min(6, value));
+      const x = point ? point.x - rect.left - rect.width / 2 : 0;
+      const y = point ? point.y - rect.top - rect.height / 2 : 0;
+      camera.x = x - (x - camera.x) * next / camera.zoom;
+      camera.y = y - (y - camera.y) * next / camera.zoom;
+      camera.zoom = next;
+      paint();
+    };
+    const sample = () => {
+      const [a, b] = [...pointers.values()];
+      return b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distance: Math.hypot(a.x - b.x, a.y - b.y) } : { ...a, distance: 0 };
+    };
+    const down = (event) => {
+      if (event.button !== 0) return;
+      if (!pointers.size) moved = false;
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      start = sample();
+      if (pointers.size > 1) moved = true;
+    };
+    const move = (event) => {
+      if (!pointers.has(event.pointerId)) return;
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      const next = sample();
+      if (!moved && Math.hypot(next.x - start.x, next.y - start.y) < 6) return;
+      moved = true;
+      viewport.setPointerCapture(event.pointerId);
+      event.preventDefault();
+      if (start.distance && next.distance) zoom(camera.zoom * next.distance / start.distance, start);
+      camera.x += next.x - start.x;
+      camera.y += next.y - start.y;
+      paint();
+      start = next;
+    };
+    const up = (event) => {
+      if (event.type === "lostpointercapture" && event.target !== viewport) return;
+      pointers.delete(event.pointerId);
+      if (pointers.size) start = sample();
+    };
+    const click = (event) => {
+      if (moved && event.detail !== 0) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    const wheel = (event) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      zoom(camera.zoom * Math.exp(-event.deltaY * 0.01), { x: event.clientX, y: event.clientY });
+    };
+    viewport.addEventListener("pointerdown", down);
+    viewport.addEventListener("pointermove", move);
+    viewport.addEventListener("pointerup", up);
+    viewport.addEventListener("pointercancel", up);
+    viewport.addEventListener("lostpointercapture", up);
+    viewport.addEventListener("click", click, true);
+    viewport.addEventListener("wheel", wheel, { passive: false });
+    const observer = new ResizeObserver(paint);
+    observer.observe(viewport);
+    paint();
+    return {
+      zoom,
+      reset: () => {
+        camera.zoom = 1;
+        camera.x = camera.y = 0;
+        paint();
+      },
+      destroy: () => {
+        observer.disconnect();
+        for (const [name, listener] of [["pointerdown", down], ["pointermove", move], ["pointerup", up], ["pointercancel", up], ["lostpointercapture", up], ["wheel", wheel]]) viewport.removeEventListener(name, listener);
+        viewport.removeEventListener("click", click, true);
+      }
+    };
+  }
 
   // src/cards/shell.js
   var MufflonbauShell = class extends HTMLElement {
@@ -1500,8 +1629,16 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       this.attachShadow({ mode: "open" });
       this._children = [];
       this._generation = 0;
+      this._mapControls = [];
+    }
+    disconnectedCallback() {
+      for (const control of this._mapControls) control.destroy();
+      this._navObserver?.disconnect();
     }
     setConfig(config) {
+      this._navObserver?.disconnect();
+      for (const control of this._mapControls) control.destroy();
+      this._mapControls = [];
       this._config = config;
       this._generation++;
       this._render();
@@ -1518,6 +1655,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     _render() {
       if (!this._config) return;
       const text = translations[this._config.language ?? "en"];
+      const quickBack = ["rooms", "presence", "system", "climate", "cleaning"].includes(this._config.path);
       const shell = element("div", void 0, "shell");
       this.dataset.view = this._config.path;
       if (this._config.full_view) this.setAttribute("data-full-view", "true");
@@ -1556,17 +1694,37 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       }
       aside.append(brand, nav, element("div", text.yourSpace, "footnote"));
       const main = element("main");
+      const back = element("a", `← ${text.home}`, "back-link");
+      navigateLink(back, "home");
+      if (quickBack) {
+        shell.addEventListener("click", (event) => {
+          const path = event.composedPath();
+          if (path.some((node) => node.matches?.("a,button,select,summary,input,.interactive-plan,.camera-viewport"))) return;
+          if (path[0]?.matches?.("main,.shell,.content,.slot,ha-card,.grid,.people-grid,.warnings-grid,.system-summary,.panel")) back.click();
+        });
+      }
       const top = element("div", void 0, "topline");
       const status = element("span", void 0, "status");
       status.append(element("span", void 0, "dot"), element("span", text.live));
       top.append(element("span", `${this._config.title ?? "Mufflonbau"} / ${this._config.view_title}`), status);
-      main.append(top);
-      if (this._config.path !== "home") main.append(element("h1", this._config.view_title, "heading"));
+      if (!quickBack) main.append(top);
+      if (this._config.path !== "home" && this._config.path !== "rooms") {
+        const header = element("div", void 0, "view-header");
+        if (quickBack) header.append(back);
+        header.append(element("h1", this._config.view_title, "heading"));
+        main.append(header);
+      }
       this._content = element("div", void 0, "content");
       main.append(this._content);
       shell.append(aside, main);
       this._children = [];
       this.shadowRoot.replaceChildren(element("style", shellStyles), shell);
+      this._navObserver = new ResizeObserver(() => {
+        const styles4 = getComputedStyle(nav);
+        const space = styles4.position === "fixed" ? nav.getBoundingClientRect().height + parseFloat(styles4.bottom || 0) + 12 : 16;
+        this.style.setProperty("--mb-nav-space", `${space}px`);
+      });
+      this._navObserver.observe(nav);
       if (this._hass) this.hass = this._hass;
     }
     async _loadCards(generation) {
@@ -1592,10 +1750,29 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         } else if (helpers) card = helpers.createCardElement(config);
         else card = element("p", translations[this._config.language ?? "en"].cardLoadError);
         if (this._hass) card.hass = this._hass;
-        if (config.type === "picture-entity" && config.entity?.startsWith("camera.")) slot.classList.add("cleaning-map");
+        const cameraMap = config.type === "picture-entity" && config.entity?.startsWith("camera.") && this._config.path === "cleaning";
+        if (cameraMap) slot.classList.add("cleaning-map");
         if (this._config.path === "calendar") slot.classList.add("calendar");
         this._children.push(card);
-        slot.append(card);
+        if (cameraMap) {
+          const viewport = element("div", void 0, "camera-viewport");
+          const image = element("div", void 0, "camera-content");
+          image.append(card);
+          viewport.append(image);
+          slot.append(viewport);
+          const camera = { zoom: 1, x: 0, y: 0 };
+          const controls = mapGestures(viewport, image, camera);
+          this._mapControls.push(controls);
+          const toolbar = element("div", void 0, "camera-toolbar");
+          const text = translations[this._config.language ?? "en"];
+          for (const [label2, title, change] of [["−", text.zoomOut, -0.5], ["+", text.zoomIn, 0.5], ["↺", text.resetMap, 0]]) {
+            const button = element("button", label2);
+            button.setAttribute("aria-label", title);
+            button.addEventListener("click", () => change ? controls.zoom(camera.zoom + change) : controls.reset());
+            toolbar.append(button);
+          }
+          slot.append(toolbar);
+        } else slot.append(card);
         this._content.append(slot);
       }
     }
@@ -1676,7 +1853,8 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
   .map-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .map-toolbar select { flex:1; min-width:100px; max-width:300px; min-height:44px; font:inherit; font-size:13px; border:1px solid var(--mb-line); border-radius:12px; padding:8px; background:var(--mb-surface); color:var(--mb-ink); }
   .map-toolbar button,.map-device-detail button { min-width:44px; min-height:44px; padding:8px 12px; border:1px solid var(--mb-line); border-radius:12px; background:var(--mb-soft); }
-  .map-viewport { overflow:auto; max-height:max(200px,calc(100dvh - 290px)); overscroll-behavior:contain; }
+  .map-viewport { overflow:hidden; height:max(240px,calc(100dvh - 290px)); touch-action:none; cursor:grab; }
+  .map-viewport:active { cursor:grabbing; }
   .furnished-map { width:min(100%,calc(max(150px,100dvh - 330px) * var(--mb-map-ratio,1))); height:auto; max-height:max(150px,calc(100dvh - 330px)); min-height:0; margin:12px auto; aspect-ratio:var(--mb-map-ratio); }
   .furnished-map polygon { fill:var(--mb-map-floor); stroke:var(--mb-accent); stroke-width:2; vector-effect:none; }
   .furnished-map polygon.lit { fill:var(--mb-map-floor); }
@@ -1734,16 +1912,56 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
   @media(max-width:900px) { .overview-grid { grid-template-columns:1fr 1fr; gap:26px; } .agenda { grid-column:1/-1; display:flex; align-items:start; gap:20px; flex-wrap:wrap; } .agenda h2 { margin:10px 0; } .calendar-entry { margin:0; } }
   @media(max-width:600px) { .overview-grid { grid-template-columns:1fr; gap:20px; } .agenda { display:block; } .overview-grid h1 { font-size:22px; } .overview-grid h2 { margin-bottom:12px; } .reading { padding:8px 0; } .room-board:not([data-theme=calm]) .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .room-board:not([data-theme=calm]) .room-tile { min-height:220px; padding:15px; } .room-board:not([data-theme=calm]) .climate-button { padding-right:22px; } .room-board:not([data-theme=calm]) .room-top { right:8px; } .room-art svg { width:64px; height:64px; } }
   @media(prefers-reduced-motion:reduce) { .switch:after { transition:none; } }
+  .interactive-plan .furnished-map { width:100%; height:100%; max-height:none; margin:0; aspect-ratio:auto; transform-origin:center; user-select:none; }
+  :host:has(.map-only) { height:100%; }
+  ha-card.map-only { height:100%; min-height:0; padding:0; position:relative; overflow:hidden; }
+  .map-only .map-viewport { height:100%; padding:66px 12px 60px; }
+  .map-only .map-toolbar { position:absolute; inset:10px 10px auto; z-index:2; flex-wrap:nowrap; pointer-events:none; }
+  .map-only .map-toolbar > * { pointer-events:auto; }
+  .map-back { display:inline-flex; align-items:center; min-height:44px; padding:8px 12px; border:1px solid var(--mb-line); border-radius:12px; background:var(--mb-surface); color:var(--mb-ink); text-decoration:none; font-size:13px; white-space:nowrap; }
+  .map-only .map-toolbar select { width:0; max-width:220px; }
+  .map-only .map-device-list { position:absolute; bottom:10px; left:12px; z-index:2; margin:0; padding:0 12px; width:min(340px,calc(100% - 24px)); max-height:45%; overflow:auto; border:1px solid var(--mb-line); border-radius:12px; background:var(--mb-surface); }
+  .map-only .map-device-detail { position:absolute; bottom:10px; right:12px; z-index:3; width:min(340px,calc(100% - 24px)); max-height:45%; overflow:auto; background:var(--mb-surface); }
+  .map-only.has-device-detail .map-device-list { display:none; }
+  .room-board.square-tiles .grid { grid-template-columns:repeat(auto-fill,minmax(160px,200px)); align-items:start; }
+  .room-board.square-tiles .room-tile { aspect-ratio:1; min-height:0; padding:16px; }
+  .room-board.square-tiles .room-art { bottom:12px; left:16px; }
+  .people-board,.system-board { min-height:var(--mb-detail-height,0); }
+  .people-board { display:flex; flex-direction:column; }
+  .people-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); gap:18px; flex:1; }
+  .people-board .people { flex-direction:column; justify-content:center; gap:16px; min-height:240px; padding:28px 18px; text-align:center; border:1px solid var(--mb-line); background:var(--mb-soft); border-radius:20px; }
+  .people-board .avatar { width:76px; height:76px; font-size:26px; }
+  .people-board .people strong { font-size:22px; overflow-wrap:anywhere; }
+  .people-board .person-state { margin:0; font-size:15px; }
+  .system-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:24px; }
+  .system-stat { padding:22px 14px; background:var(--mb-soft); border:1px solid var(--mb-line); border-radius:18px; }
+  .system-stat strong { font-size:clamp(26px,4vw,48px); font-weight:500; margin-bottom:8px; }
+  .system-stat span { font-size:12px; color:var(--mb-muted); overflow-wrap:anywhere; }
+  .warnings-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr)); gap:12px; }
+  .system-board .warning { padding:18px; border:1px solid var(--mb-line); border-radius:16px; background:var(--mb-soft); }
+  .system-board .healthy { min-height:140px; justify-content:center; text-align:center; font-size:18px; }
+  .room-board.square-tiles .room-art svg { width:48px; height:48px; }
+  .room-board.square-tiles .room-top { margin-bottom:8px; }
+  .room-board.square-tiles[data-theme=calm] .value { font-size:26px; margin-top:6px; }
+  @media(max-width:600px) {
+    .room-board.square-tiles .grid { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:412px; }
+    .room-board.square-tiles .room-tile { padding:12px; }
+    .room-board.square-tiles .room-art { display:none; }
+    .map-only .map-toolbar { gap:4px; }
+    .map-only .map-toolbar select { min-width:75px; }
+    .map-back { padding:8px; font-size:11px; }
+  }
 `;
 
   // src/cards/floorplan.js
   function renderInteractiveFloorplan(host, card, text) {
     card.classList.add("interactive-plan");
     const config = host._config;
+    if (config.map_only) card.classList.add("map-only");
     const rooms = config.rooms ?? [];
     host._mapRoom ??= config.focus_room ?? "";
     const bounds = new Map(rooms.map((room, index) => {
-      const p = room.position ?? { x: index * 280, y: 0, width: 260, height: 160 };
+      const p = room.position ?? { x: index % 3 * 280, y: Math.floor(index / 3) * 180, width: 260, height: 160 };
       const shapes = p.points ? [p.points] : p.parts ?? [[[p.x, p.y], [p.x + p.width, p.y], [p.x + p.width, p.y + p.height], [p.x, p.y + p.height]]];
       const points2 = shapes.flat();
       return [room.id, { shapes, x: Math.min(...points2.map((p2) => p2[0])), y: Math.min(...points2.map((p2) => p2[1])), right: Math.max(...points2.map((p2) => p2[0])), bottom: Math.max(...points2.map((p2) => p2[1])) }];
@@ -1773,6 +1991,11 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       view2[3] = bottom - view2[1];
     }
     const toolbar = element("div", void 0, "map-toolbar");
+    if (config.map_only) {
+      const back = element("a", `← ${text.home}`, "map-back");
+      navigateLink(back, "home");
+      toolbar.append(back);
+    }
     const select = element("select");
     select.setAttribute("aria-label", text.rooms);
     const all = element("option", text.allRooms);
@@ -1786,7 +2009,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     select.value = selectedRoom?.id ?? "";
     select.addEventListener("change", () => {
       host._mapRoom = select.value;
-      host._mapZoom = 1;
+      host._mapCamera = void 0;
       host._mapDevice = void 0;
       host._render();
       host.shadowRoot.querySelector(".map-toolbar select")?.focus();
@@ -1796,9 +2019,8 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       const button = element("button", label2);
       button.setAttribute("aria-label", title);
       button.addEventListener("click", () => {
-        host._mapZoom = change ? Math.max(1, Math.min(4, (host._mapZoom ?? 1) + change)) : 1;
-        host._render();
-        host.shadowRoot.querySelector(`.map-toolbar button[aria-label="${title}"]`)?.focus();
+        if (change) gestures.zoom(host._mapCamera.zoom + change);
+        else gestures.reset();
       });
       toolbar.append(button);
     }
@@ -1806,10 +2028,6 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     const viewport = element("div", void 0, "map-viewport");
     const svg = svgElement("svg", { viewBox: view2.join(" "), role: "group", class: "floor-map furnished-map", "aria-label": text.floorplan });
     svg.style.setProperty("--mb-map-ratio", view2[2] / view2[3]);
-    if ((host._mapZoom ?? 1) > 1) {
-      svg.style.width = `${host._mapZoom * 100}%`;
-      svg.style.maxHeight = "none";
-    }
     for (const room of rooms) {
       const link = svgElement("a", { "data-room": room.id, "aria-label": localized(room.name, host._language) });
       navigateLink(link, `room-${room.id}`);
@@ -1877,8 +2095,19 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     }
     viewport.append(svg);
     card.append(viewport);
+    host._mapCamera ??= { zoom: 1, x: 0, y: 0 };
+    const gestures = mapGestures(viewport, svg, host._mapCamera);
+    host._mapGestures = gestures;
+    if (config.map_only) {
+      const home = element("a");
+      navigateLink(home, "home");
+      viewport.addEventListener("click", (event) => {
+        if (event.target === viewport || event.target === svg) home.click();
+      });
+    }
     const chosen = devices.find((d) => d.id === host._mapDevice);
     if (chosen) {
+      card.classList.add("has-device-detail");
       const panel = element("div", void 0, "map-device-detail");
       panel.setAttribute("role", "status");
       panel.append(element("strong", localized(chosen.name, host._language)), element("small", status(chosen)));
@@ -1965,6 +2194,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     disconnectedCallback() {
       clearInterval(this._timer);
       this._timer = void 0;
+      this._mapGestures?.destroy();
     }
     _startClock() {
       clearInterval(this._timer);
@@ -1990,6 +2220,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     }
     _render() {
       if (!this._config || !this._hass) return;
+      this._mapGestures?.destroy();
       const language = resolveLanguage(this._config, this._hass);
       this._language = language;
       const text = translations[language];
@@ -2122,6 +2353,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     }
     _climate(card, text) {
       card.classList.add("room-board");
+      if (this._config.square_tiles) card.classList.add("square-tiles");
       this._section(card, text.rooms, String((this._config.rooms ?? []).length).padStart(2, "0"));
       const grid = element("div", void 0, "grid");
       for (const room of this._config.rooms ?? []) {
@@ -2237,12 +2469,22 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         );
         return;
       }
+      card.classList.add("system-board");
       this._section(card, text.system, warnings.length ? warnings.length : "✓");
+      const summary = element("div", void 0, "system-summary");
+      const total = (this._config.monitors ?? []).length;
+      for (const [value, label2] of [[total, text.monitored], [total - warnings.length, text.healthyDevices], [warnings.length, text.warnings]]) {
+        const stat = element("div", void 0, "system-stat");
+        stat.append(element("strong", String(value)), element("span", label2));
+        summary.append(stat);
+      }
+      card.append(summary);
       if (!warnings.length) {
         const healthy = element("div", void 0, "healthy");
         healthy.append(icon("system"), element("span", text.healthy));
         card.append(healthy);
       }
+      const grid = element("div", void 0, "warnings-grid");
       for (const warning of warnings) {
         const button = element("button", void 0, "warning");
         button.type = "button";
@@ -2254,8 +2496,9 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         if (warning.name !== warning.entity) detail.append(element("small", warning.entity, "entity-id"));
         button.append(disc, detail);
         button.addEventListener("click", () => this._moreInfo(warning.entity));
-        card.append(button);
+        grid.append(button);
       }
+      card.append(grid);
     }
     _name(id) {
       return this._hass.states[id]?.attributes?.friendly_name ?? id.split(".").at(-1).replaceAll("_", " ");
@@ -2267,22 +2510,27 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       return this._hass.formatEntityState?.(state) ?? `${state.state}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : ""}`;
     }
     _people(card, text) {
-      this._section(card, text.people);
+      card.classList.add("people-board");
+      const home = (this._config.people ?? []).filter((id) => this._hass.states[id]?.state === "home").length;
+      this._section(card, text.people, `${home} ${text.peopleHome}`);
+      const grid = element("div", void 0, "people-grid");
       for (const id of this._config.people ?? []) {
-        const row = element("div", void 0, "people");
+        const row = element("button", void 0, "people");
+        row.type = "button";
+        row.dataset.entity = id;
         const name = this._name(id);
-        const info = element("button");
-        info.type = "button";
-        info.dataset.entity = id;
-        info.append(element("strong", name));
-        info.addEventListener("click", () => this._moreInfo(id));
+        row.addEventListener("click", () => this._moreInfo(id));
         row.append(
           element("span", name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase(), "avatar"),
-          info,
+          element("strong", name),
           element("span", this._state(id, text), `person-state${this._hass.states[id]?.state === "home" ? " home" : ""}`)
         );
-        card.append(row);
+        const changed = this._hass.states[id]?.last_changed;
+        const date = changed && new Date(changed);
+        if (date && Number.isFinite(date.getTime())) row.append(element("small", `${text.stateSince}: ${new Intl.DateTimeFormat(this._language, { dateStyle: "short", timeStyle: "short", timeZone: this._hass.config?.time_zone }).format(date)}`));
+        grid.append(row);
       }
+      card.append(grid);
     }
     _presenceSummary(card, text) {
       card.classList.add("dashboard-summary");
@@ -2375,8 +2623,8 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       this._link(card, "cleaning", text.allDetails);
     }
     _floorplan(card, text) {
-      this._section(card, text.rooms, text.floorplan);
-      if (this._config.drawing?.length || this._config.objects?.length) {
+      if (!this._config.map_only) this._section(card, text.rooms, text.floorplan);
+      if (this._config.map_only || this._config.drawing?.length || this._config.objects?.length) {
         renderInteractiveFloorplan(this, card, text);
         return;
       }

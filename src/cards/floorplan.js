@@ -2,15 +2,17 @@ import { element, svgElement, iconPath, navigateLink } from '../design/dom.js';
 import { localized } from '../core/i18n.js';
 import { appendDrawing } from '../core/floorplan.js';
 import { isOffline, isWallSwitchUnavailable, numericState } from '../core/state.js';
+import { mapGestures } from '../design/map-gestures.js';
 
 // Private geometry is supplied as configuration, never bundled into the app.
 export function renderInteractiveFloorplan(host, card, text) {
   card.classList.add('interactive-plan');
   const config = host._config;
+  if (config.map_only) card.classList.add('map-only');
   const rooms = config.rooms ?? [];
   host._mapRoom ??= config.focus_room ?? '';
   const bounds = new Map(rooms.map((room, index) => {
-    const p = room.position ?? { x: index * 280, y: 0, width: 260, height: 160 };
+    const p = room.position ?? { x: index % 3 * 280, y: Math.floor(index / 3) * 180, width: 260, height: 160 };
     const shapes = p.points ? [p.points] : p.parts ?? [[[p.x,p.y],[p.x+p.width,p.y],[p.x+p.width,p.y+p.height],[p.x,p.y+p.height]]];
     const points = shapes.flat();
     return [room.id, { shapes, x: Math.min(...points.map(p => p[0])), y: Math.min(...points.map(p => p[1])), right: Math.max(...points.map(p => p[0])), bottom: Math.max(...points.map(p => p[1])) }];
@@ -33,21 +35,23 @@ export function renderInteractiveFloorplan(host, card, text) {
     view[2] = right-view[0]; view[3] = bottom-view[1];
   }
   const toolbar = element('div', undefined, 'map-toolbar');
+  if (config.map_only) {
+    const back = element('a', `← ${text.home}`, 'map-back'); navigateLink(back, 'home'); toolbar.append(back);
+  }
   const select = element('select'); select.setAttribute('aria-label', text.rooms);
   const all = element('option', text.allRooms); all.value = ''; select.append(all);
   for (const room of rooms) { const option = element('option', localized(room.name, host._language)); option.value = room.id; select.append(option); }
   select.value = selectedRoom?.id ?? '';
-  select.addEventListener('change', () => { host._mapRoom = select.value; host._mapZoom = 1; host._mapDevice = undefined; host._render(); host.shadowRoot.querySelector('.map-toolbar select')?.focus(); });
+  select.addEventListener('change', () => { host._mapRoom = select.value; host._mapCamera = undefined; host._mapDevice = undefined; host._render(); host.shadowRoot.querySelector('.map-toolbar select')?.focus(); });
   toolbar.append(select);
   for (const [label, title, change] of [['−',text.zoomOut,-.5],['+',text.zoomIn,.5],['↺',text.resetMap,0]]) {
     const button = element('button', label); button.setAttribute('aria-label',title);
-    button.addEventListener('click', () => { host._mapZoom = change ? Math.max(1,Math.min(4,(host._mapZoom ?? 1)+change)) : 1; host._render(); host.shadowRoot.querySelector(`.map-toolbar button[aria-label="${title}"]`)?.focus(); }); toolbar.append(button);
+    button.addEventListener('click', () => { if (change) gestures.zoom(host._mapCamera.zoom + change); else gestures.reset(); }); toolbar.append(button);
   }
   card.append(toolbar);
   const viewport = element('div',undefined,'map-viewport');
   const svg = svgElement('svg',{ viewBox:view.join(' '), role:'group', class:'floor-map furnished-map', 'aria-label':text.floorplan });
   svg.style.setProperty('--mb-map-ratio',view[2]/view[3]);
-  if ((host._mapZoom ?? 1)>1) { svg.style.width=`${host._mapZoom*100}%`; svg.style.maxHeight='none'; }
   for (const room of rooms) {
     const link = svgElement('a',{'data-room':room.id,'aria-label':localized(room.name,host._language)});
     navigateLink(link,`room-${room.id}`);
@@ -95,8 +99,18 @@ export function renderInteractiveFloorplan(host, card, text) {
     svg.append(marker);
   }
   viewport.append(svg); card.append(viewport);
+  host._mapCamera ??= { zoom: 1, x: 0, y: 0 };
+  const gestures = mapGestures(viewport, svg, host._mapCamera);
+  host._mapGestures = gestures;
+  if (config.map_only) {
+    const home = element('a'); navigateLink(home, 'home');
+    viewport.addEventListener('click', event => {
+      if (event.target === viewport || event.target === svg) home.click();
+    });
+  }
   const chosen = devices.find(d => d.id === host._mapDevice);
   if (chosen) {
+    card.classList.add('has-device-detail');
     const panel = element('div',undefined,'map-device-detail'); panel.setAttribute('role','status');
     panel.append(element('strong',localized(chosen.name,host._language)),element('small',status(chosen)));
     if (chosen.entity) {

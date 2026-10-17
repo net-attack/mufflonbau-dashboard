@@ -100,4 +100,30 @@ export const shellStyles = `
     :host([data-view=cleaning]) .content > .slot { grid-column:1/-1; }
   }
   @media(prefers-reduced-motion:no-preference) { a { transition:background .15s,color .15s; } }
+  .view-header { display:flex; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:20px; }
+  .view-header .heading { margin:0; }
+  .back-link { display:inline-flex; flex-direction:row; flex:none; min-height:44px; padding:10px 14px; font-size:13px; background:var(--mb-surface); border:1px solid var(--mb-line); }
+  :host([data-view=rooms]) { height:100dvh; min-height:0; overflow:hidden; }
+  :host([data-view=rooms]) .shell { height:100%; min-height:0; }
+  :host([data-view=rooms]) main { height:100%; min-height:0; max-width:none; padding:12px 16px var(--mb-nav-space,140px); display:flex; flex-direction:column; }
+  :host([data-view=rooms]) .content { display:flex; flex:1; min-height:0; }
+  :host([data-view=rooms]) .slot { width:100%; height:100%; min-height:0; }
+  :host([data-view=presence]) main,:host([data-view=system]) main,:host([data-view=climate]) main { padding:20px clamp(16px,3vw,46px) max(120px,var(--mb-nav-space,140px)); }
+  :host([data-view=cleaning]) main { padding-bottom:max(128px,var(--mb-nav-space,140px)); }
+  :host([data-view=presence]) .slot,:host([data-view=system]) .slot,:host([data-view=climate]) .slot.rooms { grid-column:1/-1; }
+  :host([data-view=presence]),:host([data-view=system]) { min-height:100dvh; --mb-detail-height:max(320px,calc(100dvh - 230px)); }
+  .slot.cleaning-map { position:relative; }
+  .camera-viewport { overflow:hidden; touch-action:none; cursor:grab; }
+  .camera-content,.camera-content > * { display:block; height:100%; width:100%; transform-origin:center; }
+  .camera-toolbar { position:absolute; top:10px; right:10px; display:flex; gap:6px; }
+  .slot.cleaning-map > .camera-toolbar { width:auto; height:auto; }
+  .camera-toolbar button { min-width:44px; min-height:44px; font:inherit; color:var(--mb-ink); background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:12px; cursor:pointer; }
+  .camera-toolbar button:focus-visible { outline:2px solid var(--mb-accent); outline-offset:2px; }
+  @media(min-width:701px) {
+    :host([data-view=rooms][data-theme=calm]) main { padding-bottom:16px; }
+  }
+  @media(max-width:700px) {
+    :host([data-view=rooms]) main { padding:8px 8px var(--mb-nav-space,110px); }
+    :host([data-view=presence]) main,:host([data-view=system]) main,:host([data-view=climate]) main { padding:16px 12px max(110px,var(--mb-nav-space,110px)); }
+  }
 `;

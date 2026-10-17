@@ -22,14 +22,16 @@ export const previewConfig = {
     { id: 'outdoor', room: 'kitchen', icon: 'climate', name: 'Außenthermometer', position: { x: -30, y: 300 }, entity: 'sensor.outdoor', kind: 'temperature' },
   ],
   people: ['person.alex', 'person.sam'], weather: 'weather.home', calendars: ['calendar.family'],
+  shopping: { entity: 'todo.family_shopping', name: 'Einkaufsliste' },
   cleaning: { entity: 'vacuum.robot', battery: 'sensor.robot_battery', map: 'camera.robot_map' },
   monitors: [{ entity: 'sensor.device_battery', battery_below: 20 }],
   admin: { internet: ['binary_sensor.internet'], host: ['sensor.panel_cpu', 'sensor.panel_temperature'], clients: ['device_tracker.tablet'] },
 };
 export const previewHass = {
-  services: { vacuum: { start: {}, pause: {}, stop: {}, return_to_base: {} } },
+  services: { vacuum: { start: {}, pause: {}, stop: {}, return_to_base: {} }, todo: { add_item: {}, update_item: {} } },
   locale: { language: 'de' }, config: { time_zone: 'Europe/Berlin' }, themes: { darkMode: false },
   states: {
+    'todo.family_shopping': { state: '3', attributes: { friendly_name: 'Einkaufsliste', supported_features: 119 } },
     'binary_sensor.window': { state: 'off', attributes: { device_class: 'window' } },
     'sensor.outdoor': { state: '12.4', attributes: { unit_of_measurement: '°C' } },
     'sun.sun': { state: 'above_horizon', attributes: { elevation: 24 } },

@@ -33,6 +33,12 @@ export function normalizeConfig(config) {
     result[key].forEach((id, index) => entity(id, `${key}[${index}]`));
   }
   if (result.weather !== undefined) entity(result.weather, 'weather');
+  if (result.shopping !== undefined) {
+    object(result.shopping, 'shopping');
+    entity(result.shopping.entity, 'shopping.entity');
+    if (!result.shopping.entity.startsWith('todo.')) fail('shopping.entity', 'must reference a todo entity.');
+    if (result.shopping.name !== undefined && (typeof result.shopping.name !== 'string' || !result.shopping.name.trim())) fail('shopping.name', 'must be a nonempty string.');
+  }
   list(result.rooms, 'rooms');
   if (config.floorplan_drawing !== undefined) validateDrawing(config.floorplan_drawing);
   if (config.floorplan_bounds !== undefined && (!Array.isArray(config.floorplan_bounds) || config.floorplan_bounds.length !== 4 || config.floorplan_bounds.some(n => !Number.isFinite(n)) || config.floorplan_bounds[2] <= 0 || config.floorplan_bounds[3] <= 0)) fail('floorplan_bounds', 'must contain x, y, positive width and height.');
@@ -189,7 +195,7 @@ export function normalizeConfig(config) {
 export function collectEntities(config) {
   return [...new Set([
     ...Object.values(config.admin ?? {}).flat(), ...config.entities, ...config.people, ...config.calendars, ...config.expert_entities,
-    config.weather, ...config.monitors.map(monitor => monitor.entity),
+    config.weather, config.shopping?.entity, ...config.monitors.map(monitor => monitor.entity),
     ...config.rooms.flatMap(room => [room.temperature, room.humidity, room.dew_point,
       ...room.lights, ...(room.member_lights ?? []), ...room.entities, ...Object.values(room.cleaning ?? {})]),
     ...config.rooms.flatMap(room => (room.objects ?? []).map(item => item.entity)),

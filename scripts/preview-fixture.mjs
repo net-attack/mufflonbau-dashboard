@@ -16,7 +16,7 @@ export const previewConfig = {
     { tag: 'path', attrs: { d: `M${room.position.x+120} ${room.position.y}h60`, stroke: 'water', 'stroke-width': 5 } },
   ] })),
   floorplan_objects: [
-    ...rooms.map(room => ({ id: `${room.id}-lamp`, room: room.id, icon: 'light', name: `Lampe ${room.name.de}`, position: { x: room.position.x + 240, y: room.position.y + 40 }, entity: room.lights[0], action: 'toggle' })),
+    ...rooms.map(room => ({ id: `${room.id}-lamp`, room: room.id, icon: 'light', name: `Lampe ${room.name.de}`, position: { x: room.position.x + 240, y: room.position.y + 40 }, entity: room.lights[0], action: 'toggle', wall_switch: true })),
     { id: 'window', room: 'bathroom', icon: 'rooms', name: 'Fensterkontakt', position: { x: 10, y: 480 }, entity: 'binary_sensor.window', kind: 'window' },
     { id: 'unassigned', room: 'office', icon: 'office', name: 'Noch zuordnen', position: { x: 350, y: 140 } },
     { id: 'outdoor', room: 'kitchen', icon: 'climate', name: 'Außenthermometer', position: { x: -30, y: 300 }, entity: 'sensor.outdoor', kind: 'temperature' },

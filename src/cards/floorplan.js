@@ -1,7 +1,7 @@
 import { element, svgElement, iconPath, navigateLink } from '../design/dom.js';
 import { localized } from '../core/i18n.js';
 import { appendDrawing } from '../core/floorplan.js';
-import { isOffline, numericState } from '../core/state.js';
+import { isOffline, isWallSwitchUnavailable, numericState } from '../core/state.js';
 
 // Private geometry is supplied as configuration, never bundled into the app.
 export function renderInteractiveFloorplan(host, card, text) {
@@ -75,6 +75,7 @@ export function renderInteractiveFloorplan(host, card, text) {
   const status = device => {
     if (!device.entity) return text.notConfigured;
     const state = host._hass.states[device.entity];
+    if (isWallSwitchUnavailable(state, device)) return text.wallSwitchUnavailable;
     if (isOffline(state)) return host._state(device.entity,text);
     if (device.kind === 'window') return state.state === 'on' ? text.windowOpen : state.state === 'off' ? text.windowClosed : text.unknown;
     return device.kind === 'temperature' && numericState(state) !== null ? host._value(device.entity,'°C') : host._state(device.entity,text);
@@ -84,7 +85,8 @@ export function renderInteractiveFloorplan(host, card, text) {
     const {x,y} = device.position; const state = device.entity && host._hass.states[device.entity];
     const label = `${localized(device.name,host._language)} · ${status(device)}`;
     const marker = svgElement('a',{href:'#',role:'button',tabindex:0,'data-marker':device.id,'aria-label':label});
-    marker.append(svgElement('circle',{cx:x,cy:y,r:14,class:`map-marker${state?.state==='on'?' active':''}${!device.entity || isOffline(state)?' unavailable':''}`}));
+    const wallSwitched = isWallSwitchUnavailable(state, device);
+    marker.append(svgElement('circle',{cx:x,cy:y,r:14,class:`map-marker${state?.state==='on'?' active':''}${wallSwitched?' wall-switched':!device.entity || isOffline(state)?' unavailable':''}`}));
     marker.append(svgElement('path',{d:iconPath(device.icon),transform:`translate(${x-8} ${y-8}) scale(.67)`,class:'map-marker-icon'}));
     marker.append(svgElement('title',{},label));
     marker.addEventListener('click',event => {event.preventDefault(); event.stopPropagation(); choose(device);});
@@ -100,6 +102,7 @@ export function renderInteractiveFloorplan(host, card, text) {
       const available = !isOffline(host._hass.states[chosen.entity]);
       const action = element('button',chosen.action === 'toggle' ? (host._hass.states[chosen.entity]?.state === 'on' ? text.turnOff : text.turnOn) : text.allDetails);
       action.disabled = chosen.action === 'toggle' && !available;
+      if (isWallSwitchUnavailable(host._hass.states[chosen.entity], chosen)) action.title = text.checkWallSwitch;
       action.addEventListener('click',async () => {
         if (chosen.action !== 'toggle') {host._moreInfo(chosen.entity); return;}
         action.disabled=true;

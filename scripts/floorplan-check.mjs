@@ -36,7 +36,16 @@ export async function checkFloorplan(page) {
   await card.locator('[data-marker=living-lamp]').click();
   await page.evaluate(()=>{window.mapHass={...window.mapHass,states:{...window.mapHass.states,'light.living':{state:'unavailable',attributes:{}}}}; document.querySelector('#interactive-test').hass=window.mapHass;});
   assert.equal(await card.locator('.map-device-detail button').first().isDisabled(),true);
+  assert.match(await card.locator('.map-device-detail').innerText(),/Wandschalter möglicherweise aus/);
+  assert.equal(await card.locator('[data-marker=living-lamp] .wall-switched').count(),1);
+  assert.equal(await card.locator('[data-marker=living-lamp] .unavailable').count(),0);
+  await page.evaluate(()=>{window.mapHass={...window.mapHass,states:{...window.mapHass.states,'sensor.outdoor':{state:'unavailable',attributes:{}}}}; document.querySelector('#interactive-test').hass=window.mapHass;});
+  await card.locator('[data-marker=outdoor]').click();
+  assert.match(await card.locator('.map-device-detail').innerText(),/In Home Assistant nicht verfügbar/);
+  assert.doesNotMatch(await card.locator('.map-device-detail').innerText(),/Wandschalter/);
+  await card.locator('[data-marker=living-lamp]').click();
   await page.evaluate(()=>{window.mapHass={...window.mapHass,states:{...window.mapHass.states,'light.living':{state:'off',attributes:{}}},callService:async()=>{throw new Error('Offline')}}; document.querySelector('#interactive-test').hass=window.mapHass;});
+  assert.equal(await card.locator('[data-marker=living-lamp] .wall-switched').count(),0);
   await card.locator('.map-device-detail button').filter({hasText:'Einschalten'}).click();
   assert.match(await card.locator('.map-device-detail').innerText(),/fehlgeschlagen/);
   await card.locator('.map-device-detail button').filter({hasText:'Schließen'}).click();

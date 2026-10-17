@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { availability, isOffline, numericState, stateProblem, monitorWarnings } from '../src/core/state.js';
+import { availability, isOffline, isWallSwitchUnavailable, numericState, stateProblem, monitorWarnings } from '../src/core/state.js';
 test('on and off remain usable states; missing, unknown, and unavailable have distinct reasons', () => {
   for (const value of ['on', 'off', 'docked', 'paused']) {
     assert.equal(availability({ state: value }), 'available');
@@ -25,4 +25,11 @@ test('recovered light and vacuum states clear prior availability warnings', () =
 test('invalid nonnumeric values do not turn into zero-valued readings', () => {
   for (const state of [null, true, false, {}, [], '', 'NaN', 'Infinity']) assert.equal(numericState({ state }), null);
   assert.equal(numericState({ state: '0' }), 0);
+});
+test('wall-switch hints are opt-in and never disguise sensor failures or unknown states', () => {
+  const device = { entity: 'light.example', wall_switch: true };
+  assert.equal(isWallSwitchUnavailable({ state: 'unavailable' }, device), true);
+  for (const state of [undefined, { state: 'unknown' }, { state: 'on' }, { state: 'off' }]) assert.equal(isWallSwitchUnavailable(state, device), false);
+  for (const item of [{ entity: 'light.example' }, { entity: 'sensor.outdoor', wall_switch: true }, { entity: 'binary_sensor.window', wall_switch: true }]) assert.equal(isWallSwitchUnavailable({ state: 'unavailable' }, item), false);
+  assert.equal(isOffline({ state: 'unavailable' }), true, 'A possible wall-switch cause does not make a lamp controllable');
 });

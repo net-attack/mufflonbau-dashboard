@@ -144,6 +144,8 @@ ${trees}${houses}
   // src/core/i18n.js
   var translations = {
     en: {
+      wallSwitchUnavailable: "Unreachable · wall switch may be off",
+      checkWallSwitch: "Turn on the wall switch to control this light.",
       allRooms: "All rooms",
       zoomIn: "Zoom in",
       zoomOut: "Zoom out",
@@ -230,6 +232,8 @@ ${trees}${houses}
       dewPoint: "Dew point"
     },
     de: {
+      wallSwitchUnavailable: "Nicht erreichbar · Wandschalter möglicherweise aus",
+      checkWallSwitch: "Zum Steuern zuerst den Wandschalter einschalten.",
       allRooms: "Alle Räume",
       zoomIn: "Vergrößern",
       zoomOut: "Verkleinern",
@@ -444,6 +448,9 @@ ${trees}${houses}
   }
   function isOffline(state) {
     return availability(state) !== "available";
+  }
+  function isWallSwitchUnavailable(state, device) {
+    return device?.wall_switch === true && device.entity?.startsWith("light.") === true && state?.state === "unavailable";
   }
   function numericState(state) {
     if (isOffline(state) || !["string", "number"].includes(typeof state.state) || String(state.state).trim() === "") return null;
@@ -1104,6 +1111,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
           }
         }
         if (item.entity !== void 0) entity(item.entity, `${itemPath}.entity`);
+        if (item.wall_switch !== void 0 && (typeof item.wall_switch !== "boolean" || item.wall_switch && !item.entity?.startsWith("light."))) fail(`${itemPath}.wall_switch`, "must be boolean and requires a light entity when enabled.");
         if (item.action !== void 0 && !["toggle", "more-info"].includes(item.action)) fail(`${itemPath}.action`, "must be toggle or more-info.");
         if (item.action === "toggle" && item.entity && !/^(light|switch)\./.test(item.entity)) fail(`${itemPath}.action`, "toggle requires a light or switch entity.");
       });
@@ -1160,6 +1168,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       object(item.position, `${path}.position`);
       for (const key of ["x", "y"]) if (!Number.isFinite(item.position[key])) fail(`${path}.position.${key}`, "must be a finite map coordinate.");
       if (item.entity !== void 0) entity(item.entity, `${path}.entity`);
+      if (item.wall_switch !== void 0 && (typeof item.wall_switch !== "boolean" || item.wall_switch && !item.entity?.startsWith("light."))) fail(`${path}.wall_switch`, "must be boolean and requires a light entity when enabled.");
       if (item.action !== void 0 && !["toggle", "more-info"].includes(item.action)) fail(`${path}.action`, "must be toggle or more-info.");
       if (item.action === "toggle" && (!item.entity || !/^(light|switch)\./.test(item.entity))) fail(`${path}.action`, "toggle requires a light or switch entity.");
       if (item.kind !== void 0 && !["window", "temperature"].includes(item.kind)) fail(`${path}.kind`, "must be window or temperature.");
@@ -1676,6 +1685,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
   .furnished-map .map-room-label .room-name { font-size:13px; font-weight:600; }
   .furnished-map .map-room-label .room-value { font-size:12px; }
   .furnished-map .map-marker { stroke-width:1.5; vector-effect:none; }
+  .furnished-map .map-marker.wall-switched { fill:var(--mb-soft); stroke:var(--mb-muted); stroke-dasharray:2 3; }
   .map-device-detail { padding:12px; margin-top:12px; border:1px solid var(--mb-line); border-radius:12px; font-size:13px; }
   .map-device-detail button { margin:10px 8px 0 0; }
   .map-device-list { margin-top:12px; font-size:13px; }
@@ -1832,6 +1842,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     const status = (device) => {
       if (!device.entity) return text.notConfigured;
       const state = host._hass.states[device.entity];
+      if (isWallSwitchUnavailable(state, device)) return text.wallSwitchUnavailable;
       if (isOffline(state)) return host._state(device.entity, text);
       if (device.kind === "window") return state.state === "on" ? text.windowOpen : state.state === "off" ? text.windowClosed : text.unknown;
       return device.kind === "temperature" && numericState(state) !== null ? host._value(device.entity, "°C") : host._state(device.entity, text);
@@ -1846,7 +1857,8 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       const state = device.entity && host._hass.states[device.entity];
       const label2 = `${localized(device.name, host._language)} · ${status(device)}`;
       const marker = svgElement("a", { href: "#", role: "button", tabindex: 0, "data-marker": device.id, "aria-label": label2 });
-      marker.append(svgElement("circle", { cx: x, cy: y, r: 14, class: `map-marker${state?.state === "on" ? " active" : ""}${!device.entity || isOffline(state) ? " unavailable" : ""}` }));
+      const wallSwitched = isWallSwitchUnavailable(state, device);
+      marker.append(svgElement("circle", { cx: x, cy: y, r: 14, class: `map-marker${state?.state === "on" ? " active" : ""}${wallSwitched ? " wall-switched" : !device.entity || isOffline(state) ? " unavailable" : ""}` }));
       marker.append(svgElement("path", { d: iconPath(device.icon), transform: `translate(${x - 8} ${y - 8}) scale(.67)`, class: "map-marker-icon" }));
       marker.append(svgElement("title", {}, label2));
       marker.addEventListener("click", (event) => {
@@ -1873,6 +1885,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         const available = !isOffline(host._hass.states[chosen.entity]);
         const action = element("button", chosen.action === "toggle" ? host._hass.states[chosen.entity]?.state === "on" ? text.turnOff : text.turnOn : text.allDetails);
         action.disabled = chosen.action === "toggle" && !available;
+        if (isWallSwitchUnavailable(host._hass.states[chosen.entity], chosen)) action.title = text.checkWallSwitch;
         action.addEventListener("click", async () => {
           if (chosen.action !== "toggle") {
             host._moreInfo(chosen.entity);

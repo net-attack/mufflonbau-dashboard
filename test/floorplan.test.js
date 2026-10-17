@@ -31,3 +31,8 @@ test('invalid device bindings fail clearly rather than controlling guessed entit
   assert.throws(()=>normalizeConfig({...base,floorplan_bounds:[0,0,0,10]}),/floorplan_bounds/);
   assert.doesNotThrow(()=>normalizeConfig({...base,floorplan_objects:[{...device,entity:undefined,kind:'window'}]}));
 });
+test('wall-switch hints require an explicitly configured light',()=>{
+  const device=base.floorplan_objects[0];
+  for (const patch of [{wall_switch:true},{wall_switch:'yes'},{entity:undefined,wall_switch:true}]) assert.throws(()=>normalizeConfig({...base,floorplan_objects:[{...device,...patch}]}),/wall_switch/);
+  assert.doesNotThrow(()=>normalizeConfig({...base,floorplan_objects:[{...device,entity:'light.example',kind:undefined,wall_switch:true}]}));
+});

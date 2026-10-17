@@ -83,6 +83,7 @@ export function normalizeConfig(config) {
         }
       }
       if (item.entity !== undefined) entity(item.entity, `${itemPath}.entity`);
+      if (item.wall_switch !== undefined && (typeof item.wall_switch !== 'boolean' || item.wall_switch && !item.entity?.startsWith('light.'))) fail(`${itemPath}.wall_switch`, 'must be boolean and requires a light entity when enabled.');
       if (item.action !== undefined && !['toggle', 'more-info'].includes(item.action)) fail(`${itemPath}.action`, 'must be toggle or more-info.');
       if (item.action === 'toggle' && item.entity && !/^(light|switch)\./.test(item.entity)) fail(`${itemPath}.action`, 'toggle requires a light or switch entity.');
     });
@@ -141,6 +142,7 @@ export function normalizeConfig(config) {
     object(item.position, `${path}.position`);
     for (const key of ['x', 'y']) if (!Number.isFinite(item.position[key])) fail(`${path}.position.${key}`, 'must be a finite map coordinate.');
     if (item.entity !== undefined) entity(item.entity, `${path}.entity`);
+    if (item.wall_switch !== undefined && (typeof item.wall_switch !== 'boolean' || item.wall_switch && !item.entity?.startsWith('light.'))) fail(`${path}.wall_switch`, 'must be boolean and requires a light entity when enabled.');
     if (item.action !== undefined && !['toggle', 'more-info'].includes(item.action)) fail(`${path}.action`, 'must be toggle or more-info.');
     if (item.action === 'toggle' && (!item.entity || !/^(light|switch)\./.test(item.entity))) fail(`${path}.action`, 'toggle requires a light or switch entity.');
     if (item.kind !== undefined && !['window', 'temperature'].includes(item.kind)) fail(`${path}.kind`, 'must be window or temperature.');

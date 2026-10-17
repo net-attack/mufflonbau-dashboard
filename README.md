@@ -185,6 +185,11 @@ coordinates outside the apartment. Each object needs a unique `id`, configured
 `kind: window` displays a binary contact as open/closed; `kind: temperature`
 displays a temperature reading. Unassigned devices remain explicitly unconfigured;
 the dashboard never guesses their entity IDs or sensor values.
+For lights disconnected by a conventional wall switch, set `wall_switch: true`
+on that map device. An `unavailable` light then shows a neutral “wall switch may
+be off” hint and remains uncontrollable until HA reports it reachable again.
+This is not a measured switch state; missing/unknown entities, sensors, and
+lights without this explicit option retain their normal availability messages.
 
 The map includes room selection, zoom, per-room temperature/humidity labels,
 device details, and a touch-friendly device list. Room links open a focused map

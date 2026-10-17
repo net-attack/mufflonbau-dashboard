@@ -81,6 +81,7 @@ export const liveStyles = `
   .furnished-map .map-room-label .room-name { font-size:13px; font-weight:600; }
   .furnished-map .map-room-label .room-value { font-size:12px; }
   .furnished-map .map-marker { stroke-width:1.5; vector-effect:none; }
+  .furnished-map .map-marker.wall-switched { fill:var(--mb-soft); stroke:var(--mb-muted); stroke-dasharray:2 3; }
   .map-device-detail { padding:12px; margin-top:12px; border:1px solid var(--mb-line); border-radius:12px; font-size:13px; }
   .map-device-detail button { margin:10px 8px 0 0; }
   .map-device-list { margin-top:12px; font-size:13px; }

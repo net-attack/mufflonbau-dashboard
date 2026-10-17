@@ -12,6 +12,11 @@ export function stateProblem(state, language) {
 export function isOffline(state) {
   return availability(state) !== 'available';
 }
+// A wall switch is a possible explanation, not a measured power state.
+// Do not apply this to missing/unknown entities or unrelated sensors.
+export function isWallSwitchUnavailable(state, device) {
+  return device?.wall_switch === true && device.entity?.startsWith('light.') === true && state?.state === 'unavailable';
+}
 export function numericState(state) {
   if (isOffline(state) || !['string', 'number'].includes(typeof state.state) || String(state.state).trim() === '') return null;
   const value = Number(state.state);

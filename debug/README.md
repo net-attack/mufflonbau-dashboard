@@ -41,3 +41,12 @@ for router, speed-test and host readings. Save each page as
 `debug/ha-network-OFFSET.local.json` and continue using `next_offset`.
 The export includes reported IP/SSID/interface attributes; keep these local.
 Disabled System monitor entities must be enabled before they can appear here.
+
+The lights export confirms that `light.esszimmer`, `light.arbeitszimmer`,
+`light.kuche`, `light.schlafzimmer`, and `light.flur` are Hue room groups.
+Their `attributes.entity_id` arrays list member lights. Mufflonbau now collapses
+configured members under each configured group in room cards, while keeping all
+selected entities in Expert. The export reports `light.nanoleaf` (friendly name
+Felix) as available and `off`; several Hue bulbs currently report
+`unavailable`. This state snapshot does not include Hue bridge diagnostics or
+explain why an individual bulb is unavailable.

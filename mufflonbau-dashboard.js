@@ -767,6 +767,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
         room.humidity,
         room.dew_point,
         ...room.lights,
+        ...room.member_lights ?? [],
         ...room.entities,
         ...Object.values(room.cleaning ?? {})
       ]),
@@ -898,9 +899,27 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
     return view("home", text.home, "mdi:home", cards);
   }
 
+  // src/core/light-hierarchy.js
+  function roomLightHierarchy(room, states) {
+    const configured = [...new Set(room.lights ?? [])];
+    const members = /* @__PURE__ */ new Set();
+    for (const id of configured) {
+      const children = states[id]?.attributes?.entity_id;
+      if (!Array.isArray(children)) continue;
+      for (const child of children) {
+        if (typeof child === "string" && configured.includes(child)) members.add(child);
+      }
+    }
+    return { lights: configured.filter((id) => !members.has(id)), members: configured.filter((id) => members.has(id)) };
+  }
+
   // src/strategy.js
   function generateDashboard(rawConfig, hass) {
     const config = normalizeConfig(rawConfig);
+    config.rooms = config.rooms.map((room) => {
+      const { lights, members } = roomLightHierarchy(room, hass.states);
+      return { ...room, lights, member_lights: members };
+    });
     const language = resolveLanguage(config, hass);
     const context = { config, hass, language, text: translations[language] };
     const views = [...roomViews(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];

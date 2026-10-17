@@ -105,7 +105,7 @@ export function collectEntities(config) {
     ...Object.values(config.admin ?? {}).flat(), ...config.entities, ...config.people, ...config.calendars, ...config.expert_entities,
     config.weather, ...config.monitors.map(monitor => monitor.entity),
     ...config.rooms.flatMap(room => [room.temperature, room.humidity, room.dew_point,
-      ...room.lights, ...room.entities, ...Object.values(room.cleaning ?? {})]),
+      ...room.lights, ...(room.member_lights ?? []), ...room.entities, ...Object.values(room.cleaning ?? {})]),
     ...Object.values(config.cleaning ?? {}), config.appearance?.night_person, config.appearance?.ambient_person,
   ].filter(Boolean))];
 }

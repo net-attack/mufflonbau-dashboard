@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { normalizeConfig, collectEntities } from '../src/core/config.js';
 import { generateDashboard } from '../src/strategy.js';
 import { monitorWarnings, numericState, appearanceMode } from '../src/core/state.js';
+import { roomLightHierarchy } from '../src/core/light-hierarchy.js';
 const fixture = {
   language: 'en', people: ['person.resident'], weather: 'weather.home', calendars: ['calendar.family'],
   rooms: [{ id: 'living', name: { en: 'Living room', de: 'Wohnzimmer' },
@@ -31,6 +32,24 @@ test('generates connected feature views with explicit types and localized room n
   assert.deepEqual(history.entities, ['sensor.temperature', 'sensor.humidity', 'sensor.dew_point']);
   const links = cards.filter(card => card.tap_action?.action === 'navigate');
   assert.ok(links.every(card => result.views.some(view => view.path === card.tap_action.navigation_path)));
+});
+test('collapses configured Hue group members in room views but retains them in expert details', () => {
+  const room = { id: 'kitchen', name: 'Kitchen', lights: ['light.kitchen', 'light.strip_one', 'light.strip_two'] };
+  const hierarchy = roomLightHierarchy(room, {
+    'light.kitchen': { state: 'off', attributes: { entity_id: ['light.strip_one', 'light.strip_two', 'light.not_configured'] } },
+  });
+  assert.deepEqual(hierarchy, { lights: ['light.kitchen'], members: ['light.strip_one', 'light.strip_two'] });
+  const config = { language: 'en', rooms: [room] };
+  const dashboard = generateDashboard(config, { states: {
+    'light.kitchen': { state: 'off', attributes: { entity_id: ['light.strip_one', 'light.strip_two'] } },
+  } });
+  const views = dashboard.views;
+  const roomCards = views.find(item => item.path === 'room-kitchen').cards[0].cards;
+  assert.equal(roomCards.filter(card => card.entity === 'light.kitchen').length, 1);
+  assert.equal(roomCards.some(card => ['light.strip_one', 'light.strip_two'].includes(card.entity)), false);
+  const expert = views.find(item => item.path === 'expert').cards[0].cards;
+  assert.deepEqual(expert.find(card => card.type === 'entities').entities, ['light.kitchen', 'light.strip_one', 'light.strip_two']);
+  assert.deepEqual(room.lights, ['light.kitchen', 'light.strip_one', 'light.strip_two']);
 });
 test('cleaning buttons target exactly the configured helper and do not invent room IDs', () => {
   const result = generateDashboard(fixture, { states: {} });

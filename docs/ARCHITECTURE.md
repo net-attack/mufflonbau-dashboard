@@ -107,3 +107,10 @@ no guessed entity discovery or network scanning.
 `core/history.js` handles the compact Recorder response independently of the DOM.
 `cards/history.js` owns time ranges, retry, SVG rendering and five-minute refresh.
 No backend, chart dependency, external request or credentials are introduced.
+
+Hue room membership is read from each configured group's `entity_id` state
+attribute during strategy generation. A configured child light is removed from
+the same room's primary controls when its configured group already represents
+it. Original member IDs remain in Expert. Room names, grouping, and placement
+continue to come from the dashboard configuration; HA area metadata does not
+automatically change the floorplan.

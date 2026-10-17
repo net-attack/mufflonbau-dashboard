@@ -5,8 +5,13 @@ import { cleaningViews } from './modules/cleaning.js';
 import { systemViews } from './modules/system.js';
 import { calendarViews } from './modules/calendar.js';
 import { homeView } from './modules/home.js';
+import { roomLightHierarchy } from './core/light-hierarchy.js';
 export function generateDashboard(rawConfig, hass) {
   const config = normalizeConfig(rawConfig);
+  config.rooms = config.rooms.map(room => {
+    const { lights, members } = roomLightHierarchy(room, hass.states);
+    return { ...room, lights, member_lights: members };
+  });
   const language = resolveLanguage(config, hass);
   const context = { config, hass, language, text: translations[language] };
   const views = [...roomViews(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];

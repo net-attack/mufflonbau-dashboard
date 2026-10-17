@@ -6,6 +6,7 @@ import { previewConfig, previewHass } from './preview-fixture.mjs';
 import { translations } from '../src/core/i18n.js';
 import { renderViews } from './render-views.mjs';
 import { checkCleaning } from './cleaning-check.mjs';
+import { checkFlusenfels } from './flusenfels-check.mjs';
 import { checkFloorplan } from './floorplan-check.mjs';
 import { checkDetailViews } from './detail-check.mjs';
 import { galaxyTabA11 } from './galaxy-tab-a11.mjs';
@@ -137,6 +138,7 @@ try {
   await checkCleaning(page, previewConfig, previewHass);
   await checkFloorplan(page);
   await checkDetailViews(page);
+  await checkFlusenfels(page);
   // Render the actual YAML examples through the shipped shell. A minimal native
   // card double checks the helper boundary and inherited theme variables.
   await page.evaluate(() => {

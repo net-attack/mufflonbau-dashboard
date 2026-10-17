@@ -1,6 +1,10 @@
 import { translations } from './i18n.js';
 import { isOffline } from './state.js';
 
+export function cleaningEntities(cleaning = {}) {
+  return ['entity', 'battery', 'current_room', 'map'].map(key => cleaning[key]).filter(Boolean);
+}
+
 const key = value => typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]+/g, '_') : value;
 const cleaningLabels = {
   sweeping: 'vacuum', vacuum: 'vacuum', vacuuming: 'vacuum',

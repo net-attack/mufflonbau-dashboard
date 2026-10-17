@@ -6,6 +6,7 @@ import { systemViews } from './modules/system.js';
 import { calendarViews } from './modules/calendar.js';
 import { homeView, presenceView } from './modules/home.js';
 import { roomLightHierarchy } from './core/light-hierarchy.js';
+import { cleaningPageText } from './core/cleaning-theme.js';
 export function generateDashboard(rawConfig, hass) {
   const config = normalizeConfig(rawConfig);
   config.rooms = config.rooms.map(room => {
@@ -24,7 +25,9 @@ export function generateDashboard(rawConfig, hass) {
     });
   const styledViews = allViews.map(item => ({ ...item, type: 'panel', cards: [{
     type: 'custom:mufflonbau-shell', title: config.title || 'Mufflonbau', language, appearance: config.appearance,
-    path: item.path, view_title: item.title, full_view: item.fullView, navigation, cards: item.cards,
+    path: item.path, view_title: item.path === 'cleaning' && config.cleaning?.theme === 'flusenfels' ? cleaningPageText(config.cleaning, language).title : item.title,
+    cleaning_theme: item.path === 'cleaning' ? config.cleaning?.theme : undefined,
+    full_view: item.fullView, navigation, cards: item.cards,
   }] }));
   return { ...(config.kiosk_mode ? { kiosk_mode: config.kiosk_mode } : {}), title: config.title || 'Mufflonbau', views: styledViews };
 }

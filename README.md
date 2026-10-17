@@ -149,6 +149,28 @@ reported cleaning type (vacuum, mop, combined cleaning or CleanGenius). Changing
 the room-action selector does not change this live display. If the integration
 does not report a cleaning type, the dashboard says so rather than inferring it.
 
+### Saugfried’s court: an optional cleaning-page theme
+
+Set `theme: flusenfels` inside your existing `cleaning:` configuration to give
+Saugfried, Fürst von Flusenfels, his own medieval court:
+
+```yaml
+cleaning:
+  entity: vacuum.robot
+  battery: sensor.robot_battery
+  map: camera.robot_map
+  theme: flusenfels
+```
+
+This applies only to the Cleaning page: parchment/forest colors in light and
+dark mode, original Saugfried portraits, heraldry and name banners, and playful
+German or English wording. His portrait follows the actual vacuum state; the
+running cleaning type still comes from the robot. Rooms retain their real names
+and action targets. Home, Climate, Rooms and the other pages keep their selected
+theme. Omit the option or use `theme: default` for the regular cleaning page.
+The supplied transparent artwork is embedded in the JavaScript bundle; no
+additional `/local/` uploads or external image requests are needed.
+
 Monitors flag missing, `unknown`, and `unavailable` entities. With `battery_below`,
 invalid numeric readings also count as unavailable; values strictly below the
 threshold generate a battery warning. Values equal to the threshold are healthy.

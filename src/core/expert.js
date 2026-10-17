@@ -1,7 +1,9 @@
 export const expertCategories = ['internet', 'network', 'host', 'climate', 'lights', 'cleaning', 'people', 'calendar', 'system', 'switches', 'automations', 'sensors', 'helpers', 'other'];
 
+import { cleaningEntities } from './cleaning.js';
+
 export function categorizeEntities(ids, { rooms = [], cleaning = {}, admin = {}, monitors = [], people = [], calendars = [] } = {}, states = {}) {
-  const cleaningIds = new Set([...Object.values(cleaning), ...rooms.flatMap(room => Object.values(room.cleaning ?? {}))]);
+  const cleaningIds = new Set([...cleaningEntities(cleaning), ...rooms.flatMap(room => Object.values(room.cleaning ?? {}))]);
   const climateIds = new Set(rooms.flatMap(room => [room.temperature, room.humidity, room.dew_point]));
   const lightIds = new Set(rooms.flatMap(room => [...(room.lights ?? []), ...(room.member_lights ?? [])]));
   const systemIds = new Set(monitors.map(item => item.entity));

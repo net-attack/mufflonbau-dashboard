@@ -1,4 +1,5 @@
 import { normalizeAdmin } from './admin.js';
+import { cleaningEntities } from './cleaning.js';
 import { validateDrawing } from './floorplan.js';
 function fail(path, message) {
   throw new Error(`Mufflonbau: ${path} ${message}`);
@@ -159,6 +160,7 @@ export function normalizeConfig(config) {
   });
   if (result.cleaning !== undefined) {
     object(result.cleaning, 'cleaning');
+    if (result.cleaning.theme !== undefined && !['default', 'flusenfels'].includes(result.cleaning.theme)) fail('cleaning.theme', 'must be default or flusenfels.');
     for (const key of ['entity', 'battery', 'current_room', 'map']) {
       if (result.cleaning[key] !== undefined) entity(result.cleaning[key], `cleaning.${key}`);
     }
@@ -192,6 +194,6 @@ export function collectEntities(config) {
       ...room.lights, ...(room.member_lights ?? []), ...room.entities, ...Object.values(room.cleaning ?? {})]),
     ...config.rooms.flatMap(room => (room.objects ?? []).map(item => item.entity)),
     ...(config.floorplan_objects ?? []).map(item => item.entity),
-    ...Object.values(config.cleaning ?? {}), config.appearance?.night_person, config.appearance?.ambient_person,
+    ...cleaningEntities(config.cleaning), config.appearance?.night_person, config.appearance?.ambient_person,
   ].filter(Boolean))];
 }

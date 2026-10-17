@@ -3,6 +3,8 @@ import { applyTheme } from '../design/tokens.js';
 import { appearanceMode, isCleaningActionUnavailable, isOffline, stateProblem } from '../core/state.js';
 import { localized, translations } from '../core/i18n.js';
 import { cleaningActivity } from '../core/cleaning.js';
+import { cleaningPageText, saugfriedMood } from '../core/cleaning-theme.js';
+import { applyFlusenfelsTheme, flusenfelsCardStyles, saugfriedArt } from '../design/flusenfels.js';
 
 const styles = `
 :host{display:block;min-width:0;height:100%;color:var(--mb-ink);font-family:Inter,'Avenir Next',system-ui,sans-serif}*{box-sizing:border-box}
@@ -46,9 +48,13 @@ export class MufflonbauCleaning extends HTMLElement {
   _render() {
     if (!this._config || !this._hass) return;
     const { cleaning = {}, rooms = [], language = 'en' } = this._config;
-    const text = translations[language];
-    applyTheme(this, appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode), this._config.appearance?.theme);
+    const text = cleaningPageText(cleaning, language);
+    const royal = cleaning.theme === 'flusenfels';
+    const mode = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
+    applyTheme(this, mode, this._config.appearance?.theme);
+    if (royal) applyFlusenfelsTheme(this, mode);
     const panel = element('section', undefined, 'panel');
+    if (royal) panel.classList.add('flusenfels');
     const header = element('header'); const badge = element('span', undefined, 'robot-icon'); badge.append(icon('cleaning'));
     const identity = element('div'); identity.append(element('h2', this._name(cleaning.entity)), element('small', text.cleaning));
     header.append(badge, identity);
@@ -57,7 +63,20 @@ export class MufflonbauCleaning extends HTMLElement {
       const status = element('span', stateProblem(state, language) ?? text.states[state?.state] ?? state?.state ?? text.missing, 'state');
       header.append(status);
     }
-    panel.append(header);
+    if (royal) {
+      const state = this._hass.states[cleaning.entity];
+      const mood = saugfriedMood(state);
+      const hero = element('div', undefined, 'flusenfels-hero');
+      const portrait = saugfriedArt(mood.art, 'portrait'); portrait.dataset.pose = mood.art;
+      const identity = element('div', undefined, 'royal-identity');
+      identity.append(element('h2', `Saugfried · ${text.subtitle}`, 'sr-only'), saugfriedArt('name', 'wordmark'),
+        saugfriedArt('title', 'title-mark'), element('p', text.motto, 'royal-motto'));
+      hero.append(portrait, identity);
+      const status = element('div', undefined, 'royal-status'); status.setAttribute('role', 'status');
+      const copy = element('div', undefined, 'royal-status-copy');
+      copy.append(element('strong', stateProblem(state, language) ?? text.states[state?.state] ?? state?.state ?? text.missing), element('p', text[mood.message]));
+      status.append(saugfriedArt('crest', 'crest'), copy); panel.append(hero, status);
+    } else panel.append(header);
     const activity = cleaningActivity(this._hass.states[cleaning.entity], language);
     if (activity) {
       const running = element('div', undefined, 'running-mode'); running.setAttribute('role', 'status');
@@ -75,6 +94,7 @@ export class MufflonbauCleaning extends HTMLElement {
       const controls = element('div', undefined, 'actions');
       for (const [service, symbol, label] of commands) {
         const button = element('button', undefined, 'command'); button.type = 'button'; button.dataset.command = service;
+        button.setAttribute('aria-label', `${translations[language][label]}${royal ? ` · ${text[label]}` : ''}`);
         button.disabled = this._busy || isOffline(this._hass.states[cleaning.entity]);
         button.append(icon(symbol), element('span', text[label]));
         button.addEventListener('click', () => this._service('vacuum', service, cleaning.entity, text));
@@ -88,6 +108,7 @@ export class MufflonbauCleaning extends HTMLElement {
       const modes = element('div', undefined, 'modes'); modes.setAttribute('role', 'group'); modes.setAttribute('aria-label', text.cleaningMode);
       for (const [kind, symbol, label] of roomCommands) {
         const button = element('button', undefined, 'command'); button.type = 'button'; button.dataset.mode = kind;
+        button.setAttribute('aria-label', text[label]);
         button.setAttribute('aria-pressed', String(this._mode === kind));
         button.disabled = this._busy || !actionRooms.some(room => room.cleaning?.[kind]);
         if (button.disabled && !this._busy) button.title = text.notConfigured;
@@ -117,7 +138,11 @@ export class MufflonbauCleaning extends HTMLElement {
       panel.append(roomGrid);
     }
     panel.append(feedback);
-    this.shadowRoot.replaceChildren(element('style', styles), panel);
+    if (royal) {
+      const footer = element('div', undefined, 'court-footer');
+      footer.append(saugfriedArt('dust', 'dust'), element('span', text.dispatch)); panel.append(footer);
+    }
+    this.shadowRoot.replaceChildren(element('style', `${styles}\n${royal ? flusenfelsCardStyles : ''}`), panel);
   }
   _name(id) { return id ? this._hass.states[id]?.attributes?.friendly_name ?? id.split('.').at(-1).replaceAll('_', ' ') : translations[this._config.language ?? 'en'].vacuum; }
   _display(id, unit = '') {

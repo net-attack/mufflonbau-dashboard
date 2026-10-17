@@ -5,7 +5,7 @@ import { appearanceMode, isOffline, monitorGroups, monitorWarnings, numericState
 import { element, svgElement, icon, iconPath, navigateLink, roomIcon } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
 import { renderInteractiveFloorplan } from './floorplan.js';
-import { cleaningActivity } from '../core/cleaning.js';
+import { cleaningActivity, cleaningEntities } from '../core/cleaning.js';
 export class MufflonbauLiveCard extends HTMLElement {
   constructor() {
     super();
@@ -17,7 +17,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     this._watched = [...new Set([
       config.weather, ...(config.calendars ?? []), ...(config.entities ?? []), ...(config.people ?? []),
       ...(config.objects ?? []).map(item => item.entity),
-      ...Object.values(config.cleaning ?? {}), ...(config.monitors ?? []).map(item => item.entity),
+      ...cleaningEntities(config.cleaning), ...(config.monitors ?? []).map(item => item.entity),
       ...(config.rooms ?? []).flatMap(room => [room.temperature, room.humidity, room.dew_point, ...(room.lights ?? []), ...(room.objects ?? []).map(item => item.entity)]),
       'sun.sun',
     ].filter(Boolean))];

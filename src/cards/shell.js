@@ -4,6 +4,8 @@ import { applyTheme } from '../design/tokens.js';
 import { appearanceMode } from '../core/state.js';
 import { translations } from '../core/i18n.js';
 import { mapGestures } from '../design/map-gestures.js';
+import { applyFlusenfelsTheme, flusenfelsShellStyles, saugfriedArt } from '../design/flusenfels.js';
+import { cleaningPageText } from '../core/cleaning-theme.js';
 export class MufflonbauShell extends HTMLElement {
   constructor() { super(); this.attachShadow({ mode: 'open' }); this._children = []; this._generation = 0; this._mapControls = []; }
   disconnectedCallback() { for (const control of this._mapControls) control.destroy(); this._navObserver?.disconnect(); }
@@ -18,7 +20,9 @@ export class MufflonbauShell extends HTMLElement {
   }
   set hass(hass) {
     this._hass = hass;
-    applyTheme(this, appearanceMode(this._config?.appearance, hass.states, hass.themes?.darkMode), this._config?.appearance?.theme);
+    const mode = appearanceMode(this._config?.appearance, hass.states, hass.themes?.darkMode);
+    applyTheme(this, mode, this._config?.appearance?.theme);
+    if (this._config?.path === 'cleaning' && this._config.cleaning_theme === 'flusenfels') applyFlusenfelsTheme(this, mode);
     for (const card of this._children) card.hass = hass;
   }
   getCardSize() { return 12; }
@@ -29,6 +33,8 @@ export class MufflonbauShell extends HTMLElement {
     const expertView = this._config.path === 'expert';
     const shell = element('div', undefined, 'shell');
     this.dataset.view = this._config.path;
+    if (this._config.path === 'cleaning' && this._config.cleaning_theme === 'flusenfels') this.dataset.cleaningTheme = 'flusenfels';
+    else delete this.dataset.cleaningTheme;
     if (this._config.full_view) this.setAttribute('data-full-view', 'true'); else this.removeAttribute('data-full-view');
     const aside = element('aside');
     const brand = element('div', undefined, 'brand');
@@ -65,7 +71,7 @@ export class MufflonbauShell extends HTMLElement {
     this._content = element('div', undefined, 'content');
     main.append(this._content); shell.append(aside, main);
     this._children = [];
-    this.shadowRoot.replaceChildren(element('style', shellStyles), shell);
+    this.shadowRoot.replaceChildren(element('style', `${shellStyles}\n${flusenfelsShellStyles}`), shell);
     this._navObserver = new ResizeObserver(() => {
       const styles = getComputedStyle(nav);
       const space = styles.position === 'fixed' ? nav.getBoundingClientRect().height + parseFloat(styles.bottom || 0) + 12 : 16;
@@ -101,6 +107,10 @@ export class MufflonbauShell extends HTMLElement {
       if (cameraMap) {
         const viewport = element('div', undefined, 'camera-viewport');
         const image = element('div', undefined, 'camera-content'); image.append(card); viewport.append(image); slot.append(viewport);
+        if (this._config.cleaning_theme === 'flusenfels') {
+          const title = element('div', undefined, 'royal-map-title');
+          title.append(saugfriedArt('castle', 'castle'), element('span', cleaningPageText({ theme: 'flusenfels' }, this._config.language ?? 'en').map)); slot.append(title);
+        }
         const camera = { zoom: 1, x: 0, y: 0 };
         const controls = mapGestures(viewport, image, camera); this._mapControls.push(controls);
         const toolbar = element('div', undefined, 'camera-toolbar');

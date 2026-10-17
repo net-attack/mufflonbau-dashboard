@@ -1,0 +1,8 @@
+strategy:
+  type: custom:mufflonbau
+  title: Mufflonbau
+  entities: []
+  # Eigene Entity-IDs eintragen, beispielsweise:
+  # entities:
+  #   - light.wohnzimmer
+  #   - sensor.aussentemperatur

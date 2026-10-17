@@ -1,0 +1,6 @@
+{
+  "name": "Mufflonbau Dashboard",
+  "filename": "mufflonbau-dashboard.js",
+  "content_in_root": true,
+  "homeassistant": "2026.5.0"
+}

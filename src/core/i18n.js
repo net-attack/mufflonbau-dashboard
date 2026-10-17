@@ -1,5 +1,6 @@
 export const translations = {
   en: {
+    adminShort: 'Admin', presenceShort: 'Presence',
     category: 'Category', allCategories: 'All categories', searchEntities: 'Search entities', noMatchingEntities: 'No matching entities',
     switches: 'Switches', automations: 'Automations and scripts', sensors: 'Sensors', helpers: 'Helpers', other: 'Other',
     deviceUnavailable: 'Unreachable', currentCleaning: 'Current cleaning', cleaningTypeUnknown: 'Cleaning type not reported', vacuumAndMop: 'Vacuum and mop', mopAfterVacuum: 'Vacuum, then mop',
@@ -36,6 +37,7 @@ export const translations = {
     vacuum: 'Vacuum', mop: 'Mop', cleanGenius: 'CleanGenius', cleaningMode: 'Cleaning mode', chooseCleaningRoom: 'Tap a room to start the selected mode.', notConfigured: 'Not configured', room: 'Room', dewPoint: 'Dew point',
   },
   de: {
+    adminShort: 'Admin', presenceShort: 'Anwesenheit',
     category: 'Kategorie', allCategories: 'Alle Kategorien', searchEntities: 'Entitäten suchen', noMatchingEntities: 'Keine passenden Entitäten',
     switches: 'Schalter', automations: 'Automationen und Skripte', sensors: 'Sensoren', helpers: 'Helfer', other: 'Weitere',
     deviceUnavailable: 'Nicht erreichbar', currentCleaning: 'Aktuelle Reinigung', cleaningTypeUnknown: 'Reinigungsart nicht gemeldet', vacuumAndMop: 'Saugen und Wischen', mopAfterVacuum: 'Erst saugen, dann wischen',

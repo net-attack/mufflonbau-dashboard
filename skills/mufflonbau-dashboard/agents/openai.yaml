@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mufflonbau Dashboard"
+  short_description: "Build dashboards from a template export or HA-MCP"
+  default_prompt: "Use $mufflonbau-dashboard to build my personal Home Assistant dashboard from an inventory export or my connected HA-MCP server."

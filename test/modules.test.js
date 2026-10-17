@@ -25,6 +25,7 @@ test('generates connected feature views with explicit types and localized room n
   assert.ok(result.views[0].cards[0].cards.some(card => card.mode === 'room-summary'));
   assert.ok(result.views[0].cards[0].cards.some(card => card.mode === 'presence-summary'));
   assert.ok(result.views.every(view => view.type === 'panel'));
+  assert.deepEqual(result.views[0].cards[0].navigation.slice(0, 4).map(item => item.path), ['home', 'calendar', 'rooms', 'cleaning']);
   assert.equal(result.views.find(view => view.path === 'room-living').title, 'Living room');
   const german = generateDashboard({ ...fixture, language: 'de' }, { states: {} });
   assert.equal(german.views.find(view => view.path === 'room-living').title, 'Wohnzimmer');

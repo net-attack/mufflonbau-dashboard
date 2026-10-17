@@ -3,21 +3,23 @@
 {%- set section = 'lights' -%}
 {%- set offset = 0 -%}
 {%- set page_size = 40 -%}
-{%- set domains = {'lights': ['light', 'group'], 'vacuum': ['vacuum', 'camera', 'input_button', 'button', 'script', 'select'], 'sensors': ['sensor', 'binary_sensor', 'climate', 'humidifier', 'switch'], 'network': ['device_tracker', 'sensor', 'binary_sensor', 'switch']}[section] -%}
+{#- Use section = 'all' for a new dashboard, or a narrower section for diagnostics. -#}
+{%- set domains = {'all': [], 'lights': ['light', 'group'], 'vacuum': ['vacuum', 'camera', 'input_button', 'button', 'script', 'select'], 'sensors': ['sensor', 'binary_sensor', 'climate', 'humidifier', 'switch'], 'network': ['device_tracker', 'sensor', 'binary_sensor', 'switch']}[section] -%}
 {%- set selection = namespace(entities=[], vacuum_devices=[]) -%}
 {%- for entity in states if entity.domain == 'vacuum' -%}
   {%- set id = device_id(entity.entity_id) -%}
   {%- if id -%}{%- set selection.vacuum_devices = selection.vacuum_devices + [id] -%}{%- endif -%}
 {%- endfor -%}
 {%- for entity in states | sort(attribute='entity_id') -%}
-  {%- if entity.domain in domains or (section == 'vacuum' and entity.domain in ['sensor', 'binary_sensor'] and device_id(entity.entity_id) in selection.vacuum_devices) -%}
+  {%- if section == 'all' or entity.domain in domains or (section == 'vacuum' and entity.domain in ['sensor', 'binary_sensor'] and device_id(entity.entity_id) in selection.vacuum_devices) -%}
     {%- set selection.entities = selection.entities + [entity] -%}
   {%- endif -%}
 {%- endfor -%}
-{%- set allowed_attributes = ['entity_id', 'device_class', 'unit_of_measurement', 'supported_features', 'supported_color_modes', 'color_mode', 'brightness', 'color_temp_kelvin', 'rgb_color', 'hvac_modes', 'hvac_mode', 'hvac_action', 'temperature', 'current_temperature', 'current_humidity', 'humidity', 'battery_level', 'fan_speed', 'fan_speed_list', 'status', 'error', 'error_code', 'current_room', 'cleaned_area', 'cleaning_time', 'restored', 'assumed_state', 'all', 'ip', 'ip_address', 'ssid', 'essid', 'interface_type', 'source_type'] -%}
+{%- set allowed_attributes = ['entity_id', 'device_class', 'unit_of_measurement', 'supported_features', 'supported_color_modes', 'color_mode', 'brightness', 'color_temp_kelvin', 'rgb_color', 'hvac_modes', 'hvac_mode', 'hvac_action', 'temperature', 'current_temperature', 'current_humidity', 'humidity', 'battery_level', 'fan_speed', 'fan_speed_list', 'options', 'cleaning_mode', 'cleangenius', 'cleangenius_mode', 'status', 'error', 'error_code', 'current_room', 'cleaned_area', 'cleaning_time', 'restored', 'assumed_state', 'all', 'ip', 'ip_address', 'ssid', 'essid', 'interface_type', 'source_type'] -%}
 {%- set output = namespace(entities=[], stopped=false) -%}
 {%- for entity in selection.entities[offset:offset + page_size] if not output.stopped -%}
   {%- set device = device_id(entity.entity_id) -%}
+  {%- set entry = config_entry_id(entity.entity_id) -%}
   {%- set attrs = namespace(pairs=[]) -%}
   {%- for key in allowed_attributes if key in entity.attributes -%}
     {%- set value = entity.attributes[key] -%}
@@ -59,6 +61,7 @@
     'device_name': ((device_attr(device, 'name_by_user') or device_attr(device, 'name') or '') | string)[:180] if device else none,
     'manufacturer': ((device_attr(device, 'manufacturer') or '') | string)[:180] if device else none,
     'model': ((device_attr(device, 'model') or '') | string)[:180] if device else none,
+    'integration': config_entry_attr(entry, 'domain') if entry else none,
     'last_updated': entity.last_updated.isoformat(),
     'attributes': dict(attrs.pairs)
   } -%}

@@ -34,25 +34,14 @@ export class MufflonbauShell extends HTMLElement {
     const brand = element('div', undefined, 'brand');
     brand.append(element('span', 'm', 'monogram'), element('span', this._config.title ?? 'Mufflonbau'));
     const nav = element('nav'); nav.setAttribute('aria-label', text.navigation);
-    const extraLinks = [];
-    for (const [index, item] of (this._config.navigation ?? []).entries()) {
+    for (const item of this._config.navigation ?? []) {
       const link = element('a');
-      link.append(icon(item.path), element('span', item.path === 'system' ? text.systemShort : item.title));
+      const label = { system: text.systemShort, admin: text.adminShort, presence: text.presenceShort }[item.path] ?? item.title;
+      link.setAttribute('aria-label', item.title); link.title = item.title;
+      link.append(icon(item.path === 'presence' ? 'person' : item.path), element('span', label));
       navigateLink(link, item.path);
       if (item.path === this._config.path || (item.path === 'rooms' && this._config.path.startsWith('room-'))) link.setAttribute('aria-current', 'page');
-      if (index >= 4) { link.classList.add('secondary'); extraLinks.push(item); }
       nav.append(link);
-    }
-    if (extraLinks.length) {
-      const more = element('details', undefined, 'more-menu');
-      const summary = element('summary'); summary.append(icon('expert'), element('span', text.more));
-      const links = element('div', undefined, 'more-links');
-      for (const item of extraLinks) {
-        const link = element('a'); link.append(icon(item.path), element('span', item.path === 'system' ? text.systemShort : item.title)); navigateLink(link, item.path);
-        if (item.path === this._config.path) link.setAttribute('aria-current', 'page');
-        links.append(link);
-      }
-      more.append(summary, links); nav.append(more);
     }
     aside.append(brand, nav, element('div', text.yourSpace, 'footnote'));
     const main = element('main');

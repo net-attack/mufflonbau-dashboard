@@ -15,7 +15,7 @@ export function systemViews({ config, hass, text, language }) {
     views.push(view(`admin-${group}`, text[group], 'mdi:server-network', [
       adminCard(group),
       ...numericGroups(admin[group], hass.states).map(entities => ({
-        type: 'custom:mufflonbau-history', entities, language, appearance: config.appearance,
+        type: 'custom:mufflonbau-history', entities, language, internet_rate: group === 'internet', appearance: config.appearance,
       })),
     ], { subview: true }));
   }

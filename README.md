@@ -32,6 +32,17 @@ Do not paste a dashboard strategy into a card editor: it is not a custom card.
 In HACS, use **Update information** before **Redownload** if a newer commit does
 not appear. Reload the browser after downloading.
 
+## Build your own dashboard with an agent
+
+The [German quick start](docs/AGENT-SETUP.de.md) includes copy-ready prompts and
+two routes: export your Home Assistant inventory with the read-only
+[template](examples/diagnostics-template.jinja) (`section = 'all'`), or connect
+your agent to HA-MCP. Give the agent
+[the repository skill](skills/mufflonbau-dashboard/SKILL.md) and your inventory;
+it can map rooms and sensors, build a personal strategy, and validate the YAML.
+MCP can also provide live configuration operations when supported by its tools.
+Exports, personal configurations and connection credentials stay local.
+
 ## Design
 
 Choose a design through `appearance.theme`, independently of its light/dark mode:
@@ -171,6 +182,14 @@ category. Filter by category or search names and IDs; tap any row for Home
 Assistant's entity details. Different entities remain separate even when their
 names or current readings match.
 
+Internet bit rates are displayed in **Mb/s** in the admin overview, details,
+Expert and Recorder history. Kilobits are divided by 1,000; latency and byte
+rates retain their original units. This changes display values, not HA sensors.
+
+The dock lists every main destination directly, starting with Home, Calendar,
+Rooms and Cleaning when configured. Labels sit below icons; narrow screens hide
+the labels while keeping all icons on one row with accessible names and tooltips.
+
 By default, appearance follows `sun.sun`, with the HA dark theme as a fallback.
 An explicit `mode: ambient` or `mode: night` overrides automatic selection.
 The earlier `night_person` and `ambient_person` options are accepted for configuration
@@ -239,9 +258,27 @@ the dashboard cannot infer the vacuum's integration-specific settings.
 
 The dashboard needs no Button Card, Bubble Card, or Card Mod resources.
 Kiosk Mode requires the separately installed Kiosk Mode plugin. By default this
-dashboard enables kiosk mode and hides the Home Assistant header. Set
-`kiosk_mode: {kiosk: false, hide_header: false}` to override it; the strategy
-does not hide the sidebar unless you also set `hide_sidebar: true`.
+dashboard passes `kiosk: true` and `hide_header: true` to the plugin; `kiosk: true`
+hides both the Home Assistant header and sidebar.
+
+### Access the editor when Kiosk Mode hides the controls
+
+Append **`?disable_km`** to your dashboard URL and reload, for example
+`/dashboard-mein-zuhause/home?disable_km`. If the URL already has a query string,
+append **`&disable_km`** instead. Home Assistant's header and sidebar become
+available so you can open **Edit dashboard** and its YAML/strategy editor.
+Remove the parameter and reload to restore the configured kiosk display.
+This temporarily bypasses the plugin; it does not modify the saved dashboard
+configuration. See the [Kiosk Mode documentation](https://github.com/NemesisRE/kiosk-mode#query-strings).
+
+To keep the HA controls visible, set these options in the dashboard strategy:
+
+```yaml
+kiosk_mode:
+  kiosk: false
+  hide_header: false
+  hide_sidebar: false
+```
 
 ## Diagnosing entity and room assignments
 

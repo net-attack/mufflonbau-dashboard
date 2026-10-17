@@ -19,7 +19,7 @@ const paths = {
   home: 'm3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7',
   rooms: 'M3 3h18v18H3zM3 12h9V3M12 12h9M12 12v9',
   climate: 'M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0ZM12 8v10',
-  cleaning: 'M4 9h16v10H4zM9 9V5h6v4M8 19v2m8-2v2M8 13h.01M16 13h.01M9 16h6',
+  cleaning: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM10 10a2 2 0 1 0 4 0 2 2 0 0 0-4 0ZM6 17h12M4.5 18.5 2 21m17.5-2.5L22 21',
   play: 'm8 5 12 7-12 7V5Z',
   stop: 'M6 6h12v12H6z',
   warning: 'M12 3 2.4 20.5h19.2L12 3Zm0 6.2v5.1m0 2.7h.01',

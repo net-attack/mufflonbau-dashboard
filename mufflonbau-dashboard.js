@@ -22,7 +22,7 @@
     home: "m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7",
     rooms: "M3 3h18v18H3zM3 12h9V3M12 12h9M12 12v9",
     climate: "M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0ZM12 8v10",
-    cleaning: "M4 9h16v10H4zM9 9V5h6v4M8 19v2m8-2v2M8 13h.01M16 13h.01M9 16h6",
+    cleaning: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM10 10a2 2 0 1 0 4 0 2 2 0 0 0-4 0ZM6 17h12M4.5 18.5 2 21m17.5-2.5L22 21",
     play: "m8 5 12 7-12 7V5Z",
     stop: "M6 6h12v12H6z",
     warning: "M12 3 2.4 20.5h19.2L12 3Zm0 6.2v5.1m0 2.7h.01",
@@ -144,6 +144,8 @@ ${trees}${houses}
   // src/core/i18n.js
   var translations = {
     en: {
+      adminShort: "Admin",
+      presenceShort: "Presence",
       category: "Category",
       allCategories: "All categories",
       searchEntities: "Search entities",
@@ -250,6 +252,8 @@ ${trees}${houses}
       dewPoint: "Dew point"
     },
     de: {
+      adminShort: "Admin",
+      presenceShort: "Anwesenheit",
       category: "Kategorie",
       allCategories: "Alle Kategorien",
       searchEntities: "Entitäten suchen",
@@ -546,6 +550,11 @@ ${trees}${houses}
 
   // src/core/admin.js
   var adminGroups = ["internet", "network", "host"];
+  function internetRate(unit) {
+    const match = String(unit ?? "").replaceAll(" ", "").match(/^([kKmMgGtT]?)(?:bits?\/s|b\/s|bps)$/);
+    if (!match) return null;
+    return { factor: { "": 1e-6, k: 1e-3, m: 1, g: 1e3, t: 1e6 }[match[1].toLowerCase()], unit: "Mb/s" };
+  }
   var sourcePatterns = {
     internet: /speedtest|internet|\bwan\b|download|upload|\bping\b|latency|external.?ip|public.?ip/i,
     network: /wlan|wifi|wi-fi|network|\blan\b|ssid|connection|client/i,
@@ -706,7 +715,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
           const ids = admin[group];
           for (const id of ids.slice(0, 2)) {
             const state = states[id];
-            link.append(element("span", `${state?.attributes?.friendly_name ?? id}: ${this._display(state, text, language)}`));
+            link.append(element("span", `${state?.attributes?.friendly_name ?? id}: ${this._display(state, text, language, group)}`));
           }
           if (!ids.length) link.append(element("span", text[`${group}Setup`]));
           link.append(element("span", `${text.allDetails} →`));
@@ -728,7 +737,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
           const metric = element("button", void 0, `metric${stateProblem(state, language) ? " problem" : ""}`);
           metric.type = "button";
           metric.dataset.entity = id;
-          metric.append(element("span", state?.attributes?.friendly_name ?? id, "label"), element("span", this._display(state, text, language), "value"));
+          metric.append(element("span", state?.attributes?.friendly_name ?? id, "label"), element("span", this._display(state, text, language, section), "value"));
           const time = new Date(state?.last_updated);
           if (Number.isFinite(time.getTime())) {
             const updated = element("time", `${text.measured}: ${time.toLocaleString(language)}`);
@@ -834,7 +843,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
           row.dataset.entity = entity2;
           const identity = element("span", void 0, "expert-identity");
           identity.append(element("strong", state?.attributes?.friendly_name ?? entity2), element("small", entity2));
-          row.append(identity, element("span", this._display(state, text, language), "expert-value"));
+          row.append(identity, element("span", this._display(state, text, language, category), "expert-value"));
           row.addEventListener("click", () => this._info(entity2));
           list2.append(row);
         }
@@ -842,7 +851,10 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
         this._expertGroups.append(section);
       }
     }
-    _display(state, text, language) {
+    _display(state, text, language, section) {
+      const rate = section === "internet" ? internetRate(state?.attributes?.unit_of_measurement) : null;
+      const number = numericState(state);
+      if (rate && number !== null) return `${new Intl.NumberFormat(language, { maximumFractionDigits: 2 }).format(number * rate.factor)} ${rate.unit}`;
       return stateProblem(state, language) ?? `${text.states[state.state] ?? state.state}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : ""}`;
     }
   };
@@ -971,7 +983,11 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
         panel.append(retry);
       } else if (!this._data) panel.append(element("p", text.historyLoading));
       else {
-        const series = this._config.entities.map((id) => ({ id, points: historyPoints(this._data[id], this._start, this._end) }));
+        const series = this._config.entities.map((id) => {
+          const originalUnit = this._hass.states[id]?.attributes?.unit_of_measurement ?? "";
+          const rate = this._config.internet_rate ? internetRate(originalUnit) : null;
+          return { id, unit: rate?.unit ?? originalUnit, points: historyPoints(this._data[id], this._start, this._end).map((point) => ({ ...point, value: point.value === null ? null : point.value * (rate?.factor ?? 1) })) };
+        });
         const values = series.flatMap((item) => item.points.filter((point) => point.value !== null).map((point) => point.value));
         if (!values.length) panel.append(element("p", text.noReadings));
         else {
@@ -985,7 +1001,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
           min -= padding;
           max += padding;
           const svg = svgElement("svg", { viewBox: "-55 -10 765 215", role: "img", "aria-label": text.history, preserveAspectRatio: "none" });
-          const unit = this._hass.states[series[0].id]?.attributes?.unit_of_measurement ?? "";
+          const unit = series[0].unit;
           for (let index = 0; index < 4; index++) {
             const y = index * 60;
             svg.append(
@@ -1536,6 +1552,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
           type: "custom:mufflonbau-history",
           entities: entities2,
           language,
+          internet_rate: group === "internet",
           appearance: config.appearance
         }))
       ], { subview: true }));
@@ -1601,7 +1618,11 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     const context = { config, hass, language, text: translations[language] };
     const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];
     const allViews = [homeView(context, views), ...views];
-    const navigation = allViews.filter((item) => !item.subview).map(({ path, title, icon: icon2 }) => ({ path, title, icon: icon2 }));
+    const firstLinks = ["home", "calendar", "rooms", "cleaning"];
+    const navigation = allViews.filter((item) => !item.subview || item.path === "presence").map(({ path, title, icon: icon2 }) => ({ path, title, icon: icon2 })).sort((a, b) => {
+      const rank = (path) => firstLinks.includes(path) ? firstLinks.indexOf(path) : firstLinks.length;
+      return rank(a.path) - rank(b.path);
+    });
     const styledViews = allViews.map((item) => ({ ...item, type: "panel", cards: [{
       type: "custom:mufflonbau-shell",
       title: config.title || "Mufflonbau",
@@ -1729,6 +1750,15 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
   :host([data-view=rooms]) .slot { width:100%; height:100%; min-height:0; }
   :host([data-view=presence]) main,:host([data-view=system]) main,:host([data-view=climate]) main { padding:20px clamp(16px,3vw,46px) max(120px,var(--mb-nav-space,140px)); }
   :host([data-view=expert]) main { max-width:none; padding:20px clamp(16px,3vw,46px) max(120px,var(--mb-nav-space,140px)); }
+  :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { width:max-content; max-width:calc(100% - 24px); gap:2px; padding:6px; flex-wrap:nowrap; }
+  :host([data-theme=atmospheric]) nav a,:host([data-theme=storybook]) nav a { display:flex; flex:0 1 auto; min-width:44px; min-height:44px; flex-direction:column; gap:5px; padding:10px 12px; font-size:11px; }
+  :host([data-theme=atmospheric]) nav svg,:host([data-theme=storybook]) nav svg { width:22px; height:22px; }
+  @media(max-width:700px) {
+    nav { flex-wrap:nowrap; gap:0; padding:6px; }
+    nav a,:host([data-theme=atmospheric]) nav a,:host([data-theme=storybook]) nav a { flex:1 1 0; min-width:0; min-height:44px; padding:10px 4px; }
+    nav a span { display:none; }
+    :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { width:calc(100% - 24px); gap:0; }
+  }
   :host([data-view=cleaning]) main { padding-bottom:max(128px,var(--mb-nav-space,140px)); }
   :host([data-view=presence]) .slot,:host([data-view=system]) .slot,:host([data-view=climate]) .slot.rooms { grid-column:1/-1; }
   :host([data-view=presence]),:host([data-view=system]) { min-height:100dvh; --mb-detail-height:max(320px,calc(100dvh - 230px)); }
@@ -1878,32 +1908,15 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       brand.append(element("span", "m", "monogram"), element("span", this._config.title ?? "Mufflonbau"));
       const nav = element("nav");
       nav.setAttribute("aria-label", text.navigation);
-      const extraLinks = [];
-      for (const [index, item] of (this._config.navigation ?? []).entries()) {
+      for (const item of this._config.navigation ?? []) {
         const link = element("a");
-        link.append(icon(item.path), element("span", item.path === "system" ? text.systemShort : item.title));
+        const label2 = { system: text.systemShort, admin: text.adminShort, presence: text.presenceShort }[item.path] ?? item.title;
+        link.setAttribute("aria-label", item.title);
+        link.title = item.title;
+        link.append(icon(item.path === "presence" ? "person" : item.path), element("span", label2));
         navigateLink(link, item.path);
         if (item.path === this._config.path || item.path === "rooms" && this._config.path.startsWith("room-")) link.setAttribute("aria-current", "page");
-        if (index >= 4) {
-          link.classList.add("secondary");
-          extraLinks.push(item);
-        }
         nav.append(link);
-      }
-      if (extraLinks.length) {
-        const more = element("details", void 0, "more-menu");
-        const summary = element("summary");
-        summary.append(icon("expert"), element("span", text.more));
-        const links = element("div", void 0, "more-links");
-        for (const item of extraLinks) {
-          const link = element("a");
-          link.append(icon(item.path), element("span", item.path === "system" ? text.systemShort : item.title));
-          navigateLink(link, item.path);
-          if (item.path === this._config.path) link.setAttribute("aria-current", "page");
-          links.append(link);
-        }
-        more.append(summary, links);
-        nav.append(more);
       }
       aside.append(brand, nav, element("div", text.yourSpace, "footnote"));
       const main = element("main");

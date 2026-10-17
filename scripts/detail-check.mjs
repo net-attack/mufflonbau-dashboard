@@ -50,6 +50,16 @@ export async function checkDetailViews(sourcePage) {
     for (const size of [{ width: 893, height: 533 }, { width: 533, height: 893 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(size);
       await show('home');
+      const dock = await shell.locator('nav a').evaluateAll(links => links.map(link => {
+        const rect = link.getBoundingClientRect(); const svg = link.querySelector('svg').getBoundingClientRect();
+        const label = link.querySelector('span');
+        return { x: rect.x, right: rect.right, y: rect.y, name: link.getAttribute('aria-label'),
+          labelHidden: getComputedStyle(label).display === 'none', labelTop: label.getBoundingClientRect().top, iconBottom: svg.bottom };
+      }));
+      assert.equal(dock.length, 8);
+      assert.deepEqual(dock.slice(0, 4).map(link => link.name), ['Zuhause', 'Kalender', 'Räume', 'Reinigung']);
+      assert.ok(dock.every(link => link.name && Math.abs(link.y - dock[0].y) < 1 && link.x >= 0 && link.right <= size.width), 'All dock destinations must fit on one row');
+      assert.ok(dock.every(link => size.width <= 700 ? link.labelHidden : !link.labelHidden && link.labelTop >= link.iconBottom), 'Dock labels belong below icons and hide on small screens');
       await shell.locator('.mode-room-summary .summary-link').tap();
       assert.match(page.url(), /\/rooms$/);
       assert.equal(await shell.locator('.map-only').count(), 1, 'Rooms must open the full map directly from Home');

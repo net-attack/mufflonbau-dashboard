@@ -3,6 +3,7 @@ import { translations } from '../core/i18n.js';
 import { applyTheme } from '../design/tokens.js';
 import { appearanceMode } from '../core/state.js';
 import { fetchHistory, historyPoints, historyPath } from '../core/history.js';
+import { internetRate } from '../core/admin.js';
 const colors = ['#648bc2', '#b18bcd', '#69a797', '#d69a68', '#c57689', '#919864'];
 const styles = `:host{display:block;min-width:0;color:var(--mb-ink)}*{box-sizing:border-box}.panel{padding:24px;border-radius:24px;background:var(--mb-surface);border:1px solid var(--mb-line)}header{display:flex;justify-content:space-between;gap:12px;align-items:center}h3{margin:0;font-size:18px}select,button{font:inherit;min-height:44px;background:var(--mb-soft);color:var(--mb-ink);border:1px solid var(--mb-line);border-radius:12px;padding:8px}select:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent)}svg{display:block;width:100%;height:190px;overflow:visible;margin:24px 0 10px}text{fill:var(--mb-muted);font-size:12px}.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--mb-muted)}.key{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}p{color:var(--mb-muted);font-size:13px}.times{display:flex;justify-content:space-between;font-size:11px;color:var(--mb-muted);margin-bottom:20px}`;
 export class MufflonbauHistory extends HTMLElement {
@@ -39,7 +40,12 @@ export class MufflonbauHistory extends HTMLElement {
     if (this._error) { panel.append(element('p', text.historyError)); const retry = element('button', text.retry); retry.addEventListener('click', () => this._load()); panel.append(retry); }
     else if (!this._data) panel.append(element('p', text.historyLoading));
     else {
-      const series = this._config.entities.map(id => ({ id, points: historyPoints(this._data[id], this._start, this._end) }));
+      const series = this._config.entities.map(id => {
+        const originalUnit = this._hass.states[id]?.attributes?.unit_of_measurement ?? '';
+        const rate = this._config.internet_rate ? internetRate(originalUnit) : null;
+        return { id, unit: rate?.unit ?? originalUnit, points: historyPoints(this._data[id], this._start, this._end)
+          .map(point => ({ ...point, value: point.value === null ? null : point.value * (rate?.factor ?? 1) })) };
+      });
       const values = series.flatMap(item => item.points.filter(point => point.value !== null).map(point => point.value));
       if (!values.length) panel.append(element('p', text.noReadings));
       else {
@@ -48,7 +54,7 @@ export class MufflonbauHistory extends HTMLElement {
         for (const value of values) { min = Math.min(min, value); max = Math.max(max, value); }
         const padding = (max - min || Math.abs(max) * .05 || 1) * .12; min -= padding; max += padding;
         const svg = svgElement('svg', { viewBox: '-55 -10 765 215', role: 'img', 'aria-label': text.history, preserveAspectRatio: 'none' });
-        const unit = this._hass.states[series[0].id]?.attributes?.unit_of_measurement ?? '';
+        const unit = series[0].unit;
         for (let index = 0; index < 4; index++) {
           const y = index * 60;
           svg.append(svgElement('line', { x1: 0, x2: 700, y1: y, y2: y, stroke: 'var(--mb-line)', 'stroke-dasharray': '4 6' }),

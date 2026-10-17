@@ -1,8 +1,8 @@
 import { element, navigateLink } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
-import { appearanceMode, stateProblem } from '../core/state.js';
+import { appearanceMode, numericState, stateProblem } from '../core/state.js';
 import { translations } from '../core/i18n.js';
-import { adminGroups, clientSummary } from '../core/admin.js';
+import { adminGroups, clientSummary, internetRate } from '../core/admin.js';
 import { expertCategories } from '../core/expert.js';
 const styles = `
 :host{display:block;min-width:0;color:var(--mb-ink)}*{box-sizing:border-box}
@@ -52,7 +52,7 @@ export class MufflonbauAdmin extends HTMLElement {
         const ids = admin[group];
         for (const id of ids.slice(0, 2)) {
           const state = states[id];
-          link.append(element('span', `${state?.attributes?.friendly_name ?? id}: ${this._display(state, text, language)}`));
+          link.append(element('span', `${state?.attributes?.friendly_name ?? id}: ${this._display(state, text, language, group)}`));
         }
         if (!ids.length) link.append(element('span', text[`${group}Setup`]));
         link.append(element('span', `${text.allDetails} →`)); groups.append(link);
@@ -68,7 +68,7 @@ export class MufflonbauAdmin extends HTMLElement {
       for (const id of ids) {
         const state = states[id]; const metric = element('button', undefined, `metric${stateProblem(state, language) ? ' problem' : ''}`);
         metric.type = 'button'; metric.dataset.entity = id;
-        metric.append(element('span', state?.attributes?.friendly_name ?? id, 'label'), element('span', this._display(state, text, language), 'value'));
+        metric.append(element('span', state?.attributes?.friendly_name ?? id, 'label'), element('span', this._display(state, text, language, section), 'value'));
         const time = new Date(state?.last_updated);
         if (Number.isFinite(time.getTime())) {
           const updated = element('time', `${text.measured}: ${time.toLocaleString(language)}`); updated.dateTime = time.toISOString(); metric.append(element('small', undefined)); metric.lastChild.append(updated);
@@ -141,13 +141,16 @@ export class MufflonbauAdmin extends HTMLElement {
         const state = states[entity]; const row = element('button', undefined, 'expert-entity'); row.type = 'button'; row.dataset.entity = entity;
         const identity = element('span', undefined, 'expert-identity');
         identity.append(element('strong', state?.attributes?.friendly_name ?? entity), element('small', entity));
-        row.append(identity, element('span', this._display(state, text, language), 'expert-value'));
+        row.append(identity, element('span', this._display(state, text, language, category), 'expert-value'));
         row.addEventListener('click', () => this._info(entity)); list.append(row);
       }
       section.append(list); this._expertGroups.append(section);
     }
   }
-  _display(state, text, language) {
+  _display(state, text, language, section) {
+    const rate = section === 'internet' ? internetRate(state?.attributes?.unit_of_measurement) : null;
+    const number = numericState(state);
+    if (rate && number !== null) return `${new Intl.NumberFormat(language, { maximumFractionDigits: 2 }).format(number * rate.factor)} ${rate.unit}`;
     return stateProblem(state, language) ?? `${text.states[state.state] ?? state.state}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : ''}`;
   }
 }

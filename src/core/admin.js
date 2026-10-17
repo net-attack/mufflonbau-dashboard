@@ -1,6 +1,12 @@
 import { availability, numericState } from './state.js';
 
 export const adminGroups = ['internet', 'network', 'host'];
+// SI bit rates: 1 Mb/s = 1,000 kbit/s. Byte rates (MB/s) are distinct units.
+export function internetRate(unit) {
+  const match = String(unit ?? '').replaceAll(' ', '').match(/^([kKmMgGtT]?)(?:bits?\/s|b\/s|bps)$/);
+  if (!match) return null;
+  return { factor: ({ '': 1e-6, k: 1e-3, m: 1, g: 1e3, t: 1e6 })[match[1].toLowerCase()], unit: 'Mb/s' };
+}
 const sourcePatterns = {
   internet: /speedtest|internet|\bwan\b|download|upload|\bping\b|latency|external.?ip|public.?ip/i,
   network: /wlan|wifi|wi-fi|network|\blan\b|ssid|connection|client/i,

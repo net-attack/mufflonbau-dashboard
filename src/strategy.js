@@ -16,7 +16,12 @@ export function generateDashboard(rawConfig, hass) {
   const context = { config, hass, language, text: translations[language] };
   const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];
   const allViews = [homeView(context, views), ...views];
-  const navigation = allViews.filter(item => !item.subview).map(({ path, title, icon }) => ({ path, title, icon }));
+  const firstLinks = ['home', 'calendar', 'rooms', 'cleaning'];
+  const navigation = allViews.filter(item => !item.subview || item.path === 'presence').map(({ path, title, icon }) => ({ path, title, icon }))
+    .sort((a, b) => {
+      const rank = path => firstLinks.includes(path) ? firstLinks.indexOf(path) : firstLinks.length;
+      return rank(a.path) - rank(b.path);
+    });
   const styledViews = allViews.map(item => ({ ...item, type: 'panel', cards: [{
     type: 'custom:mufflonbau-shell', title: config.title || 'Mufflonbau', language, appearance: config.appearance,
     path: item.path, view_title: item.title, full_view: item.fullView, navigation, cards: item.cards,

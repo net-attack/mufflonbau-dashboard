@@ -24,6 +24,8 @@ class DiagnosticTemplateTest(unittest.TestCase):
         env.globals.update(states=states, area_id=lambda value: 'living', area_name=lambda value: 'Living room',
             device_id=lambda value: None if value == 'light.room' else 'device1',
             device_attr=lambda device, key: {'name': 'Device', 'manufacturer': 'Example', 'model': 'Test'}.get(key),
+            config_entry_id=lambda value: None if value == 'light.room' else 'entry1',
+            config_entry_attr=lambda entry, key: 'example_integration' if key == 'domain' else None,
             now=lambda: STAMP)
         path = Path(__file__).resolve().parents[1] / 'examples/diagnostics-template.jinja'
         template = path.read_text().replace("set section = 'lights'", f"set section = '{section}'").replace('set offset = 0', f'set offset = {offset}')
@@ -69,6 +71,21 @@ class DiagnosticTemplateTest(unittest.TestCase):
         self.assertEqual([item['entity_id'] for item in result['entities']], ['device_tracker.tablet', 'sensor.cpu_temperature'])
         self.assertEqual(result['entities'][0]['attributes']['ip'], '192.0.2.1')
         self.assertNotIn('SECRET', rendered)
+
+    def test_all_includes_dashboard_domains_and_integration_without_exporting_credentials(self):
+        fixture = [state(entity_id, 'unknown', {'access_token': 'DO_NOT_EXPORT', 'latitude': 48.1,
+            'options': ['routine_cleaning', 'deep_cleaning'], 'cleaning_mode': 'Sweeping', 'cleangenius': 'Routine cleaning'})
+            for entity_id in ['person.resident', 'weather.home', 'calendar.home', 'sensor.humidity',
+                'light.room', 'automation.evening', 'media_player.speaker', 'select.cleaning_mode']]
+        result, rendered = self.render(fixture, 'all')
+        self.assertEqual(set(row['entity_id'] for row in result['entities']), {item.entity_id for item in fixture})
+        self.assertEqual(result['total_matching'], len(fixture))
+        self.assertNotIn('DO_NOT_EXPORT', rendered)
+        self.assertNotIn('latitude', rendered)
+        entities = {row['entity_id']: row for row in result['entities']}
+        self.assertEqual(entities['sensor.humidity']['integration'], 'example_integration')
+        self.assertIsNone(entities['light.room']['integration'])
+        self.assertEqual(entities['select.cleaning_mode']['attributes']['options'], ['routine_cleaning', 'deep_cleaning'])
 
     def test_large_installation_pages_without_skipping_or_duplicating_entities(self):
         fixture = [state(f'light.lamp_{index:04}', 'off') for index in range(135)]

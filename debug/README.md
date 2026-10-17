@@ -1,5 +1,12 @@
 # Local Home Assistant inventory
 
+For a new personal dashboard, use `section = 'all'` instead of `lights` and follow
+the same pagination steps. This also includes people, calendars and weather.
+Give all pages to the agent together with
+[the dashboard skill](../skills/mufflonbau-dashboard/SKILL.md).
+See the [German setup guide](../docs/AGENT-SETUP.de.md) for complete export and
+HA-MCP workflows and copy-ready prompts.
+
 1. Paste [the diagnostic template](../examples/diagnostics-template.jinja) into
    Home Assistant Developer Tools > Template. Keep `section = 'lights'` and
    `offset = 0` for the first export.
@@ -42,11 +49,9 @@ for router, speed-test and host readings. Save each page as
 The export includes reported IP/SSID/interface attributes; keep these local.
 Disabled System monitor entities must be enabled before they can appear here.
 
-The lights export confirms that `light.esszimmer`, `light.arbeitszimmer`,
-`light.kuche`, `light.schlafzimmer`, and `light.flur` are Hue room groups.
-Their `attributes.entity_id` arrays list member lights. Mufflonbau now collapses
-configured members under each configured group in room cards, while keeping all
-selected entities in Expert. The export reports `light.nanoleaf` (friendly name
-Felix) as available and `off`; several Hue bulbs currently report
-`unavailable`. This state snapshot does not include Hue bridge diagnostics or
-explain why an individual bulb is unavailable.
+The `integration` field identifies the integration of an entity's config entry
+when available. Entities such as manually configured groups may have none.
+Use this with device and area assignments to distinguish competing room sensors.
+Explicit light-group member arrays let Mufflonbau collapse configured member
+controls while retaining their entities in Expert. An inventory cannot establish
+why a device is unavailable; use the integration's diagnostics for that.

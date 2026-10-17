@@ -1,10 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeConfig, collectEntities } from '../src/core/config.js';
-import { clientSummary, discoverAdminSources, numericGroups } from '../src/core/admin.js';
+import { clientSummary, discoverAdminSources, internetRate, numericGroups } from '../src/core/admin.js';
 import { generateDashboard } from '../src/strategy.js';
 import { fetchHistory, historyPoints, historyPath } from '../src/core/history.js';
 import { categorizeEntities } from '../src/core/expert.js';
+
+test('Internet bit rates convert to megabits without treating bytes, latency or totals as speeds', () => {
+  for (const [unit, factor] of [['bit/s', 1e-6], ['bps', 1e-6], ['kbit/s', .001], ['kbits/s', .001], ['kbps', .001], ['Mbit/s', 1], ['Mbps', 1], ['Mb/s', 1], ['Gbit/s', 1000]]) {
+    assert.deepEqual(internetRate(unit), { factor, unit: 'Mb/s' });
+    assert.equal(0 * internetRate(unit).factor, 0);
+  }
+  for (const unit of [undefined, 'MB/s', 'kB/s', 'ms', 'kbit', 'GB', '%', '']) assert.equal(internetRate(unit), null);
+});
 
 test('admin validates explicit sources, deduplicates and includes them in expert details', () => {
   const config = normalizeConfig({ admin: { internet: ['binary_sensor.wan'], host: ['sensor.cpu', 'sensor.cpu'], clients: ['device_tracker.tablet'] } });

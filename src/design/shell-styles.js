@@ -110,6 +110,15 @@ export const shellStyles = `
   :host([data-view=rooms]) .slot { width:100%; height:100%; min-height:0; }
   :host([data-view=presence]) main,:host([data-view=system]) main,:host([data-view=climate]) main { padding:20px clamp(16px,3vw,46px) max(120px,var(--mb-nav-space,140px)); }
   :host([data-view=expert]) main { max-width:none; padding:20px clamp(16px,3vw,46px) max(120px,var(--mb-nav-space,140px)); }
+  :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { width:max-content; max-width:calc(100% - 24px); gap:2px; padding:6px; flex-wrap:nowrap; }
+  :host([data-theme=atmospheric]) nav a,:host([data-theme=storybook]) nav a { display:flex; flex:0 1 auto; min-width:44px; min-height:44px; flex-direction:column; gap:5px; padding:10px 12px; font-size:11px; }
+  :host([data-theme=atmospheric]) nav svg,:host([data-theme=storybook]) nav svg { width:22px; height:22px; }
+  @media(max-width:700px) {
+    nav { flex-wrap:nowrap; gap:0; padding:6px; }
+    nav a,:host([data-theme=atmospheric]) nav a,:host([data-theme=storybook]) nav a { flex:1 1 0; min-width:0; min-height:44px; padding:10px 4px; }
+    nav a span { display:none; }
+    :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { width:calc(100% - 24px); gap:0; }
+  }
   :host([data-view=cleaning]) main { padding-bottom:max(128px,var(--mb-nav-space,140px)); }
   :host([data-view=presence]) .slot,:host([data-view=system]) .slot,:host([data-view=climate]) .slot.rooms { grid-column:1/-1; }
   :host([data-view=presence]),:host([data-view=system]) { min-height:100dvh; --mb-detail-height:max(320px,calc(100dvh - 230px)); }

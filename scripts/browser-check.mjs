@@ -303,8 +303,13 @@ try {
       `${viewport.name}: dashboard cards must not be separated by unexplained blank space: ${JSON.stringify(verticalGaps)}`);
     assert.ok(layout.targets.length >= 5 && layout.targets.every(target => target.width >= 44 && target.height >= 44),
       `${viewport.name}: navigation touch targets must be at least 44x44 CSS pixels: ${JSON.stringify(layout.targets)}`);
-    assert.ok(layout.targets.length <= 5,
-      `${viewport.name}: tablet navigation must collapse secondary destinations into More: ${JSON.stringify(layout.targets)}`);
+    assert.equal(layout.targets.length, 8, `${viewport.name}: every destination must be directly accessible`);
+    assert.deepEqual(layout.targets.slice(0, 4).map(target => target.label), ['Zuhause', 'Kalender', 'Räume', 'Reinigung']);
+    assert.equal(await galaxyPage.locator('#galaxy-dashboard nav details').count(), 0);
+    assert.ok(await galaxyPage.locator('#galaxy-dashboard nav a').evaluateAll(links => {
+      const top = links[0].getBoundingClientRect().top;
+      return links.every(link => Math.abs(link.getBoundingClientRect().top - top) < 1 && link.getAttribute('aria-label'));
+    }), 'All navigation icons must stay on a single accessible row');
     await galaxyPage.screenshot({ path: `test-results/galaxy-tab-a11-${viewport.name}.png` });
 
     await galaxyPage.evaluate(() => scrollTo(0, document.scrollingElement.scrollHeight));
@@ -423,8 +428,7 @@ try {
     await page.screenshot({ path: `test-results/dashboard-${theme}-${mode}-mobile.png`, fullPage: true });
   }
   }
-  await page.locator('#dashboard summary').click();
-  await page.locator('#dashboard .more-links a').filter({ hasText: 'Kalender' }).click();
+  await page.locator('#dashboard nav a[aria-label="Kalender"]').click();
   assert.match(page.url(), /\/dashboard-test\/calendar$/);
   await page.locator('#dashboard nav a').filter({ hasText: 'Klima' }).click();
   assert.match(page.url(), /\/dashboard-test\/climate$/);
@@ -447,13 +451,15 @@ try {
       'device_tracker.unknown': { state: 'unknown', attributes: { friendly_name: 'Unknown device' } },
       'sensor.same_one': { state: '12', attributes: { friendly_name: 'Same reading' } },
       'sensor.same_two': { state: '12', attributes: { friendly_name: 'Same reading' } },
+      'sensor.download': { state: '200000', attributes: { friendly_name: 'Download', unit_of_measurement: 'kbit/s' } },
+      'sensor.upload': { state: '0', attributes: { friendly_name: 'Upload', unit_of_measurement: 'kbit/s' } },
     }, callWS: async payload => {
       window.historyCalls.push(payload);
       if (window.rejectHistory) throw new Error('Recorder unavailable');
-      return Object.fromEntries(payload.entity_ids.map(id => [id, Array.from({ length: 13 }, (_, index) => ({ s: index === 7 ? 'unknown' : String((id === 'sensor.cpu' ? 24 : 49) + Math.sin(index * .8) * 4), lu: (now - (12 - index) * 1800000) / 1000 }))]));
+      return Object.fromEntries(payload.entity_ids.map(id => [id, Array.from({ length: 13 }, (_, index) => ({ s: index === 7 ? 'unknown' : String((id === 'sensor.download' ? 200000 : id === 'sensor.upload' ? 20000 : id === 'sensor.cpu' ? 24 : 49) + Math.sin(index * .8) * 4), lu: (now - (12 - index) * 1800000) / 1000 }))]));
     } };
     window.adminDashboard = await customElements.get('ll-strategy-dashboard-mufflonbau').generate({ language: 'en', expert_entities: ['sensor.cpu', 'sensor.cpu', 'sensor.same_one', 'sensor.same_two'], admin: {
-      internet: ['binary_sensor.wan'], host: ['sensor.cpu', 'sensor.temperature'], clients: ['device_tracker.tablet', 'device_tracker.unknown'],
+      internet: ['binary_sensor.wan', 'sensor.download', 'sensor.upload'], host: ['sensor.cpu', 'sensor.temperature'], clients: ['device_tracker.tablet', 'device_tracker.unknown'],
     } }, window.adminHass);
     window.showAdminView = path => {
       const shell = document.querySelector('#dashboard'); shell.setConfig(window.adminDashboard.views.find(view => view.path === path).cards[0]); shell.hass = window.adminHass;
@@ -462,6 +468,7 @@ try {
   });
   assert.equal(await page.locator('#dashboard mufflonbau-admin .group').count(), 3);
   assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /Internet: Off/);
+  assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /Download: 200 Mb\/s/);
   await page.locator('#dashboard mufflonbau-admin .group').filter({ hasText: 'Raspberry Pi' }).click();
   assert.match(page.url(), /admin-host$/);
   await page.evaluate(() => window.showAdminView('admin-host'));
@@ -494,9 +501,17 @@ try {
   assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /State unknown/);
   assert.ok(!await page.locator('#dashboard mufflonbau-admin .panel').innerText().then(value => value.includes('Offline')));
   assert.equal(await page.locator('#dashboard mufflonbau-admin button[data-entity="binary_sensor.wan"]').count(), 0, 'Internet readings must not repeat in Network');
+  await page.evaluate(() => window.showAdminView('admin-internet'));
+  assert.equal(await page.locator('#dashboard mufflonbau-admin button[data-entity="sensor.download"] .value').innerText(), '200 Mb/s');
+  assert.equal(await page.locator('#dashboard mufflonbau-admin button[data-entity="sensor.upload"] .value').innerText(), '0 Mb/s');
+  await page.locator('#dashboard mufflonbau-history svg').waitFor();
+  assert.match(await page.locator('#dashboard mufflonbau-history .times').innerText(), /Mb\/s/);
+  assert.match(await page.locator('#dashboard mufflonbau-history circle title').first().textContent(), /200 Mb\/s$/);
+  assert.ok((await page.locator('#dashboard mufflonbau-history svg text').allTextContents()).every(value => Number(value) < 1000), 'History axes must use converted values too');
   await page.evaluate(() => { window.showAdminView('expert'); scrollTo(0, 0); });
   const expert = page.locator('#dashboard mufflonbau-admin');
-  assert.equal(await expert.locator('.expert-entity').count(), 7);
+  assert.equal(await expert.locator('.expert-entity').count(), 9);
+  assert.equal(await expert.locator('[data-entity="sensor.download"] .expert-value').innerText(), '200 Mb/s');
   assert.equal(await expert.locator('.expert-entity[data-entity="sensor.cpu"]').count(), 1, 'Repeated configuration must produce one row');
   assert.equal(await expert.locator('.expert-group[data-category=sensors] .expert-entity').count(), 2, 'Separate sensors with matching names and values must remain accessible');
   for (const viewport of [{ width: 2000, height: 1000 }, { width: 893, height: 533 }, { width: 390, height: 844 }]) {
@@ -534,7 +549,7 @@ try {
   await search.fill(''); await filter.selectOption('network');
   assert.equal(await expert.locator('.expert-entity').count(), 2);
   await filter.selectOption('all');
-  assert.equal(await expert.locator('.expert-entity').count(), 7);
+  assert.equal(await expert.locator('.expert-entity').count(), 9);
   await page.locator('#dashboard .back-link').click(); assert.match(page.url(), /\/admin$/);
   await renderViews(page, previewConfig, previewHass);
   assert.deepEqual(errors, []);

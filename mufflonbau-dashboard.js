@@ -94,12 +94,6 @@
         if (result.cleaning[key] !== void 0) entity(result.cleaning[key], `cleaning.${key}`);
       }
     }
-    if (result.kiosk_mode !== void 0) {
-      object(result.kiosk_mode, "kiosk_mode");
-      for (const [key, value] of Object.entries(result.kiosk_mode)) {
-        if (!["kiosk", "hide_header", "hide_sidebar"].includes(key) || typeof value !== "boolean") fail("kiosk_mode", "supports boolean kiosk, hide_header, and hide_sidebar options.");
-      }
-    }
     if (result.appearance !== void 0) {
       object(result.appearance, "appearance");
       if (!["calm", "atmospheric", "storybook"].includes(result.appearance.theme ?? "atmospheric")) fail("appearance.theme", "must be calm, atmospheric, or storybook.");
@@ -359,7 +353,7 @@
       navigation,
       cards: item.cards
     }] }));
-    return { ...config.kiosk_mode ? { kiosk_mode: config.kiosk_mode } : {}, title: config.title || "Mufflonbau", views: styledViews };
+    return { title: config.title || "Mufflonbau", views: styledViews };
   }
 
   // src/design/shell-styles.js

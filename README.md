@@ -92,7 +92,6 @@ sections are optional; omitted sections generate no corresponding view.
 | `monitors` | Objects containing `entity`, optional `name`, and optional `battery_below` threshold |
 | `expert_entities` | Additional entities to include in the expert view |
 | `appearance` | `theme: atmospheric`, `storybook`, or `calm`; `mode: auto`, `ambient`, or `night` |
-| `kiosk_mode` | Optional pass-through for the separately installed Kiosk Mode plugin |
 
 Each room has a unique stable `id` (lowercase slug) and a `name` (string or
 `{en: ..., de: ...}`). Optional fields: `icon`, `temperature`, `humidity`,
@@ -134,10 +133,11 @@ modules. The local `old/` input and `examples/*.local.yaml` are ignored by Git s
 installation-specific entity IDs and floorplans stay local. When present,
 `examples/mufflonbau.local.yaml` can be pasted directly into the strategy editor.
 
-The normal dashboard needs no Button Card, Bubble Card, or Card Mod resources.
-Kiosk Mode remains optional: if already installed, `kiosk_mode` accepts boolean
-`kiosk`, `hide_header`, and `hide_sidebar` flags. Without that plugin, omit the
-option and HA's standard header/navigation remains visible.
+The dashboard needs no Button Card, Bubble Card, or Card Mod resources.
+The strategy does not enable kiosk mode or hide Home Assistant's header/sidebar,
+including when an older strategy configuration still contains `kiosk_mode`.
+Configure kiosk behavior separately in your dashboard settings when desired.
+During development, keep the standard Home Assistant controls visible.
 
 ## Development
 

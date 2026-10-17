@@ -79,6 +79,9 @@ HACS receives one file and does not need to resolve source-module downloads.
 
 ## Deliberate boundaries
 
+The strategy never enables kiosk mode or hides the HA header/sidebar. Those
+settings belong to the dashboard owner and stay separate from strategy output.
+
 No backend integration, persisted credentials, helper creation, auto-discovery,
 or service execution during generation. Native cards provide device actions,
 availability, history, and state translations. The custom live card provides

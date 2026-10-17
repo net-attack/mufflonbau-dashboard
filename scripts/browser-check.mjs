@@ -55,7 +55,7 @@ try {
   assert.match(await page.locator('#climate ha-card').innerText(), /Wohnzimmer/);
   assert.match(await page.locator('#climate ha-card').innerText(), /21,5/);
   assert.match(await page.locator('#warnings ha-card').innerText(), /Batterie: 10%/);
-  await page.locator('#climate button').click();
+  await page.locator('#climate .climate-button').click();
   assert.deepEqual(await page.evaluate(() => window.moreInfo), ['sensor.temperature']);
   await page.evaluate(() => {
     window.sampleHass = { ...window.sampleHass, states: { ...window.sampleHass.states,
@@ -141,19 +141,21 @@ try {
   assert.match(await page.locator('#dashboard [role=alert]').innerText(), /fehlgeschlagen/);
   await page.evaluate(() => { window.failAction = false; document.querySelector('#dashboard').hass = { ...window.previewHass, states: { ...window.previewHass.states, 'light.living': { state: 'unavailable', attributes: { friendly_name: 'Wohnzimmer' } } } }; });
   assert.equal(await page.locator('#dashboard button[role=switch]').first().isDisabled(), true);
+  for (const theme of ['calm', 'atmospheric', 'storybook']) {
   for (const mode of ['ambient', 'night']) {
-    await page.evaluate(mode => {
+    await page.evaluate(({ mode, theme }) => {
       const shell = document.querySelector('#dashboard');
-      shell.setConfig({ ...window.previewDashboard.views[0].cards[0], appearance: { mode }, cards: window.previewDashboard.views[0].cards[0].cards.map(card => ({ ...card, appearance: { mode } })) });
+      shell.setConfig({ ...window.previewDashboard.views[0].cards[0], appearance: { mode, theme }, cards: window.previewDashboard.views[0].cards[0].cards.map(card => ({ ...card, appearance: { mode, theme } })) });
       shell.hass = window.previewHass;
-    }, mode);
+    }, { mode, theme });
     await page.setViewportSize({ width: 1440, height: 1080 });
-    const colors = await page.locator('#dashboard').evaluate(shell => [...shell.shadowRoot.querySelectorAll('mufflonbau-live')].filter(card => card._config.mode !== 'header').map(card => getComputedStyle(card.shadowRoot.querySelector('ha-card')).backgroundColor));
+    const colors = await page.locator('#dashboard').evaluate(shell => [...shell.shadowRoot.querySelectorAll('mufflonbau-live')].filter(card => !['header', 'climate'].includes(card._config.mode)).map(card => getComputedStyle(card.shadowRoot.querySelector('ha-card')).backgroundColor));
     assert.equal(new Set(colors).size, 1, 'Every content card must use the same surface color');
-    await page.screenshot({ path: `test-results/dashboard-${mode}-desktop.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/dashboard-${theme}-${mode}-desktop.png`, fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
-    await page.screenshot({ path: `test-results/dashboard-${mode}-mobile.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/dashboard-${theme}-${mode}-mobile.png`, fullPage: true });
+  }
   }
   await page.locator('#dashboard summary').click();
   await page.locator('#dashboard .more-links a').filter({ hasText: 'Kalender' }).click();

@@ -102,6 +102,7 @@
     }
     if (result.appearance !== void 0) {
       object(result.appearance, "appearance");
+      if (!["calm", "atmospheric", "storybook"].includes(result.appearance.theme ?? "atmospheric")) fail("appearance.theme", "must be calm, atmospheric, or storybook.");
       if (!["auto", "ambient", "night"].includes(result.appearance.mode ?? "auto")) fail("appearance.mode", "must be auto, ambient, or night.");
       for (const key of ["night_person", "ambient_person"]) {
         if (result.appearance[key] !== void 0) entity(result.appearance[key], `appearance.${key}`);
@@ -146,6 +147,8 @@
       expert: "Expert",
       calendar: "Calendar",
       lights: "Lights",
+      indoorClimate: "Indoor climate",
+      wind: "Wind",
       temperature: "Temperature",
       humidity: "Humidity",
       history: "History",
@@ -185,6 +188,8 @@
       expert: "Experte",
       calendar: "Kalender",
       lights: "Licht",
+      indoorClimate: "Raumklima",
+      wind: "Wind",
       temperature: "Temperatur",
       humidity: "Luftfeuchtigkeit",
       history: "Verlauf",
@@ -322,11 +327,11 @@
   // src/modules/home.js
   function homeView({ config, text, language }, otherViews) {
     const shared = { appearance: config.appearance };
-    const cards = [liveCard("header", { ...shared, title: config.title ?? "Mufflonbau", weather: config.weather, calendars: config.calendars }, language)];
+    const cards = [liveCard("header", { ...shared, title: config.title ?? "Mufflonbau", weather: config.weather, calendars: config.calendars, rooms: config.rooms }, language)];
     if (config.rooms.length) cards.push(liveCard("climate", { ...shared, rooms: config.rooms }, language));
-    if (config.people.length) cards.push(liveCard("people", { ...shared, people: config.people }, language));
     const lights = [...new Set(config.rooms.flatMap((room) => room.lights))];
     if (lights.length) cards.push(liveCard("devices", { ...shared, entities: lights, title: text.lights }, language));
+    if (config.people.length) cards.push(liveCard("people", { ...shared, people: config.people }, language));
     if (config.cleaning?.entity) cards.push(liveCard("cleaning", { ...shared, cleaning: config.cleaning }, language));
     if (config.monitors.length) cards.push(liveCard("warnings", { ...shared, monitors: config.monitors, compact: true }, language));
     if (config.entities.length) cards.push(liveCard("devices", { ...shared, entities: config.entities, title: text.overview }, language));
@@ -357,6 +362,42 @@
     return { ...config.kiosk_mode ? { kiosk_mode: config.kiosk_mode } : {}, title: config.title || "Mufflonbau", views: styledViews };
   }
 
+  // src/design/shell-styles.js
+  var shellStyles = `
+  :host { display:block; min-width:0; min-height:calc(100dvh - 56px); background:var(--mb-canvas); background-image:var(--mb-wallpaper); background-size:cover; background-position:center bottom; background-attachment:fixed; color:var(--mb-ink); font-family:Inter,'Avenir Next',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; } .shell { display:grid; grid-template-columns:210px minmax(0,1fr); min-height:inherit; }
+  aside { padding:38px 22px; border-right:1px solid var(--mb-line); display:flex; flex-direction:column; gap:48px; }
+  .brand { display:flex; gap:12px; align-items:center; font-weight:750; font-size:19px; letter-spacing:-.6px; }
+  .monogram { display:grid; place-items:center; width:40px; height:40px; border-radius:14px; background:var(--mb-accent); color:var(--mb-canvas); font-size:23px; }
+  nav { display:flex; flex-direction:column; gap:8px; position:sticky; top:30px; }
+  nav svg { flex-shrink:0; }
+  a { display:flex; align-items:center; gap:13px; padding:14px 15px; color:var(--mb-muted); text-decoration:none; border-radius:14px; font-size:13px; font-weight:600; }
+  a[aria-current=page] { background:var(--mb-active); color:var(--mb-accent); } a:hover { color:var(--mb-accent); background:var(--mb-soft); }
+  .more-menu { display:none; }
+  a:focus-visible { outline:2px solid var(--mb-accent); outline-offset:3px; }
+  .footnote { margin-top:auto; padding:24px 12px 0; font-size:10px; line-height:1.7; letter-spacing:2px; color:var(--mb-muted); text-transform:uppercase; }
+  main { min-width:0; padding:38px clamp(20px,3vw,52px) 48px; max-width:1560px; width:100%; margin:0 auto; }
+  .topline { display:flex; justify-content:space-between; align-items:center; margin:0 0 30px; color:var(--mb-muted); font-size:10px; letter-spacing:2px; text-transform:uppercase; }
+  .status { display:flex; align-items:center; gap:7px; letter-spacing:1px; } .dot { width:6px; height:6px; border-radius:50%; background:var(--mb-accent); }
+  .heading { font-size:36px; letter-spacing:-1.6px; font-weight:600; margin:0 0 30px; }
+  .content { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); align-items:start; gap:22px; }
+  .slot { min-width:0; grid-column:span 6; } .slot.wide { grid-column:1/-1; } .slot.rooms { grid-column:span 8; } .slot.compact { grid-column:span 4; }
+  .slot.devices { grid-column:span 8; } .slot ha-card { background:var(--mb-surface); }
+  @media(min-width:1700px) { .shell { grid-template-columns:240px minmax(0,1fr); } }
+  @media(max-width:1100px) { .shell { grid-template-columns:170px minmax(0,1fr); } aside { padding:28px 12px; } .brand { font-size:16px; } .slot.rooms,.slot.devices { grid-column:span 12; } .slot.compact { grid-column:span 6; } }
+  @media(max-width:700px) { .shell { display:flex; flex-direction:column; } aside { padding:16px; border:0; gap:18px; display:contents; } .brand,.footnote { display:none; } main { padding:22px 16px 92px; } .topline { margin-bottom:22px; letter-spacing:1px; } .heading { font-size:28px; } nav { position:fixed; inset:auto 12px 12px; z-index:10; flex-direction:row; overflow:visible; gap:2px; padding:7px; border:1px solid var(--mb-line); background:var(--mb-surface); border-radius:22px; box-shadow:0 8px 28px #00000012; } a { flex:1; min-width:58px; gap:5px; flex-direction:column; padding:10px 5px; font-size:9px; white-space:nowrap; } .secondary { display:none; } .more-menu { display:block; flex:1; min-width:58px; } summary { display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 5px; font-size:9px; color:var(--mb-muted); cursor:pointer; list-style:none; } summary::-webkit-details-marker { display:none; } .more-links { position:absolute; bottom:calc(100% + 12px); right:0; min-width:180px; padding:8px; background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:18px; box-shadow:0 8px 24px #0002; } .more-links a { flex-direction:row; font-size:12px; padding:14px; } nav svg { width:19px; height:19px; } .content { gap:16px; } .slot,.slot.compact { grid-column:1/-1; } .status { font-size:9px; } }
+  :host([data-theme=atmospheric]) .shell,:host([data-theme=storybook]) .shell { grid-template-columns:minmax(0,1fr); }
+  :host([data-theme=atmospheric]) aside,:host([data-theme=storybook]) aside { display:contents; }
+  :host([data-theme=atmospheric]) .brand,:host([data-theme=atmospheric]) .footnote,:host([data-theme=storybook]) .brand,:host([data-theme=storybook]) .footnote { display:none; }
+  :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { position:fixed; inset:auto auto 18px 50%; transform:translateX(-50%); z-index:10; flex-direction:row; gap:4px; padding:7px; max-width:calc(100% - 28px); background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:24px; backdrop-filter:blur(22px); box-shadow:0 15px 40px #0002; }
+  :host([data-theme=atmospheric]) main,:host([data-theme=storybook]) main { padding-bottom:110px; }
+  :host([data-theme=atmospheric]) .slot.rooms,:host([data-theme=storybook]) .slot.rooms { grid-column:1/-1; }
+  :host([data-theme=atmospheric]) .slot.devices,:host([data-theme=storybook]) .slot.devices { grid-column:1/-1; }
+  :host([data-theme=storybook]) main { padding-bottom:240px; }
+  @media(max-width:700px) { :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { inset:auto 12px 12px; transform:none; } }
+  @media(prefers-reduced-motion:no-preference) { a { transition:background .15s,color .15s; } }
+`;
+
   // src/design/dom.js
   function element(tag, text, className) {
     const node = document.createElement(tag);
@@ -371,6 +412,11 @@
     return node;
   }
   var paths = {
+    sofa: "M4 12V8a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v4M3 10a2 2 0 0 1 2 2v3h14v-3a2 2 0 0 1 4 0v7H1v-7a2 2 0 0 1 2-2ZM4 19v2m16-2v2",
+    bed: "M3 18V5m18 13V9a2 2 0 0 0-2-2H9v8M3 15h18M3 18h18M7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0",
+    kitchen: "M4 3h16v18H4zM4 10h16M8 5v3m0 5v4",
+    office: "M3 13h18M5 13v8m14-8v8M6 3h12v7H6zM10 10v3m4-3v3",
+    nursery: "M3 8h16l-3 9H6L3 5H1m6 16h.01M16 21h.01M5 8a6 6 0 0 1 12 0Z",
     home: "m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7",
     rooms: "M3 3h18v18H3zM3 12h9V3M12 12h9M12 12v9",
     climate: "M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0ZM12 8v10",
@@ -406,14 +452,62 @@
       window.dispatchEvent(new Event("location-changed"));
     });
   }
+  function roomIcon(room) {
+    const value = `${room.icon ?? ""} ${room.id}`.toLowerCase();
+    if (/sofa|living|wohn/.test(value)) return "sofa";
+    if (/bed|schlaf/.test(value)) return "bed";
+    if (/kitchen|kuche|countertop/.test(value)) return "kitchen";
+    if (/office|desk|arbeit/.test(value)) return "office";
+    if (/baby|nursery|kinder/.test(value)) return "nursery";
+    return "rooms";
+  }
+
+  // src/design/illustration.js
+  var trees = Array.from({ length: 16 }, (_, index) => {
+    const x = index * 105 - 30;
+    const y = 760 + index % 3 * 22;
+    return `<g transform="translate(${x} ${y})" opacity=".55"><path d="M0 0 30-88 60 0H42v28H20V0Z" fill="${index % 2 ? "#91aaa0" : "#b2c3ab"}"/></g>`;
+  }).join("");
+  var houses = [
+    [140, 134, "#cfb274", "M0 0 48-45 96 0"],
+    [242, 152, "#a6bdc1", "M0 0 48-60 96 0"],
+    [344, 115, "#c79988", "M0 0 48-30 96 0"],
+    [446, 184, "#88a98f", "M0 0 48-68 96 0"],
+    [548, 146, "#d2b785", "M0 0 48-36 96 0"]
+  ].map(([x, height, color, roof]) => `<g transform="translate(${x} ${875 - height})"><path d="${roof}" fill="${color}"/><rect width="96" height="${height}" fill="${color}" rx="2"/><path d="M34 ${height}v-48a14 14 0 0 1 28 0v48" fill="#f6ecd7"/>${[20, 62].flatMap((cx) => [20, 62].map((cy) => `<rect x="${cx}" y="${cy}" width="16" height="24" rx="7" fill="#f4e4ad"/><path d="M${cx + 8} ${cy}v24m-8-12h16" stroke="#fff8e9" stroke-width="2"/>`)).join("")}</g>`).join("");
+  var artwork = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000">
+<rect width="1600" height="1000" fill="#eee9dc"/>
+<circle cx="1400" cy="160" r="65" fill="#ead599" opacity=".5"/>
+<g fill="#faf7ef" opacity=".8"><ellipse cx="240" cy="115" rx="105" ry="21"/><ellipse cx="290" cy="101" rx="45" ry="25"/><ellipse cx="1160" cy="280" rx="90" ry="22"/><ellipse cx="1190" cy="263" rx="40" ry="29"/></g>
+<g transform="translate(1285 360)"><ellipse cy="-60" rx="42" ry="55" fill="#b8c9b4"/><path d="M0-115C-25-80-25-43 0-5M0-115C25-80 25-43 0-5" fill="none" stroke="#e8e3cb" stroke-width="10"/><path d="m-20-13 9 27m31-27-9 27" stroke="#ad9981" stroke-width="2"/><rect x="-14" y="12" width="28" height="19" rx="4" fill="#c4a278"/></g>
+<g transform="translate(1320 240) rotate(-15)"><ellipse rx="24" ry="14" fill="#dec477"/><path d="M-10-13v26M3-14v28" stroke="#6e735d" stroke-width="7"/><ellipse cx="-3" cy="-18" rx="10" ry="16" fill="#fffaf0" opacity=".8"/><circle cx="17" cy="-3" r="2" fill="#48574d"/></g>
+<path d="M0 720Q280 570 600 750T1600 680V1000H0Z" fill="#d4ddc7"/><path d="M0 810Q400 710 740 810T1600 750V1000H0Z" fill="#b8cbb7"/>
+${trees}${houses}
+<path d="M0 935Q430 860 780 933T1600 900V1000H0Z" fill="#9ab7a7"/>
+<g transform="translate(1320 970)"><path d="M-30 12q-90-8-96-44 66-8 86 23" fill="#c3936c"/><ellipse rx="42" ry="20" fill="#c3936c"/><path d="m20-12 9-29 16 24 18 15-30 20Z" fill="#c3936c"/><path d="m28-6 32 4-24 14Z" fill="#f3e8d5"/><circle cx="45" cy="-8" r="2.5" fill="#48574d"/><path d="m-22 9-6 27m40-27 6 27" stroke="#c3936c" stroke-width="9" stroke-linecap="round"/></g>
+<g fill="#e5c77c"><path d="m450 350 3 8 9 1-7 5 2 9-7-5-7 5 2-9-7-5 9-1Z"/><path d="m1460 450 3 8 9 1-7 5 2 9-7-5-7 5 2-9-7-5 9-1Z"/></g>
+</svg>`;
+  var storybookWallpaper = `url("data:image/svg+xml,${encodeURIComponent(artwork)}")`;
 
   // src/design/tokens.js
-  var palettes = {
-    ambient: { canvas: "#f4f3ee", surface: "#ffffff", soft: "#f0f1e9", ink: "#252b25", muted: "#72796c", line: "#e5e7dc", accent: "#53704b", active: "#e5eddb", hero: "#e9eddf" },
-    night: { canvas: "#171d19", surface: "#222b24", soft: "#2a342b", ink: "#eef1e7", muted: "#a7b29f", line: "#354136", accent: "#b6d29a", active: "#3b5033", hero: "#2c3c2c" }
+  var calm = {
+    ambient: { canvas: "#f4f3ee", surface: "#ffffff", soft: "#f0f1e9", ink: "#252b25", muted: "#72796c", line: "#e5e7dc", accent: "#53704b", active: "#e5eddb", hero: "#e9eddf", wallpaper: "none" },
+    night: { canvas: "#171d19", surface: "#222b24", soft: "#2a342b", ink: "#eef1e7", muted: "#a7b29f", line: "#354136", accent: "#b6d29a", active: "#3b5033", hero: "#2c3c2c", wallpaper: "none" }
   };
-  function themeProperties(mode) {
-    const palette = palettes[mode] ?? palettes.ambient;
+  var themes = {
+    calm,
+    atmospheric: {
+      ambient: { canvas: "#e5ecee", surface: "#f9fcfce6", soft: "#e7eef0", ink: "#202d35", muted: "#586d76", line: "#cad6dd", accent: "#506e90", active: "#e5e4fb", hero: "#ffffff0a", wallpaper: "radial-gradient(ellipse at 65% 50%,#a7c5d980,transparent 65%),radial-gradient(ellipse at 25% 10%,#c9c0df90,transparent 55%)" },
+      night: { canvas: "#111820", surface: "#1e2933d9", soft: "#2b3741", ink: "#eef4f6", muted: "#afc4cc", line: "#3c4b58", accent: "#d2c5ff", active: "#37354e", hero: "#ffffff00", wallpaper: "radial-gradient(ellipse at 60% 65%,#49728b80,transparent 62%),radial-gradient(ellipse at 35% 0%,#4a647680,transparent 55%),linear-gradient(145deg,#10131880,#13202b80)" }
+    },
+    storybook: {
+      ambient: { canvas: "#eee9dc", surface: "#fffdf5ed", soft: "#f0ecdc", ink: "#344a40", muted: "#687b68", line: "#d9dcc8", accent: "#627f62", active: "#e9ddb5", hero: "#fffdf56b", wallpaper: storybookWallpaper },
+      night: { canvas: "#172c2b", surface: "#223a38ed", soft: "#2e4640", ink: "#f3ecdb", muted: "#c0c9b1", line: "#4e6355", accent: "#e8c981", active: "#4d5940", hero: "#233a376b", wallpaper: `linear-gradient(#112c2acc,#112c2acc),${storybookWallpaper}` }
+    }
+  };
+  var palettes = themes.calm;
+  function themeProperties(mode, theme = "atmospheric") {
+    const palette = (themes[theme] ?? themes.atmospheric)[mode] ?? themes.atmospheric.ambient;
     return {
       ...Object.fromEntries(Object.entries(palette).map(([key, value]) => [`--mb-${key}`, value])),
       "--primary-background-color": palette.canvas,
@@ -428,13 +522,14 @@
       "--accent-color": palette.accent,
       "--ha-card-border-radius": "24px",
       "--ha-card-border-width": "1px",
-      "--ha-card-box-shadow": "none",
+      "--ha-card-box-shadow": "0 12px 32px #0000000d",
       "--state-light-active-color": palette.accent,
       "--state-switch-active-color": palette.accent
     };
   }
-  function applyTheme(node, mode) {
-    for (const [key, value] of Object.entries(themeProperties(mode))) node.style.setProperty(key, value);
+  function applyTheme(node, mode, theme) {
+    node.setAttribute("data-theme", theme ?? "atmospheric");
+    for (const [key, value] of Object.entries(themeProperties(mode, theme))) node.style.setProperty(key, value);
   }
 
   // src/core/state.js
@@ -468,31 +563,6 @@
   }
 
   // src/cards/shell.js
-  var shellStyles = `
-  :host { display:block; min-width:0; min-height:calc(100dvh - 56px); background:var(--mb-canvas); color:var(--mb-ink); font-family:Inter,'Avenir Next',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
-  * { box-sizing:border-box; } .shell { display:grid; grid-template-columns:210px minmax(0,1fr); min-height:inherit; }
-  aside { padding:38px 22px; border-right:1px solid var(--mb-line); display:flex; flex-direction:column; gap:48px; }
-  .brand { display:flex; gap:12px; align-items:center; font-weight:750; font-size:19px; letter-spacing:-.6px; }
-  .monogram { display:grid; place-items:center; width:40px; height:40px; border-radius:14px; background:var(--mb-accent); color:var(--mb-canvas); font-size:23px; }
-  nav { display:flex; flex-direction:column; gap:8px; position:sticky; top:30px; }
-  nav svg { flex-shrink:0; }
-  a { display:flex; align-items:center; gap:13px; padding:14px 15px; color:var(--mb-muted); text-decoration:none; border-radius:14px; font-size:13px; font-weight:600; }
-  a[aria-current=page] { background:var(--mb-active); color:var(--mb-accent); } a:hover { color:var(--mb-accent); background:var(--mb-soft); }
-  .more-menu { display:none; }
-  a:focus-visible { outline:2px solid var(--mb-accent); outline-offset:3px; }
-  .footnote { margin-top:auto; padding:24px 12px 0; font-size:10px; line-height:1.7; letter-spacing:2px; color:var(--mb-muted); text-transform:uppercase; }
-  main { min-width:0; padding:38px clamp(20px,3vw,52px) 48px; max-width:1560px; width:100%; margin:0 auto; }
-  .topline { display:flex; justify-content:space-between; align-items:center; margin:0 0 30px; color:var(--mb-muted); font-size:10px; letter-spacing:2px; text-transform:uppercase; }
-  .status { display:flex; align-items:center; gap:7px; letter-spacing:1px; } .dot { width:6px; height:6px; border-radius:50%; background:var(--mb-accent); }
-  .heading { font-size:36px; letter-spacing:-1.6px; font-weight:600; margin:0 0 30px; }
-  .content { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); align-items:start; gap:22px; }
-  .slot { min-width:0; grid-column:span 6; } .slot.wide { grid-column:1/-1; } .slot.rooms { grid-column:span 8; } .slot.compact { grid-column:span 4; }
-  .slot.devices { grid-column:span 8; } .slot ha-card { background:var(--mb-surface); }
-  @media(min-width:1700px) { .shell { grid-template-columns:240px minmax(0,1fr); } }
-  @media(max-width:1100px) { .shell { grid-template-columns:170px minmax(0,1fr); } aside { padding:28px 12px; } .brand { font-size:16px; } .slot.rooms,.slot.devices { grid-column:span 12; } .slot.compact { grid-column:span 6; } }
-  @media(max-width:700px) { .shell { display:flex; flex-direction:column; } aside { padding:16px; border:0; gap:18px; display:contents; } .brand,.footnote { display:none; } main { padding:22px 16px 92px; } .topline { margin-bottom:22px; letter-spacing:1px; } .heading { font-size:28px; } nav { position:fixed; inset:auto 12px 12px; z-index:10; flex-direction:row; overflow-x:auto; gap:2px; padding:7px; border:1px solid var(--mb-line); background:var(--mb-surface); border-radius:22px; box-shadow:0 8px 28px #00000012; } a { flex:1; min-width:58px; gap:5px; flex-direction:column; padding:10px 5px; font-size:9px; white-space:nowrap; } .secondary { display:none; } .more-menu { display:block; flex:1; min-width:58px; } summary { display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 5px; font-size:9px; color:var(--mb-muted); cursor:pointer; list-style:none; } summary::-webkit-details-marker { display:none; } .more-links { position:fixed; bottom:94px; right:14px; min-width:180px; padding:8px; background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:18px; box-shadow:0 8px 24px #0002; } .more-links a { flex-direction:row; font-size:12px; padding:14px; } nav svg { width:19px; height:19px; } .content { gap:16px; } .slot,.slot.compact { grid-column:1/-1; } .status { font-size:9px; } }
-  @media(prefers-reduced-motion:no-preference) { a { transition:background .15s,color .15s; } }
-`;
   var MufflonbauShell = class extends HTMLElement {
     constructor() {
       super();
@@ -508,7 +578,7 @@
     }
     set hass(hass) {
       this._hass = hass;
-      applyTheme(this, appearanceMode(this._config?.appearance, hass.states, hass.themes?.darkMode));
+      applyTheme(this, appearanceMode(this._config?.appearance, hass.states, hass.themes?.darkMode), this._config?.appearance?.theme);
       for (const card of this._children) card.hass = hass;
     }
     getCardSize() {
@@ -592,7 +662,7 @@
     }
   };
 
-  // src/cards/live-card.js
+  // src/design/live-styles.js
   var liveStyles = `
   :host { display:block; min-width:0; font-family:Inter,'Avenir Next',system-ui,sans-serif; }
   * { box-sizing:border-box; } ha-card { display:block; padding:26px; border-radius:24px; background:var(--mb-surface); color:var(--mb-ink); border:1px solid var(--mb-line); box-shadow:none; }
@@ -627,8 +697,43 @@
   .floor-map rect { stroke:var(--mb-line); stroke-width:3; fill:var(--mb-soft); } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
   .room-name { font-size:18px; font-weight:600; } .room-value { font-size:17px; } .message { color:var(--mb-muted); line-height:1.7; font-size:13px; }
   @media(max-width:700px) { ha-card { padding:20px; } .hero { padding:26px 22px; } .header { align-items:start; flex-wrap:wrap; } .clock { font-size:42px; } .clock-wrap { text-align:left; } h1 { font-size:34px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .room-tile { padding:14px; } .value { font-size:28px; } .device { padding:14px; } }
+  ha-card:not([data-theme=calm]) { backdrop-filter:blur(18px); box-shadow:0 12px 32px #0000000d; }
+  .hero:not([data-theme=calm]),.room-board:not([data-theme=calm]) { padding:0; background:transparent; border:0; box-shadow:none; backdrop-filter:none; }
+  .hero:not([data-theme=calm]):after { display:none; }
+  .overview-grid { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:42px; min-height:225px; padding:8px 0 22px; }
+  .overview-grid h1 { font-size:29px; font-weight:550; letter-spacing:-1px; margin:0 0 12px; }
+  .overview-grid h2 { font-size:17px; font-weight:550; margin-bottom:20px; }
+  .overview-date { color:var(--mb-muted); font-size:12px; line-height:1.7; }
+  .weather-chips { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:20px; }
+  .chip { display:inline-flex; gap:7px; align-items:center; padding:8px 11px; border-radius:20px; background:var(--mb-active); color:var(--mb-ink); font-size:11px; }
+  .chip svg { width:16px; height:16px; } .reading { display:flex; gap:12px; align-items:center; padding:20px 0; }
+  .reading strong { font-size:42px; font-weight:450; letter-spacing:-2px; } .reading small { font-size:11px; }
+  .climate-pills { display:flex; gap:10px; } .climate-pills .chip { background:var(--mb-soft); }
+  .calendar-entry { display:flex; align-items:center; gap:15px; margin:14px 0; font-size:12px; padding:10px 0; }
+  .calendar-date { border-right:3px solid var(--mb-accent); padding-right:12px; min-width:45px; font-size:26px; font-weight:500; letter-spacing:-1px; } .calendar-entry strong { font-size:12px; line-height:1.5; }
+  .room-board:not([data-theme=calm]) .grid { grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:12px; }
+  .room-board:not([data-theme=calm]) .room-tile { position:relative; min-height:205px; padding:17px; background:#adc9d3; color:#1e3034; border:0; border-radius:27px; overflow:hidden; box-shadow:0 8px 22px #00000013; }
+  .room-board:not([data-theme=calm]) .room-tile:nth-child(4n+2) { background:#b6cbc3; }
+  .room-board:not([data-theme=calm]) .room-tile:nth-child(4n+3) { background:#c5c0d9; }
+  .room-board:not([data-theme=calm]) .room-tile:nth-child(4n) { background:#d5c6a9; }
+  .room-board[data-theme=storybook] .room-tile { background:#b8cbbb; } .room-board[data-theme=storybook] .room-tile:nth-child(4n+2) { background:#e0c999; } .room-board[data-theme=storybook] .room-tile:nth-child(4n+3) { background:#bbcfd4; } .room-board[data-theme=storybook] .room-tile:nth-child(4n) { background:#d6bbb0; }
+  .room-board:not([data-theme=calm]) .room-top { margin-bottom:0; position:absolute; top:15px; right:12px; flex-direction:column; gap:8px; z-index:2; }
+  .room-board:not([data-theme=calm]) .icon-disc { display:none; }
+  .room-board:not([data-theme=calm]) .room-link,.circle-toggle { width:32px; height:32px; display:grid; place-items:center; padding:0; border-radius:50%; background:#26343c; color:#e8eef0; }
+  .circle-toggle svg { width:17px; height:17px; } .circle-toggle[aria-checked=true] { background:#f1d787; color:#524d32; }
+  .room-board:not([data-theme=calm]) .climate-button { position:relative; padding-right:30px; z-index:1; }
+  .room-board:not([data-theme=calm]) .climate-button strong { color:#24383a; font-weight:650; font-size:12px; }
+  .room-board:not([data-theme=calm]) .value { font-size:26px; margin-top:8px; letter-spacing:-1px; }
+  .room-board:not([data-theme=calm]) .climate-button small { color:#33494b; font-size:10px; line-height:1.5; }
+  .room-art { position:absolute; bottom:18px; left:18px; color:#516965; z-index:0; } .room-art:before { content:''; position:absolute; width:105px; height:105px; background:#f5edc22e; border-radius:50%; top:-22px; left:-26px; }
+  .room-art svg { position:relative; width:70px; height:70px; stroke-width:1.6; } .lit .room-art { color:#f6df94; }
+  [data-theme=calm] .room-art,[data-theme=calm] .circle-toggle { display:none; }
+  @media(max-width:900px) { .overview-grid { grid-template-columns:1fr 1fr; gap:26px; } .agenda { grid-column:1/-1; display:flex; align-items:start; gap:20px; flex-wrap:wrap; } .agenda h2 { margin:10px 0; } .calendar-entry { margin:0; } }
+  @media(max-width:600px) { .overview-grid { grid-template-columns:1fr; gap:20px; } .agenda { display:block; } .overview-grid h1 { font-size:27px; } .overview-grid h2 { margin-bottom:12px; } .reading { padding:8px 0; } .room-board:not([data-theme=calm]) .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .room-board:not([data-theme=calm]) .room-tile { min-height:220px; padding:15px; } .room-board:not([data-theme=calm]) .climate-button { padding-right:22px; } .room-board:not([data-theme=calm]) .room-top { right:8px; } .room-art svg { width:64px; height:64px; } }
   @media(prefers-reduced-motion:reduce) { .switch:after { transition:none; } }
 `;
+
+  // src/cards/live-card.js
   var MufflonbauLiveCard = class extends HTMLElement {
     constructor() {
       super();
@@ -692,7 +797,7 @@
       const style = element("style", liveStyles);
       const card = element("ha-card");
       card.className = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
-      applyTheme(card, card.className);
+      applyTheme(card, card.className, this._config.appearance?.theme);
       if (this._config.mode === "header") this._header(card, text);
       if (this._config.mode === "climate") this._climate(card, text);
       if (this._config.mode === "warnings") this._warnings(card, text);
@@ -712,6 +817,61 @@
       card.append(head);
     }
     _header(card, text) {
+      if (this._config.appearance?.theme === "calm") return this._calmHeader(card, text);
+      card.classList.add("hero");
+      const now = /* @__PURE__ */ new Date();
+      const timezone = this._hass.config?.time_zone;
+      const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: timezone }).format(now));
+      const grid = element("div", void 0, "overview-grid");
+      const welcome = element("section");
+      welcome.append(element("h1", hour < 12 ? text.morning : hour < 18 ? text.afternoon : text.evening), element("div", new Intl.DateTimeFormat(this._language, { dateStyle: "full", timeStyle: "short", timeZone: timezone }).format(now), "overview-date"));
+      const weather = this._hass.states[this._config.weather];
+      if (weather && !isOffline(weather)) {
+        const chips = element("div", void 0, "weather-chips");
+        const chip = element("span", void 0, "chip");
+        chip.append(icon("sun"), element("span", `${weather.attributes.temperature ?? "–"} ${weather.attributes.temperature_unit ?? "°C"}`));
+        chips.append(chip);
+        if (weather.attributes.humidity !== void 0) chips.append(element("span", `${weather.attributes.humidity}% · ${text.humidity}`, "chip"));
+        if (weather.attributes.wind_speed !== void 0) chips.append(element("span", `${weather.attributes.wind_speed} ${weather.attributes.wind_speed_unit ?? ""} · ${text.wind}`, "chip"));
+        welcome.append(chips);
+      }
+      const climate = element("section");
+      climate.append(element("h2", text.indoorClimate));
+      const temps = (this._config.rooms ?? []).map((room) => this._hass.states[room.temperature]).filter((state) => numericState(state) !== null);
+      const unit = temps[0]?.attributes?.unit_of_measurement ?? "°C";
+      const compatible = temps.filter((state) => (state.attributes?.unit_of_measurement ?? "°C") === unit);
+      const humidities = (this._config.rooms ?? []).map((room) => numericState(this._hass.states[room.humidity])).filter((value) => value !== null);
+      if (compatible.length) {
+        const average = compatible.reduce((sum, state) => sum + numericState(state), 0) / compatible.length;
+        const reading = element("div", void 0, "reading");
+        reading.append(icon("climate"), element("strong", `${new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(average)} ${unit}`));
+        climate.append(reading);
+        const pills = element("div", void 0, "climate-pills");
+        pills.append(element("span", `${compatible.length} · ${text.rooms}`, "chip"));
+        if (humidities.length) pills.append(element("span", `${Math.round(humidities.reduce((a, b) => a + b, 0) / humidities.length)}% · ${text.humidity}`, "chip"));
+        climate.append(pills);
+      } else climate.append(element("small", text.offline));
+      const agenda = element("section", void 0, "agenda");
+      agenda.append(element("h2", text.calendar));
+      let events = 0;
+      for (const id of this._config.calendars ?? []) {
+        const state = this._hass.states[id];
+        if (isOffline(state) || !state.attributes?.message) continue;
+        const start = new Date(state.attributes.start_time);
+        const entry = element("div", void 0, "calendar-entry");
+        if (Number.isFinite(start.getTime())) entry.append(element("div", new Intl.DateTimeFormat(this._language, { day: "numeric", timeZone: timezone }).format(start), "calendar-date"));
+        const detail = element("div");
+        detail.append(element("strong", state.attributes.message));
+        if (Number.isFinite(start.getTime())) detail.append(element("small", new Intl.DateTimeFormat(this._language, { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: timezone }).format(start)));
+        entry.append(detail);
+        agenda.append(entry);
+        events++;
+      }
+      if (!events) agenda.append(element("small", text.noEvents));
+      grid.append(welcome, climate, agenda);
+      card.append(grid);
+    }
+    _calmHeader(card, text) {
       card.classList.add("hero");
       const now = /* @__PURE__ */ new Date();
       const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: this._hass.config?.time_zone }).format(now));
@@ -745,6 +905,7 @@
       }
     }
     _climate(card, text) {
+      card.classList.add("room-board");
       this._section(card, text.rooms, String((this._config.rooms ?? []).length).padStart(2, "0"));
       const grid = element("div", void 0, "grid");
       for (const room of this._config.rooms ?? []) {
@@ -752,13 +913,36 @@
         const tile = element("article", void 0, `room-tile${lit ? " lit" : ""}`);
         const top = element("div", void 0, "room-top");
         const disc = element("span", void 0, "icon-disc");
-        disc.append(icon("rooms"));
+        disc.append(icon(roomIcon(room)));
         const link = element("a", void 0, "room-link");
         link.setAttribute("aria-label", localized(room.name, this._language));
         link.setAttribute("data-room", room.id);
         navigateLink(link, `room-${room.id}`);
         link.append(icon("arrow"));
         top.append(disc, link);
+        for (const id of (room.lights ?? []).slice(0, 3)) {
+          const control = element("button", void 0, "circle-toggle");
+          control.type = "button";
+          control.dataset.entity = id;
+          control.setAttribute("role", "switch");
+          control.setAttribute("aria-checked", String(this._hass.states[id]?.state === "on"));
+          control.setAttribute("aria-label", this._name(id));
+          control.disabled = isOffline(this._hass.states[id]);
+          control.append(icon("light"));
+          control.addEventListener("click", async () => {
+            control.disabled = true;
+            try {
+              await this._hass.callService("homeassistant", "toggle", {}, { entity_id: id });
+            } catch {
+              const error = element("small", text.actionFailed);
+              error.setAttribute("role", "alert");
+              tile.append(error);
+            } finally {
+              control.disabled = isOffline(this._hass.states[id]);
+            }
+          });
+          top.append(control);
+        }
         const button = element("button", void 0, "climate-button");
         button.type = "button";
         button.dataset.entity = room.temperature ?? room.humidity ?? room.dew_point ?? "";
@@ -767,7 +951,10 @@
         if (room.humidity) button.append(element("small", `${this._value(room.humidity, "%")} · ${text.humidity}`));
         if (room.dew_point) button.append(element("small", `${text.dewPoint}: ${this._value(room.dew_point, "°C")}`));
         button.addEventListener("click", () => button.dataset.entity ? this._moreInfo(button.dataset.entity) : link.click());
-        tile.append(top, button);
+        const art = element("span", void 0, "room-art");
+        art.setAttribute("aria-hidden", "true");
+        art.append(icon(roomIcon(room)));
+        tile.append(top, button, art);
         grid.append(tile);
       }
       card.append(grid);

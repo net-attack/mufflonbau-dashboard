@@ -1,0 +1,25 @@
+# Paste into the strategy editor. Replace the illustrative entity IDs.
+type: custom:mufflonbau
+title: Mufflonbau
+language: auto
+appearance:
+  theme: storybook
+  mode: ambient
+rooms:
+  - id: living
+    name:
+      en: Living room
+      de: Wohnzimmer
+    icon: mdi:sofa-outline
+    temperature: sensor.living_temperature
+    humidity: sensor.living_humidity
+    lights:
+      - light.living
+  - id: nursery
+    name:
+      en: Nursery
+      de: Kinderzimmer
+    icon: mdi:baby-carriage
+    temperature: sensor.nursery_temperature
+    lights:
+      - light.nursery

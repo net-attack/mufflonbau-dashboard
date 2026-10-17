@@ -17,7 +17,7 @@ that need to change without regenerating the strategy.
 | `src/modules/system.js` | Live warnings, monitored entities, expert inventory |
 | `src/cards/live-card.js` | Branded live cards, state displays, and light/switch controls |
 | `src/cards/shell.js` | Full-width panel, desktop/mobile navigation, and native card hosting |
-| `src/design/` | Shared color tokens, DOM/icon factories, and navigation helpers |
+| `src/design/` | Theme palettes, component styles, bundled original vector scenery, DOM/icons, and navigation helpers |
 | `src/strategy.js` | Compose enabled feature views from a single configuration |
 | `src/index.js` | Idempotent custom element and HA strategy registration |
 | `scripts/build.mjs` | Deterministic single-file HACS output |
@@ -37,6 +37,10 @@ card also receives `hass`; it rerenders when one of its referenced state objects
 the locale, or the theme changes. The header has a 30-second clock timer that is
 cleared when disconnected. Entity detail requests use the HA `hass-more-info`
 event; floorplan links use HA navigation and preserve normal modified link clicks.
+The `appearance.theme` preset is independent of the ambient/night appearance rule.
+Themes share the same modules, entity mapping, and actions; only semantic tokens
+and presentation change. Reference imagery is never fetched by the runtime.
+
 The shell hosts native detail cards via `window.loadCardHelpers()` and propagates
 `hass`. All cards inherit the same semantic color tokens and HA card variables.
 It does not modify global themes or reach into HA card shadow roots.

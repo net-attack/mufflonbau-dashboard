@@ -34,16 +34,44 @@ not appear. Reload the browser after downloading.
 
 ## Design
 
-The dashboard uses its own full-width layout with a sidebar on desktop and a
-bottom navigation bar on phones. The home view combines a greeting and clock,
-room climate cards, direct light switches, presence, cleaning status, and warnings.
-A warm neutral palette with sage accents and a matching dark palette share the
-same design tokens across custom and native detail cards. The weekly calendar
-has its own view; room arrows open room details and sensor values open HA details.
+Choose a design through `appearance.theme`, independently of its light/dark mode:
 
-Keep `appearance.mode: auto` to retain your existing theme/presence behavior, or
-choose `ambient` for the light palette and `night` for the dark palette. Existing
-strategy configurations continue to work without migration.
+| Theme | Appearance |
+| --- | --- |
+| `atmospheric` (default) | Blue-gray atmosphere, translucent panels, pastel room tiles, large room symbols, circular light controls |
+| `storybook` | Cream, sage, honey yellow, and an original illustrated landscape with houses, balloon, bee, and fox |
+| `calm` | The earlier neutral/sage design with a desktop sidebar |
+
+For the illustrated family theme, merge these options into your existing strategy
+configuration; keep your existing rooms and entities:
+
+```yaml
+appearance:
+  theme: storybook
+  mode: ambient
+```
+
+For the dark dashboard inspired by the reference:
+
+```yaml
+appearance:
+  theme: atmospheric
+  mode: night
+```
+
+Use `mode: auto` for the existing HA theme/presence-based light/dark selection.
+All three themes have matching light and dark palettes, including native detail
+cards. No global Home Assistant theme is changed. The original vector illustration
+is bundled locally; the dashboard does not download reference images or fonts.
+See [examples/storybook.yaml](examples/storybook.yaml) for a complete generic example.
+
+The home view combines greeting/date, current weather readings, indoor climate
+averages, calendar summaries, live room tiles, lights, presence, cleaning, and
+warnings. Climate averages include available numeric sensors with matching units.
+Room symbols use the configured icon or recognizable room ID. Tap a circular bulb
+to toggle its configured light; use the arrow for room details. The detailed
+calendar and history remain in their own views. The illustrated theme is a visual
+preset and does not change device permissions or actions.
 
 ## Configuration
 
@@ -63,7 +91,7 @@ sections are optional; omitted sections generate no corresponding view.
 | `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, and `map` (camera) IDs |
 | `monitors` | Objects containing `entity`, optional `name`, and optional `battery_below` threshold |
 | `expert_entities` | Additional entities to include in the expert view |
-| `appearance` | `mode: auto`, `ambient`, or `night`; shared across the complete dashboard |
+| `appearance` | `theme: atmospheric`, `storybook`, or `calm`; `mode: auto`, `ambient`, or `night` |
 | `kiosk_mode` | Optional pass-through for the separately installed Kiosk Mode plugin |
 
 Each room has a unique stable `id` (lowercase slug) and a `name` (string or
@@ -144,7 +172,7 @@ from Git and are not uploaded to GitHub.
 Browser checks cover live state updates, English/German text, battery warnings,
 entity detail events, floorplan links, mobile overflow, safe labels, clock cleanup,
 rendering of the actual YAML examples, consistent surface colors, complete
-desktop/mobile layouts, light toggles, and action failures. GitHub Actions runs on every push and
+desktop/mobile layouts for all six theme/mode combinations, light toggles, and action failures. GitHub Actions runs on every push and
 pull request, installs Chromium and its system dependencies, and retains browser
 screenshots as artifacts for seven days. Screenshots are written to the ignored
 `test-results/` directory. `npm run test:browser` runs just the browser checks.

@@ -1,44 +1,9 @@
+import { liveStyles } from '../design/live-styles.js';
 import { localized, resolveLanguage, translations } from '../core/i18n.js';
 import { appearanceMode, isOffline, monitorWarnings, numericState } from '../core/state.js';
 
-import { element, svgElement, icon, navigateLink } from '../design/dom.js';
+import { element, svgElement, icon, navigateLink, roomIcon } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
-const liveStyles = `
-  :host { display:block; min-width:0; font-family:Inter,'Avenir Next',system-ui,sans-serif; }
-  * { box-sizing:border-box; } ha-card { display:block; padding:26px; border-radius:24px; background:var(--mb-surface); color:var(--mb-ink); border:1px solid var(--mb-line); box-shadow:none; }
-  h2 { margin:0; font-size:17px; letter-spacing:-.4px; font-weight:650; } p { margin:6px 0; }
-  .section-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; } .eyebrow { font-size:10px; font-weight:650; letter-spacing:2px; text-transform:uppercase; color:var(--mb-muted); }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; }
-  button { min-width:0; text-align:start; font:inherit; color:inherit; border:0; background:transparent; cursor:pointer; }
-  button:disabled { opacity:.5; cursor:default; } button:focus-visible,a:focus-visible { outline:2px solid var(--mb-accent); outline-offset:4px; }
-  strong,small { display:block; } small { color:var(--mb-muted); font-size:11px; line-height:1.6; margin-top:5px; }
-  svg { flex-shrink:0; } .icon-disc { display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:13px; background:var(--mb-soft); color:var(--mb-accent); }
-  .room-tile { padding:18px; border:1px solid var(--mb-line); border-radius:20px; min-width:0; } .room-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
-  .room-link { color:var(--mb-muted); } .room-link svg { width:17px; } .climate-button { padding:0; width:100%; } .climate-button strong { font-size:12px; font-weight:550; color:var(--mb-muted); }
-  .value { font-size:34px; letter-spacing:-1.5px; font-weight:500; margin-top:10px; line-height:1.3; } .room-tile.lit .icon-disc { background:var(--mb-active); }
-  .warning { display:flex; gap:12px; align-items:center; padding:12px 0; width:100%; border-bottom:1px solid var(--mb-line); } .warning:last-child { border:0; } .warning .icon-disc { color:#b67545; } .warning strong { overflow-wrap:anywhere; font-size:12px; font-weight:600; }
-  .healthy { display:flex; align-items:center; gap:12px; color:var(--mb-accent); font-size:13px; line-height:1.7; padding:8px 0; }
-  .hero { padding:32px; background:var(--mb-hero); overflow:hidden; position:relative; border:0; }
-  .hero:after { content:''; position:absolute; width:330px; height:330px; border:1px solid var(--mb-accent); opacity:.1; border-radius:50%; right:90px; top:-170px; box-shadow:0 0 0 50px var(--mb-hero),0 0 0 51px var(--mb-accent); pointer-events:none; }
-  .header { display:flex; align-items:center; justify-content:space-between; gap:24px; position:relative; z-index:1; }
-  h1 { margin:12px 0; font-size:clamp(30px,3.3vw,48px); letter-spacing:-2px; line-height:1.15; font-weight:550; }
-  .hero-copy { color:var(--mb-muted); font-size:12px; } .clock { font-size:52px; font-weight:400; letter-spacing:-3px; font-variant-numeric:tabular-nums; line-height:1.2; }
-  .clock-wrap { text-align:right; } .weather { display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--mb-accent); margin-top:12px; }
-  .event { display:flex; align-items:center; gap:12px; border-top:1px solid var(--mb-line); margin-top:25px; padding-top:18px; font-size:12px; } .event small { margin:0; }
-  .people { display:flex; gap:13px; align-items:center; padding:12px 0; } .avatar { width:42px; height:42px; border-radius:50%; display:grid; place-items:center; background:var(--mb-soft); font-size:13px; font-weight:600; color:var(--mb-accent); } .people strong { font-size:13px; } .people small { margin:2px 0 0; }
-  .person-state { margin-left:auto; font-size:10px; color:var(--mb-muted); } .person-state.home { background:var(--mb-active); color:var(--mb-accent); padding:6px 9px; border-radius:8px; }
-  .device { padding:16px; border:1px solid var(--mb-line); border-radius:18px; display:flex; flex-direction:column; gap:15px; } .device.is-on { background:var(--mb-soft); border-color:transparent; }
-  .device-top { display:flex; justify-content:space-between; align-items:center; } .device-label { padding:0; width:100%; } .device strong { font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
-  .switch { width:36px; height:22px; padding:3px; background:var(--mb-line); border-radius:20px; } .switch:after { content:''; display:block; width:16px; height:16px; border-radius:50%; background:var(--mb-surface); transition:transform .15s; }
-  .switch[aria-checked=true] { background:var(--mb-accent); } .switch[aria-checked=true]:after { transform:translateX(14px); }
-  .robot { display:flex; align-items:center; gap:16px; padding:8px 0 18px; } .robot .icon-disc { width:62px; height:62px; border-radius:50%; } .robot strong { font-size:13px; line-height:1.5; }
-  .link { display:flex; align-items:center; justify-content:space-between; padding-top:15px; border-top:1px solid var(--mb-line); font-size:12px; color:var(--mb-accent); text-decoration:none; }
-  .floor-map { width:100%; height:auto; max-height:65vh; margin-top:12px; } .floor-map text { fill:var(--mb-ink); pointer-events:none; }
-  .floor-map rect { stroke:var(--mb-line); stroke-width:3; fill:var(--mb-soft); } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
-  .room-name { font-size:18px; font-weight:600; } .room-value { font-size:17px; } .message { color:var(--mb-muted); line-height:1.7; font-size:13px; }
-  @media(max-width:700px) { ha-card { padding:20px; } .hero { padding:26px 22px; } .header { align-items:start; flex-wrap:wrap; } .clock { font-size:42px; } .clock-wrap { text-align:left; } h1 { font-size:34px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .room-tile { padding:14px; } .value { font-size:28px; } .device { padding:14px; } }
-  @media(prefers-reduced-motion:reduce) { .switch:after { transition:none; } }
-`;
 export class MufflonbauLiveCard extends HTMLElement {
   constructor() {
     super();
@@ -90,7 +55,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     const style = element('style', liveStyles);
     const card = element('ha-card');
     card.className = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
-    applyTheme(card, card.className);
+    applyTheme(card, card.className, this._config.appearance?.theme);
     if (this._config.mode === 'header') this._header(card, text);
     if (this._config.mode === 'climate') this._climate(card, text);
     if (this._config.mode === 'warnings') this._warnings(card, text);
@@ -110,6 +75,49 @@ export class MufflonbauLiveCard extends HTMLElement {
     card.append(head);
   }
   _header(card, text) {
+    if (this._config.appearance?.theme === 'calm') return this._calmHeader(card, text);
+    card.classList.add('hero');
+    const now = new Date();
+    const timezone = this._hass.config?.time_zone;
+    const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: timezone }).format(now));
+    const grid = element('div', undefined, 'overview-grid');
+    const welcome = element('section');
+    welcome.append(element('h1', hour < 12 ? text.morning : hour < 18 ? text.afternoon : text.evening), element('div', new Intl.DateTimeFormat(this._language, { dateStyle: 'full', timeStyle: 'short', timeZone: timezone }).format(now), 'overview-date'));
+    const weather = this._hass.states[this._config.weather];
+    if (weather && !isOffline(weather)) {
+      const chips = element('div', undefined, 'weather-chips');
+      const chip = element('span', undefined, 'chip'); chip.append(icon('sun'), element('span', `${weather.attributes.temperature ?? '–'} ${weather.attributes.temperature_unit ?? '°C'}`)); chips.append(chip);
+      if (weather.attributes.humidity !== undefined) chips.append(element('span', `${weather.attributes.humidity}% · ${text.humidity}`, 'chip'));
+      if (weather.attributes.wind_speed !== undefined) chips.append(element('span', `${weather.attributes.wind_speed} ${weather.attributes.wind_speed_unit ?? ''} · ${text.wind}`, 'chip'));
+      welcome.append(chips);
+    }
+    const climate = element('section'); climate.append(element('h2', text.indoorClimate));
+    const temps = (this._config.rooms ?? []).map(room => this._hass.states[room.temperature]).filter(state => numericState(state) !== null);
+    const unit = temps[0]?.attributes?.unit_of_measurement ?? '°C';
+    const compatible = temps.filter(state => (state.attributes?.unit_of_measurement ?? '°C') === unit);
+    const humidities = (this._config.rooms ?? []).map(room => numericState(this._hass.states[room.humidity])).filter(value => value !== null);
+    if (compatible.length) {
+      const average = compatible.reduce((sum, state) => sum + numericState(state), 0) / compatible.length;
+      const reading = element('div', undefined, 'reading'); reading.append(icon('climate'), element('strong', `${new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(average)} ${unit}`)); climate.append(reading);
+      const pills = element('div', undefined, 'climate-pills'); pills.append(element('span', `${compatible.length} · ${text.rooms}`, 'chip'));
+      if (humidities.length) pills.append(element('span', `${Math.round(humidities.reduce((a, b) => a + b, 0) / humidities.length)}% · ${text.humidity}`, 'chip'));
+      climate.append(pills);
+    } else climate.append(element('small', text.offline));
+    const agenda = element('section', undefined, 'agenda'); agenda.append(element('h2', text.calendar));
+    let events = 0;
+    for (const id of this._config.calendars ?? []) {
+      const state = this._hass.states[id]; if (isOffline(state) || !state.attributes?.message) continue;
+      const start = new Date(state.attributes.start_time);
+      const entry = element('div', undefined, 'calendar-entry');
+      if (Number.isFinite(start.getTime())) entry.append(element('div', new Intl.DateTimeFormat(this._language, { day: 'numeric', timeZone: timezone }).format(start), 'calendar-date'));
+      const detail = element('div'); detail.append(element('strong', state.attributes.message));
+      if (Number.isFinite(start.getTime())) detail.append(element('small', new Intl.DateTimeFormat(this._language, { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: timezone }).format(start)));
+      entry.append(detail); agenda.append(entry); events++;
+    }
+    if (!events) agenda.append(element('small', text.noEvents));
+    grid.append(welcome, climate, agenda); card.append(grid);
+  }
+  _calmHeader(card, text) {
     card.classList.add('hero');
     const now = new Date();
     const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: this._hass.config?.time_zone }).format(now));
@@ -139,15 +147,27 @@ export class MufflonbauLiveCard extends HTMLElement {
     }
   }
   _climate(card, text) {
+    card.classList.add('room-board');
     this._section(card, text.rooms, String((this._config.rooms ?? []).length).padStart(2, '0'));
     const grid = element('div', undefined, 'grid');
     for (const room of this._config.rooms ?? []) {
       const lit = (room.lights ?? []).some(id => this._hass.states[id]?.state === 'on');
       const tile = element('article', undefined, `room-tile${lit ? ' lit' : ''}`);
       const top = element('div', undefined, 'room-top');
-      const disc = element('span', undefined, 'icon-disc'); disc.append(icon('rooms'));
+      const disc = element('span', undefined, 'icon-disc'); disc.append(icon(roomIcon(room)));
       const link = element('a', undefined, 'room-link');
       link.setAttribute('aria-label', localized(room.name, this._language)); link.setAttribute('data-room', room.id); navigateLink(link, `room-${room.id}`); link.append(icon('arrow')); top.append(disc, link);
+      for (const id of (room.lights ?? []).slice(0, 3)) {
+        const control = element('button', undefined, 'circle-toggle'); control.type = 'button'; control.dataset.entity = id;
+        control.setAttribute('role', 'switch'); control.setAttribute('aria-checked', String(this._hass.states[id]?.state === 'on')); control.setAttribute('aria-label', this._name(id));
+        control.disabled = isOffline(this._hass.states[id]); control.append(icon('light'));
+        control.addEventListener('click', async () => {
+          control.disabled = true;
+          try { await this._hass.callService('homeassistant', 'toggle', {}, { entity_id: id }); }
+          catch { const error = element('small', text.actionFailed); error.setAttribute('role', 'alert'); tile.append(error); }
+          finally { control.disabled = isOffline(this._hass.states[id]); }
+        }); top.append(control);
+      }
       const button = element('button', undefined, 'climate-button');
       button.type = 'button';
       button.dataset.entity = room.temperature ?? room.humidity ?? room.dew_point ?? '';
@@ -156,7 +176,8 @@ export class MufflonbauLiveCard extends HTMLElement {
       if (room.humidity) button.append(element('small', `${this._value(room.humidity, '%')} · ${text.humidity}`));
       if (room.dew_point) button.append(element('small', `${text.dewPoint}: ${this._value(room.dew_point, '°C')}`));
       button.addEventListener('click', () => button.dataset.entity ? this._moreInfo(button.dataset.entity) : link.click());
-      tile.append(top, button); grid.append(tile);
+      const art = element('span', undefined, 'room-art'); art.setAttribute('aria-hidden', 'true'); art.append(icon(roomIcon(room)));
+      tile.append(top, button, art); grid.append(tile);
     }
     card.append(grid);
   }

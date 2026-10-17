@@ -6,6 +6,7 @@ people: []
 calendars: []
 entities: []
 appearance:
+  theme: atmospheric
   mode: auto
 rooms:
   - id: living

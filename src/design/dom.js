@@ -11,6 +11,11 @@ export function svgElement(tag, attributes = {}, text) {
   return node;
 }
 const paths = {
+  sofa: 'M4 12V8a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v4M3 10a2 2 0 0 1 2 2v3h14v-3a2 2 0 0 1 4 0v7H1v-7a2 2 0 0 1 2-2ZM4 19v2m16-2v2',
+  bed: 'M3 18V5m18 13V9a2 2 0 0 0-2-2H9v8M3 15h18M3 18h18M7 10a2 2 0 1 1-4 0 2 2 0 0 1 4 0',
+  kitchen: 'M4 3h16v18H4zM4 10h16M8 5v3m0 5v4',
+  office: 'M3 13h18M5 13v8m14-8v8M6 3h12v7H6zM10 10v3m4-3v3',
+  nursery: 'M3 8h16l-3 9H6L3 5H1m6 16h.01M16 21h.01M5 8a6 6 0 0 1 12 0Z',
   home: 'm3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7',
   rooms: 'M3 3h18v18H3zM3 12h9V3M12 12h9M12 12v9',
   climate: 'M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0ZM12 8v10',
@@ -45,4 +50,14 @@ export function navigateLink(link, path) {
     window.history.pushState(null, '', navigationUrl(path));
     window.dispatchEvent(new Event('location-changed'));
   });
+}
+
+export function roomIcon(room) {
+  const value = `${room.icon ?? ''} ${room.id}`.toLowerCase();
+  if (/sofa|living|wohn/.test(value)) return 'sofa';
+  if (/bed|schlaf/.test(value)) return 'bed';
+  if (/kitchen|kuche|countertop/.test(value)) return 'kitchen';
+  if (/office|desk|arbeit/.test(value)) return 'office';
+  if (/baby|nursery|kinder/.test(value)) return 'nursery';
+  return 'rooms';
 }

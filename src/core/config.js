@@ -95,6 +95,7 @@ export function normalizeConfig(config) {
   }
   if (result.appearance !== undefined) {
     object(result.appearance, 'appearance');
+    if (!['calm', 'atmospheric', 'storybook'].includes(result.appearance.theme ?? 'atmospheric')) fail('appearance.theme', 'must be calm, atmospheric, or storybook.');
     if (!['auto', 'ambient', 'night'].includes(result.appearance.mode ?? 'auto')) fail('appearance.mode', 'must be auto, ambient, or night.');
     for (const key of ['night_person', 'ambient_person']) {
       if (result.appearance[key] !== undefined) entity(result.appearance[key], `appearance.${key}`);

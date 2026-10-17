@@ -1,8 +1,16 @@
-// Optional browser verification: install Playwright separately and run this script.
+// Browser verification shared by local npm run ci and GitHub Actions.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir, mkdir } from 'node:fs/promises';
+import { load, YAML11_SCHEMA } from 'js-yaml';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
+await mkdir(new URL('../test-results/', import.meta.url), { recursive: true });
+const samples = [];
+for (const file of await readdir(new URL('../examples/', import.meta.url))) {
+  if (!file.endsWith('.yaml')) continue;
+  const parsed = load(await readFile(new URL(`../examples/${file}`, import.meta.url), 'utf8'), { schema: YAML11_SCHEMA });
+  samples.push(parsed.strategy ?? parsed);
+}
 const bundle = await readFile(new URL('../mufflonbau-dashboard.js', import.meta.url));
 const server = createServer((request, response) => {
   response.setHeader('Content-Type', request.url === '/bundle.js' ? 'text/javascript' : 'text/html');
@@ -67,9 +75,8 @@ try {
   assert.match(await page.locator('#climate ha-card').innerText(), /Living room/);
   assert.equal(await page.locator('ha-card.night').count(), 4);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: '/tmp/mufflonbau-mobile.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/mufflonbau-mobile.png', fullPage: true });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
-  await page.screenshot({ path: '/tmp/mufflonbau-mobile.png', fullPage: true });
   await page.evaluate(() => {
     const card = document.querySelector('#climate');
     card.setConfig({ mode: 'climate', rooms: [{ id: 'safe', name: '<img src=x onerror=alert(1)>' }] });
@@ -80,8 +87,38 @@ try {
   });
   assert.equal(await page.locator('#climate img').count(), 0);
   assert.match(await page.locator('#climate ha-card').innerText(), /<img/);
+  // Exercise the actual YAML examples through the shipped bundle and render all
+  // custom live modes. Native HA cards are validated structurally, not simulated.
+  await page.evaluate(async samples => {
+    const Strategy = customElements.get('ll-strategy-dashboard-mufflonbau');
+    for (const config of samples) {
+      const dashboard = await Strategy.generate(config, window.sampleHass);
+      document.querySelector('main').replaceChildren();
+      for (const view of dashboard.views) {
+        if (!view.type) throw new Error('Missing view type');
+        for (const cardConfig of view.cards) {
+          if (!cardConfig.type) throw new Error('Missing card type');
+          if (cardConfig.type !== 'custom:mufflonbau-live') continue;
+          const card = document.createElement('mufflonbau-live');
+          card.setConfig(cardConfig);
+          card.hass = window.sampleHass;
+          document.querySelector('main').append(card);
+          if (!card.shadowRoot.querySelector('ha-card')) throw new Error('Live card failed to render');
+          for (const rect of card.shadowRoot.querySelectorAll('svg rect')) {
+            for (const key of ['x', 'y', 'width', 'height']) {
+              if (!rect.hasAttribute(key) || !Number.isFinite(Number(rect.getAttribute(key)))) throw new Error(`Invalid floorplan ${key}`);
+            }
+          }
+        }
+      }
+    }
+  }, samples);
   assert.deepEqual(errors, []);
-  console.log('Browser checks passed: rendering, live updates, localization, warnings, navigation, mobile layout, safe labels, clock cleanup.');
+  console.log('Browser checks passed: rendering, live updates, localization, warnings, navigation, mobile layout, safe labels, clock cleanup, and actual YAML examples.');
+} catch (error) {
+  const page = browser?.contexts()[0]?.pages()[0];
+  if (page) await page.screenshot({ path: 'test-results/failure.png', fullPage: true }).catch(() => {});
+  throw error;
 } finally {
   await browser?.close();
   await new Promise(resolve => server.close(resolve));

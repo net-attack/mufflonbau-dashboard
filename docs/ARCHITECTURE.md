@@ -52,12 +52,18 @@ room details, climate, floorplan, and expert views.
 4. For custom live behavior, add a focused live-card mode or a separate custom
    element; declare every watched entity and clean up any timers/listeners.
 5. Test the behavior and edge cases, run `npm run build`, `npm run check`, and
-   `npm test`. Use the optional browser harness for DOM/navigation changes.
+   `npm run ci`. The same check runs in GitHub Actions for pushes and pull requests.
 
 esbuild bundles the standard ES modules into an IIFE, resolving imports and keeping
 module scope independent. Its exact development version is pinned in the lockfile.
 The check script builds in memory and compares the output with the committed
 HACS file, so CI catches source edits without a corresponding bundle update.
+YAML example tests use HA's YAML 1.1 schema before generating the dashboard,
+including any ignored local examples present on disk. This catches YAML scalar
+and key coercion that direct JavaScript fixtures cannot reveal. The configuration
+normalizer also recovers `position.true` as `position.y` for configurations saved
+with an unquoted YAML `y` key. New examples quote the key explicitly.
+
 HACS receives one file and does not need to resolve source-module downloads.
 
 ## Deliberate boundaries

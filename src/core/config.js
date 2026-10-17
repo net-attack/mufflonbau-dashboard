@@ -59,8 +59,12 @@ export function normalizeConfig(config) {
     }
     if (room.position !== undefined) {
       object(room.position, `${path}.position`);
+      // HA's YAML 1.1 editor parses an unquoted y key as boolean true.
+      // Recover already saved configurations without mutating their input.
+      const { true: legacyY, ...position } = room.position;
+      normalized.position = { ...position, y: position.y ?? legacyY };
       for (const key of ['x', 'y', 'width', 'height']) {
-        const number = room.position[key];
+        const number = normalized.position[key];
         if (!Number.isFinite(number) || number < 0 || (['width', 'height'].includes(key) && number === 0)) {
           fail(`${path}.position.${key}`, 'must be a valid non-negative coordinate or positive size.');
         }

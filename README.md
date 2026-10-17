@@ -56,7 +56,10 @@ sections are optional; omitted sections generate no corresponding view.
 Each room has a unique stable `id` (lowercase slug) and a `name` (string or
 `{en: ..., de: ...}`). Optional fields: `icon`, `temperature`, `humidity`,
 `dew_point`, `lights` (IDs), `entities` (IDs), and `note` (string or translated label).
-`position: {x, y, width, height}` places the room in the schematic floorplan.
+`position: {x: 0, "y": 0, width: 300, height: 180}` places the room in the schematic floorplan.
+Always quote the `"y"` key in YAML: HA's YAML 1.1 editor otherwise reads it as
+boolean `true`. Previously saved configurations with that converted key are
+recovered automatically.
 Without a position it gets an automatic grid position. Use consistent coordinate
 units when combining manual positions. Room details are HA subviews linked from
 the floorplan and room overview.
@@ -111,18 +114,30 @@ Edit `src/`, then rebuild the committed `mufflonbau-dashboard.js` HACS entry poi
 The check command rejects a stale bundle. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for module boundaries and extension instructions.
 
-Optional real-browser checks require Playwright and its Chromium browser:
+The same complete check runs locally and in GitHub Actions:
 
 ```sh
-npm install --no-save --package-lock=false playwright
+npm ci
 npx playwright install chromium
-node scripts/browser-check.mjs
+npm run ci
 ```
 
-The browser harness tests only Mufflonbau live cards with mock states, not a full
-HA installation. Native card behavior and actual cleaning actions must be checked
-in your installation. Choose a license and validate a complete HACS installation
-before the first tagged release.
+`npm run ci` checks bundle freshness and syntax, runs unit tests and the actual
+YAML examples through the Home Assistant 2026.10.1 frontend parser (`js-yaml`
+5.4.2 with `YAML11_SCHEMA`), then tests the shipped bundle in Chromium. If local
+`examples/*.local.yaml` files exist, they are checked too; they stay excluded
+from Git and are not uploaded to GitHub.
+
+Browser checks cover live state updates, English/German text, battery warnings,
+entity detail events, floorplan links, mobile overflow, safe labels, clock cleanup,
+and rendering of the actual YAML examples. GitHub Actions runs on every push and
+pull request, installs Chromium and its system dependencies, and retains browser
+screenshots as artifacts for seven days. Screenshots are written to the ignored
+`test-results/` directory. `npm run test:browser` runs just the browser checks.
+
+The browser harness uses simulated HA states, not a full Home Assistant server.
+Native card behavior, HACS installation, and real cleaning actions still require
+verification in your installation. Choose a license before the first tagged release.
 
 ## References
 

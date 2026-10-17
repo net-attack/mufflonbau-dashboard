@@ -5,11 +5,23 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
       - run: npm ci
-      - run: npm run check
-      - run: npm test
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Check bundle, HA YAML examples, unit tests, and browser behavior
+        run: npm run ci
+      - name: Upload browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

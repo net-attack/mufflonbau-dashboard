@@ -68,8 +68,10 @@
       }
       if (room.position !== void 0) {
         object(room.position, `${path}.position`);
+        const { true: legacyY, ...position } = room.position;
+        normalized.position = { ...position, y: position.y ?? legacyY };
         for (const key of ["x", "y", "width", "height"]) {
-          const number = room.position[key];
+          const number = normalized.position[key];
           if (!Number.isFinite(number) || number < 0 || ["width", "height"].includes(key) && number === 0) {
             fail(`${path}.position.${key}`, "must be a valid non-negative coordinate or positive size.");
           }

@@ -1,0 +1,38 @@
+# Paste directly into the Home Assistant dashboard strategy editor.
+type: custom:mufflonbau
+title: Mufflonbau
+language: auto
+people: []
+calendars: []
+entities: []
+appearance:
+  mode: auto
+rooms:
+  - id: living
+    name:
+      en: Living room
+      de: Wohnzimmer
+    icon: mdi:sofa-outline
+    temperature: sensor.living_temperature
+    humidity: sensor.living_humidity
+    lights:
+      - light.living
+    entities: []
+    position:
+      x: 0
+      y: 0
+      width: 300
+      height: 180
+    cleaning:
+      vacuum: input_button.vacuum_living
+      mop: input_button.mop_living
+cleaning:
+  entity: vacuum.robot
+  battery: sensor.robot_battery
+  current_room: sensor.robot_room
+  map: camera.robot_map
+monitors:
+  - entity: sensor.living_temperature
+  - entity: sensor.living_battery
+    battery_below: 20
+expert_entities: []

@@ -1,51 +1,32 @@
 # Development plan
 
-## Goal and architecture
+The initial modular migration is implemented. See [ARCHITECTURE.md](ARCHITECTURE.md)
+for source ownership and [MIGRATION.md](MIGRATION.md) for the feature mapping.
 
-Mufflonbau is a responsive dashboard within Home Assistant, updated through HACS.
-It starts as a JavaScript dashboard strategy using native HA cards and existing
-entities, without storing credentials. A backend integration is only needed if
-new data sources or custom entities are introduced.
+## Implemented
 
-Configuration supports `title`, `entities`, and `language` (`auto`, `en`, or `de`).
-Entity IDs are configured explicitly, without assumptions about the installation.
-Missing entities appear in a notice. Native cards handle availability and controls.
-Dashboard strings are centralized in an English/German translation dictionary.
-Automatic language selection follows the HA profile, with English as the fallback.
-Code identifiers, comments, errors, and documentation use English.
+- Backward-compatible favorites and English/German dashboard strings.
+- Shared room definitions, live climate readings, configurable schematic floorplan,
+  room detail views, device controls, and history cards.
+- Presence, weather, calendar, and live clock summary.
+- Vacuum controls, camera map, and per-room helper actions.
+- Configurable battery/offline warnings and expert entity inventory.
+- Configurable ambient/night appearance and optional kiosk pass-through.
+- A single HACS bundle built from small source modules; stale-bundle checks,
+  generation/state tests, and an optional live-card browser harness.
 
-## Milestones
+## Before the first release
 
-1. **Foundation:** repository created and uploaded; initial strategy, example
-   configuration, translations, and automated generation tests available.
-   Validate HACS installation in HA, choose a license, and publish the first release.
-2. **Home view:** decide which information and devices to show; configure status,
-   favorites, lights, and temperature using real entities.
-3. **Rooms:** modular views per room, initially with explicit assignment and later
-   optional discovery through HA areas. Manual selection takes precedence.
-4. **Energy and climate:** consumption, solar/battery, and heating for existing
-   sensors, accounting for units, unavailable states, and history.
-5. **Interaction and design:** phones, tablets, wall displays, HA themes,
-   accessibility, and an optional visual configuration editor.
-6. **Releases:** versioning, changelog, and HACS validation; pursue the default
-   catalog after stable real-world use.
+1. Validate installation and resource updates through HACS in Home Assistant.
+2. Test native cards, navigation, real calendar/map data, state availability,
+   and existing cleaning helpers on the target installation.
+3. Check phone, tablet, and wall-display layouts with the real room configuration.
+4. Choose a license, then tag a version and add release notes.
 
-Each new module should have its own configuration and a focused responsibility.
-As the project grows, split source code into `src/` and build a single bundle at
-`dist/mufflonbau-dashboard.js`, updating HACS metadata accordingly.
+## Possible next extensions
 
-## First release acceptance criteria
-
-- HACS loads the accessible repository and resource without errors.
-- The strategy appears in HA and generates a usable home view.
-- Empty configuration, valid entities, and missing entities work.
-- English, German, profile-based selection, and fallback behavior work.
-- State changes appear in native cards.
-- Mobile layout and updates to a new version have been verified.
-
-## Open decisions
-
-- Priority: rooms, energy, security, or a general home overview?
-- Available devices, entity IDs, and HA version.
-- Main device: phone, tablet, or wall display; preferred visual design.
-- License before the first release.
+- A visual strategy editor that writes the existing configuration schema.
+- Optional room discovery through HA areas, with explicit overrides taking precedence.
+- Energy, solar/battery, and heating views for configured sensors.
+- Richer configurable floorplan geometry if needed, keeping presentation separate
+  from device mapping and availability logic.

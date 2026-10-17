@@ -1,0 +1,4 @@
+# Local migration input and installation-specific configuration.
+/old/
+/examples/*.local.yaml
+/node_modules/

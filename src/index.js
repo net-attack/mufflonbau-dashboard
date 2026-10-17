@@ -1,0 +1,13 @@
+import { generateDashboard } from './strategy.js';
+import { MufflonbauLiveCard } from './cards/live-card.js';
+export class MufflonbauDashboardStrategy extends HTMLElement {
+  static getCreateSuggestions() { return { title: 'Mufflonbau', icon: 'mdi:home' }; }
+  static async generate(config, hass) { return generateDashboard(config, hass); }
+}
+if (!customElements.get('mufflonbau-live')) customElements.define('mufflonbau-live', MufflonbauLiveCard);
+if (!customElements.get('ll-strategy-dashboard-mufflonbau')) customElements.define('ll-strategy-dashboard-mufflonbau', MufflonbauDashboardStrategy);
+window.customStrategies = window.customStrategies || [];
+if (!window.customStrategies.some(strategy => strategy.type === 'mufflonbau')) {
+  window.customStrategies.push({ type: 'mufflonbau', strategyType: 'dashboard', name: 'Mufflonbau',
+    description: 'An extensible dashboard for Mufflonbau.', documentationURL: 'https://github.com/net-attack/mufflonbau-dashboard' });
+}

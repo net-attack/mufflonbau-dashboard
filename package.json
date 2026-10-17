@@ -4,7 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check mufflonbau-dashboard.js",
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check && node --check mufflonbau-dashboard.js",
     "test": "node --test"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
   }
 }

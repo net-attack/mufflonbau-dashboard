@@ -29,7 +29,7 @@ test("includes available entities and reports missing ones", async () => {
 });
 
 test("rejects malformed entity configuration", async () => {
-  await assert.rejects(Strategy.generate({ entities: "light.room" }, { states: {} }), /array of entity IDs/);
+  await assert.rejects(Strategy.generate({ entities: "light.room" }, { states: {} }), /must be an array/);
 });
 
 for (const [language, home, overview, missing] of [

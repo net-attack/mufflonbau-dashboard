@@ -63,7 +63,7 @@ try {
       'sensor.battery': { state: '80', attributes: {} }, 'light.room': { state: 'off', attributes: {} } } };
     document.querySelectorAll('mufflonbau-live').forEach(card => { card.hass = window.sampleHass; });
   });
-  assert.match(await page.locator('#climate ha-card').innerText(), /Offline/);
+  assert.match(await page.locator('#climate ha-card').innerText(), /In Home Assistant nicht verfügbar/);
   assert.match(await page.locator('#warnings ha-card').innerText(), /in Ordnung/);
   assert.equal(await page.locator('#floorplan rect.lit').count(), 0);
   assert.equal(await page.locator('#floorplan rect.offline').count(), 1);
@@ -88,6 +88,31 @@ try {
   });
   assert.equal(await page.locator('#climate img').count(), 0);
   assert.match(await page.locator('#climate ha-card').innerText(), /<img/);
+  await page.evaluate(() => {
+    window.diagnosticCalls = [];
+    window.diagnosticHass = { ...window.sampleHass, callService: async (...args) => window.diagnosticCalls.push(args), states: {
+      'light.nanoleaf': { state: 'off', attributes: { friendly_name: 'Panel' } },
+      'light.unknown': { state: 'unknown', attributes: {} },
+      'light.unavailable': { state: 'unavailable', attributes: {} },
+    } };
+    const card = document.createElement('mufflonbau-live'); card.id = 'diagnostics';
+    card.setConfig({ mode: 'devices', language: 'de', entities: ['light.nanoleaf', 'light.unknown', 'light.unavailable', 'light.missing'] });
+    card.hass = window.diagnosticHass; document.querySelector('main').append(card);
+  });
+  const diagnostics = page.locator('#diagnostics');
+  assert.match(await diagnostics.locator('ha-card').innerText(), /Entity nicht gefunden/);
+  assert.match(await diagnostics.locator('ha-card').innerText(), /Zustand unbekannt/);
+  assert.match(await diagnostics.locator('ha-card').innerText(), /In Home Assistant nicht verfügbar/);
+  assert.match(await diagnostics.locator('.entity-id').allTextContents().then(ids => ids.join(',')), /light.missing/);
+  assert.equal(await diagnostics.getByRole('switch', { name: 'Panel', exact: true }).isEnabled(), true);
+  await diagnostics.getByRole('switch', { name: 'Panel', exact: true }).click();
+  assert.deepEqual(await page.evaluate(() => window.diagnosticCalls[0]), ['homeassistant', 'toggle', {}, { entity_id: 'light.nanoleaf' }]);
+  await page.evaluate(() => {
+    const card = document.querySelector('#diagnostics');
+    card.hass = { ...window.diagnosticHass, states: { ...window.diagnosticHass.states, 'light.nanoleaf': { state: 'on', attributes: { friendly_name: 'Panel' } }, 'light.missing': { state: 'off', attributes: { friendly_name: 'Recovered' } } } };
+  });
+  assert.equal(await diagnostics.getByRole('switch', { name: 'Panel', exact: true }).getAttribute('aria-checked'), 'true');
+  assert.equal(await diagnostics.getByRole('switch', { name: 'Recovered', exact: true }).isEnabled(), true);
   // Render the actual YAML examples through the shipped shell. A minimal native
   // card double checks the helper boundary and inherited theme variables.
   await page.evaluate(() => {

@@ -132,7 +132,6 @@
       welcome: "# Welcome to Mufflonbau\n\nYour extensible Home Assistant dashboard.",
       overview: "Overview",
       empty: "No available entities selected yet. Add `entities` to the dashboard strategy.",
-      missing: "Not found",
       home: "Home",
       rooms: "Rooms",
       climate: "Climate",
@@ -146,7 +145,11 @@
       temperature: "Temperature",
       humidity: "Humidity",
       history: "History",
-      offline: "Offline",
+      missing: "Entity not found",
+      unknown: "State unknown",
+      unavailable: "Unavailable in Home Assistant",
+      invalidValue: "Invalid sensor value",
+      noReadings: "No readings available",
       battery: "Battery",
       healthy: "All monitored devices are healthy.",
       systemShort: "System",
@@ -173,7 +176,6 @@
       welcome: "# Willkommen im Mufflonbau\n\nDein erweiterbares Home-Assistant-Dashboard.",
       overview: "Übersicht",
       empty: "Noch keine verfügbaren Entitäten ausgewählt. Ergänze `entities` in der Dashboard-Strategie.",
-      missing: "Nicht gefunden",
       home: "Zuhause",
       rooms: "Räume",
       climate: "Klima",
@@ -187,7 +189,11 @@
       temperature: "Temperatur",
       humidity: "Luftfeuchtigkeit",
       history: "Verlauf",
-      offline: "Offline",
+      missing: "Entity nicht gefunden",
+      unknown: "Zustand unbekannt",
+      unavailable: "In Home Assistant nicht verfügbar",
+      invalidValue: "Ungültiger Sensorwert",
+      noReadings: "Keine Messwerte vorhanden",
       battery: "Batterie",
       healthy: "Alle überwachten Geräte sind in Ordnung.",
       systemShort: "System",
@@ -527,11 +533,21 @@ ${trees}${houses}
   }
 
   // src/core/state.js
+  function availability(state) {
+    if (!state) return "missing";
+    if (state.state === "unavailable") return "unavailable";
+    if (state.state == null || state.state === "unknown") return "unknown";
+    return "available";
+  }
+  function stateProblem(state, language) {
+    const status = availability(state);
+    return status === "available" ? null : translations[language][status];
+  }
   function isOffline(state) {
-    return !state || ["unknown", "unavailable"].includes(state.state);
+    return availability(state) !== "available";
   }
   function numericState(state) {
-    if (isOffline(state) || String(state.state).trim() === "") return null;
+    if (isOffline(state) || !["string", "number"].includes(typeof state.state) || String(state.state).trim() === "") return null;
     const value = Number(state.state);
     return Number.isFinite(value) ? value : null;
   }
@@ -540,10 +556,10 @@ ${trees}${houses}
     return monitors.flatMap((monitor) => {
       const state = states[monitor.entity];
       const name = localized(monitor.name, language) || state?.attributes?.friendly_name || monitor.entity;
-      if (isOffline(state)) return [{ entity: monitor.entity, name, detail: text.offline }];
+      if (isOffline(state)) return [{ entity: monitor.entity, name, detail: stateProblem(state, language) }];
       const value = numericState(state);
       if (monitor.battery_below !== void 0 && (value === null || value < monitor.battery_below)) {
-        return [{ entity: monitor.entity, name, detail: value === null ? text.offline : `${text.battery}: ${value}%` }];
+        return [{ entity: monitor.entity, name, detail: value === null ? text.invalidValue : `${text.battery}: ${value}%` }];
       }
       return [];
     });
@@ -689,6 +705,8 @@ ${trees}${houses}
   .link { display:flex; align-items:center; justify-content:space-between; padding-top:15px; border-top:1px solid var(--mb-line); font-size:12px; color:var(--mb-accent); text-decoration:none; }
   .floor-map { width:100%; height:auto; max-height:65vh; margin-top:12px; } .floor-map text { fill:var(--mb-ink); pointer-events:none; }
   .floor-map rect { stroke:var(--mb-line); stroke-width:3; fill:var(--mb-soft); } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
+  .entity-id { font-family:ui-monospace,monospace; font-size:10px; overflow-wrap:anywhere; opacity:.8; }
+  .room-board .value.status-value { font-size:12px; letter-spacing:0; line-height:1.6; }
   .room-name { font-size:18px; font-weight:600; } .room-value { font-size:17px; } .message { color:var(--mb-muted); line-height:1.7; font-size:13px; }
   @media(max-width:700px) { ha-card { padding:20px; } .hero { padding:26px 22px; } .header { align-items:start; flex-wrap:wrap; } .clock { font-size:42px; } .clock-wrap { text-align:left; } h1 { font-size:34px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .room-tile { padding:14px; } .value { font-size:28px; } .device { padding:14px; } }
   ha-card:not([data-theme=calm]) { backdrop-filter:blur(18px); box-shadow:0 12px 32px #0000000d; }
@@ -778,7 +796,7 @@ ${trees}${houses}
       const state = this._hass.states[id];
       const number = numericState(state);
       const text = translations[this._language];
-      if (number === null) return text.offline;
+      if (number === null) return stateProblem(state, this._language) ?? text.invalidValue;
       return `${new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(number)} ${state.attributes?.unit_of_measurement ?? fallbackUnit}`;
     }
     _render() {
@@ -844,7 +862,7 @@ ${trees}${houses}
         pills.append(element("span", `${compatible.length} · ${text.rooms}`, "chip"));
         if (humidities.length) pills.append(element("span", `${Math.round(humidities.reduce((a, b) => a + b, 0) / humidities.length)}% · ${text.humidity}`, "chip"));
         climate.append(pills);
-      } else climate.append(element("small", text.offline));
+      } else climate.append(element("small", text.noReadings));
       const agenda = element("section", void 0, "agenda");
       agenda.append(element("h2", text.calendar));
       let events = 0;
@@ -941,7 +959,7 @@ ${trees}${houses}
         button.type = "button";
         button.dataset.entity = room.temperature ?? room.humidity ?? room.dew_point ?? "";
         button.append(element("strong", localized(room.name, this._language)));
-        if (room.temperature) button.append(element("div", this._value(room.temperature, "°C"), "value"));
+        if (room.temperature) button.append(element("div", this._value(room.temperature, "°C"), `value${numericState(this._hass.states[room.temperature]) === null ? " status-value" : ""}`));
         if (room.humidity) button.append(element("small", `${this._value(room.humidity, "%")} · ${text.humidity}`));
         if (room.dew_point) button.append(element("small", `${text.dewPoint}: ${this._value(room.dew_point, "°C")}`));
         button.addEventListener("click", () => button.dataset.entity ? this._moreInfo(button.dataset.entity) : link.click());
@@ -969,6 +987,7 @@ ${trees}${houses}
         disc.append(icon("system"));
         const detail = element("span");
         detail.append(element("strong", warning.name), element("small", warning.detail));
+        if (warning.name !== warning.entity) detail.append(element("small", warning.entity, "entity-id"));
         button.append(disc, detail);
         button.addEventListener("click", () => this._moreInfo(warning.entity));
         card.append(button);
@@ -981,7 +1000,7 @@ ${trees}${houses}
     }
     _state(id, text) {
       const state = this._hass.states[id];
-      if (isOffline(state)) return text.offline;
+      if (isOffline(state)) return stateProblem(state, this._language);
       if (text.states[state.state]) return text.states[state.state];
       return this._hass.formatEntityState?.(state) ?? `${state.state}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : ""}`;
     }
@@ -1040,6 +1059,7 @@ ${trees}${houses}
         info.type = "button";
         info.dataset.entity = id;
         info.append(element("strong", this._name(id)), element("small", this._state(id, text)));
+        if (isOffline(state)) info.append(element("small", id, "entity-id"));
         info.addEventListener("click", () => this._moreInfo(id));
         tile.append(top, info);
         grid.append(tile);
@@ -1060,6 +1080,7 @@ ${trees}${houses}
       disc.append(icon("cleaning"));
       const detail = element("div");
       detail.append(element("strong", this._name(config.entity)), element("small", this._state(config.entity, text)));
+      if (isOffline(this._hass.states[config.entity])) detail.append(element("small", config.entity, "entity-id"));
       if (config.battery) detail.append(element("small", `${text.battery} · ${this._value(config.battery, "%")}`));
       row.append(disc, detail);
       card.append(row);

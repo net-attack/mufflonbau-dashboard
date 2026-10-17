@@ -1,0 +1,28 @@
+{# Paste into Home Assistant Developer Tools > Template. Read-only inventory. #}
+{% set domains = ['light', 'group', 'vacuum', 'sensor', 'binary_sensor', 'climate', 'switch', 'humidifier', 'input_button', 'button', 'script', 'camera'] %}
+{% set allowed_attributes = ['entity_id', 'device_class', 'unit_of_measurement', 'supported_features', 'supported_color_modes', 'color_mode', 'brightness', 'color_temp_kelvin', 'rgb_color', 'hvac_modes', 'hvac_mode', 'hvac_action', 'temperature', 'current_temperature', 'current_humidity', 'humidity', 'battery_level', 'fan_speed', 'fan_speed_list', 'status', 'error', 'error_code', 'current_room', 'cleaned_area', 'cleaning_time', 'restored', 'assumed_state', 'all'] %}
+{% set output = namespace(areas=[], entities=[]) %}
+{% for id in areas() | sort %}
+  {% set output.areas = output.areas + [{'id': id, 'name': area_name(id)}] %}
+{% endfor %}
+{% for entity in states | sort(attribute='entity_id') if entity.domain in domains %}
+  {% set device = device_id(entity.entity_id) %}
+  {% set attrs = namespace(pairs=[]) %}
+  {% for key in allowed_attributes if key in entity.attributes %}
+    {% set attrs.pairs = attrs.pairs + [(key, entity.attributes[key])] %}
+  {% endfor %}
+  {% set output.entities = output.entities + [{
+    'entity_id': entity.entity_id,
+    'name': entity.name,
+    'state': entity.state,
+    'area_id': area_id(entity.entity_id),
+    'area_name': area_name(entity.entity_id),
+    'device_id': device,
+    'device_name': (device_attr(device, 'name_by_user') or device_attr(device, 'name')) if device else none,
+    'manufacturer': device_attr(device, 'manufacturer') if device else none,
+    'model': device_attr(device, 'model') if device else none,
+    'last_updated': entity.last_updated.isoformat(),
+    'attributes': dict(attrs.pairs)
+  }] %}
+{% endfor %}
+{{ {'schema_version': 1, 'exported_at': now().isoformat(), 'areas': output.areas, 'entities': output.entities} | to_json(pretty_print=true) }}

@@ -1,6 +1,6 @@
 import { liveStyles } from '../design/live-styles.js';
 import { localized, resolveLanguage, translations } from '../core/i18n.js';
-import { appearanceMode, isOffline, monitorWarnings, numericState } from '../core/state.js';
+import { appearanceMode, isOffline, monitorWarnings, numericState, stateProblem } from '../core/state.js';
 
 import { element, svgElement, icon, navigateLink, roomIcon } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
@@ -42,7 +42,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     const state = this._hass.states[id];
     const number = numericState(state);
     const text = translations[this._language];
-    if (number === null) return text.offline;
+    if (number === null) return stateProblem(state, this._language) ?? text.invalidValue;
     return `${new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(number)} ${state.attributes?.unit_of_measurement ?? fallbackUnit}`;
   }
   _render() {
@@ -102,7 +102,7 @@ export class MufflonbauLiveCard extends HTMLElement {
       const pills = element('div', undefined, 'climate-pills'); pills.append(element('span', `${compatible.length} · ${text.rooms}`, 'chip'));
       if (humidities.length) pills.append(element('span', `${Math.round(humidities.reduce((a, b) => a + b, 0) / humidities.length)}% · ${text.humidity}`, 'chip'));
       climate.append(pills);
-    } else climate.append(element('small', text.offline));
+    } else climate.append(element('small', text.noReadings));
     const agenda = element('section', undefined, 'agenda'); agenda.append(element('h2', text.calendar));
     let events = 0;
     for (const id of this._config.calendars ?? []) {
@@ -172,7 +172,7 @@ export class MufflonbauLiveCard extends HTMLElement {
       button.type = 'button';
       button.dataset.entity = room.temperature ?? room.humidity ?? room.dew_point ?? '';
       button.append(element('strong', localized(room.name, this._language)));
-      if (room.temperature) button.append(element('div', this._value(room.temperature, '°C'), 'value'));
+      if (room.temperature) button.append(element('div', this._value(room.temperature, '°C'), `value${numericState(this._hass.states[room.temperature]) === null ? ' status-value' : ''}`));
       if (room.humidity) button.append(element('small', `${this._value(room.humidity, '%')} · ${text.humidity}`));
       if (room.dew_point) button.append(element('small', `${text.dewPoint}: ${this._value(room.dew_point, '°C')}`));
       button.addEventListener('click', () => button.dataset.entity ? this._moreInfo(button.dataset.entity) : link.click());
@@ -191,6 +191,7 @@ export class MufflonbauLiveCard extends HTMLElement {
       const button = element('button', undefined, 'warning'); button.type = 'button'; button.dataset.entity = warning.entity;
       const disc = element('span', undefined, 'icon-disc'); disc.append(icon('system'));
       const detail = element('span'); detail.append(element('strong', warning.name), element('small', warning.detail));
+      if (warning.name !== warning.entity) detail.append(element('small', warning.entity, 'entity-id'));
       button.append(disc, detail); button.addEventListener('click', () => this._moreInfo(warning.entity)); card.append(button);
     }
     card.setAttribute('aria-live', 'polite');
@@ -199,7 +200,7 @@ export class MufflonbauLiveCard extends HTMLElement {
   _name(id) { return this._hass.states[id]?.attributes?.friendly_name ?? id.split('.').at(-1).replaceAll('_', ' '); }
   _state(id, text) {
     const state = this._hass.states[id];
-    if (isOffline(state)) return text.offline;
+    if (isOffline(state)) return stateProblem(state, this._language);
     if (text.states[state.state]) return text.states[state.state];
     return this._hass.formatEntityState?.(state) ?? `${state.state}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : ''}`;
   }
@@ -231,7 +232,9 @@ export class MufflonbauLiveCard extends HTMLElement {
         }); top.append(toggle);
       }
       const info = element('button', undefined, 'device-label'); info.type = 'button'; info.dataset.entity = id;
-      info.append(element('strong', this._name(id)), element('small', this._state(id, text))); info.addEventListener('click', () => this._moreInfo(id));
+      info.append(element('strong', this._name(id)), element('small', this._state(id, text)));
+      if (isOffline(state)) info.append(element('small', id, 'entity-id'));
+      info.addEventListener('click', () => this._moreInfo(id));
       tile.append(top, info); grid.append(tile);
     }
     card.append(grid);
@@ -243,6 +246,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     this._section(card, text.cleaning);
     const config = this._config.cleaning; const row = element('div', undefined, 'robot'); const disc = element('span', undefined, 'icon-disc'); disc.append(icon('cleaning'));
     const detail = element('div'); detail.append(element('strong', this._name(config.entity)), element('small', this._state(config.entity, text)));
+    if (isOffline(this._hass.states[config.entity])) detail.append(element('small', config.entity, 'entity-id'));
     if (config.battery) detail.append(element('small', `${text.battery} · ${this._value(config.battery, '%')}`));
     row.append(disc, detail); card.append(row); this._link(card, 'cleaning', text.allDetails);
   }

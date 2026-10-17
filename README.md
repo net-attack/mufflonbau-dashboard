@@ -139,6 +139,21 @@ including when an older strategy configuration still contains `kiosk_mode`.
 Configure kiosk behavior separately in your dashboard settings when desired.
 During development, keep the standard Home Assistant controls visible.
 
+## Diagnosing entity and room assignments
+
+Paste [examples/diagnostics-template.jinja](examples/diagnostics-template.jinja)
+into Home Assistant Developer Tools > Template and save the JSON result to the
+ignored `debug/ha-inventory.local.json`. It includes real entity IDs, states,
+area/device mappings, light-group member IDs, capabilities, and vacuum errors.
+See [debug/README.md](debug/README.md) for export details.
+
+The dashboard uses Home Assistant's entity states and services, without a separate
+Nanoleaf/vacuum API. Missing entity IDs, `unknown` states, `unavailable` states, and
+invalid numeric sensor values are displayed separately. Problematic device cards
+show their configured ID so a renamed entity can be identified. An `off` light is
+available and can be controlled. Missing or unavailable states are not evidence
+that the physical device itself is offline.
+
 ## Development
 
 Node.js 22 or newer. esbuild is a development dependency; the dashboard has no

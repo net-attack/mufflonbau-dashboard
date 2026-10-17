@@ -62,8 +62,8 @@ test('invalid nested configuration produces actionable paths', () => {
 test('warnings handle missing, unavailable, invalid, and threshold boundary values', () => {
   const monitors = [{ entity: 'sensor.battery', battery_below: 20, name: { en: 'Battery', de: 'Batterie' } }];
   const warnings = state => monitorWarnings(monitors, state === undefined ? {} : { 'sensor.battery': { state } }, 'de');
-  for (const value of [undefined, 'unknown', 'unavailable', 'NaN', '', 'Infinity']) {
-    assert.equal(warnings(value)[0].detail, 'Offline');
+  for (const [value, detail] of [[undefined, 'Entity nicht gefunden'], ['unknown', 'Zustand unbekannt'], ['unavailable', 'In Home Assistant nicht verfügbar'], ['NaN', 'Ungültiger Sensorwert'], ['', 'Ungültiger Sensorwert'], ['Infinity', 'Ungültiger Sensorwert']]) {
+    assert.equal(warnings(value)[0].detail, detail);
   }
   assert.equal(warnings('20').length, 0);
   assert.equal(warnings('0')[0].detail, 'Batterie: 0%');

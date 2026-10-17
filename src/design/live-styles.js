@@ -30,6 +30,8 @@ export const liveStyles = `
   .link { display:flex; align-items:center; justify-content:space-between; padding-top:15px; border-top:1px solid var(--mb-line); font-size:12px; color:var(--mb-accent); text-decoration:none; }
   .floor-map { width:100%; height:auto; max-height:65vh; margin-top:12px; } .floor-map text { fill:var(--mb-ink); pointer-events:none; }
   .floor-map rect { stroke:var(--mb-line); stroke-width:3; fill:var(--mb-soft); } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
+  .entity-id { font-family:ui-monospace,monospace; font-size:10px; overflow-wrap:anywhere; opacity:.8; }
+  .room-board .value.status-value { font-size:12px; letter-spacing:0; line-height:1.6; }
   .room-name { font-size:18px; font-weight:600; } .room-value { font-size:17px; } .message { color:var(--mb-muted); line-height:1.7; font-size:13px; }
   @media(max-width:700px) { ha-card { padding:20px; } .hero { padding:26px 22px; } .header { align-items:start; flex-wrap:wrap; } .clock { font-size:42px; } .clock-wrap { text-align:left; } h1 { font-size:34px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .room-tile { padding:14px; } .value { font-size:28px; } .device { padding:14px; } }
   ha-card:not([data-theme=calm]) { backdrop-filter:blur(18px); box-shadow:0 12px 32px #0000000d; }

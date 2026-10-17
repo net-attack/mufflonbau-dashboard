@@ -1,0 +1,16 @@
+# Strategy editor. Power/plug entities are synthetic; install the backend first.
+type: custom:mufflonbau
+language: de
+laundry:
+  - id: washer
+    name: { en: Washing machine, de: Waschmaschine }
+    power: sensor.example_washer_power
+    plug: switch.example_washer
+    status: input_select.mufflonbau_washer_phase
+    last_finished: input_datetime.mufflonbau_washer_last_finished
+  - id: dryer
+    name: { en: Tumble dryer, de: Trockner }
+    power: sensor.example_dryer_power
+    plug: switch.example_dryer
+    status: input_select.mufflonbau_dryer_phase
+    last_finished: input_datetime.mufflonbau_dryer_last_finished

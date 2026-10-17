@@ -1,5 +1,6 @@
 import { normalizeAdmin } from './admin.js';
 import { cleaningEntities } from './cleaning.js';
+import { laundryEntities } from './laundry.js';
 import { validateDrawing } from './floorplan.js';
 function fail(path, message) {
   throw new Error(`Mufflonbau: ${path} ${message}`);
@@ -33,6 +34,22 @@ export function normalizeConfig(config) {
     result[key].forEach((id, index) => entity(id, `${key}[${index}]`));
   }
   if (result.weather !== undefined) entity(result.weather, 'weather');
+  result.laundry = config.laundry ?? [];
+  list(result.laundry, 'laundry');
+  const applianceIds = new Set();
+  result.laundry.forEach((item, index) => {
+    const path = `laundry[${index}]`;
+    object(item, path);
+    if (typeof item.id !== 'string' || !/^[a-z][a-z0-9_-]*$/.test(item.id) || applianceIds.has(item.id)) fail(`${path}.id`, 'must be a unique lowercase slug.');
+    applianceIds.add(item.id);
+    label(item.name, `${path}.name`);
+    for (const key of ['power', 'status']) entity(item[key], `${path}.${key}`);
+    if (!item.power.startsWith('sensor.')) fail(`${path}.power`, 'must reference a power sensor in W.');
+    if (!item.status.startsWith('input_select.')) fail(`${path}.status`, 'must reference the laundry phase input_select helper.');
+    for (const key of ['last_finished', 'plug']) if (item[key] !== undefined) entity(item[key], `${path}.${key}`);
+    if (item.last_finished && !item.last_finished.startsWith('input_datetime.')) fail(`${path}.last_finished`, 'must reference an input_datetime helper.');
+    if (item.plug && !item.plug.startsWith('switch.')) fail(`${path}.plug`, 'must reference the monitored plug switch.');
+  });
   list(result.rooms, 'rooms');
   if (config.floorplan_drawing !== undefined) validateDrawing(config.floorplan_drawing);
   if (config.floorplan_bounds !== undefined && (!Array.isArray(config.floorplan_bounds) || config.floorplan_bounds.length !== 4 || config.floorplan_bounds.some(n => !Number.isFinite(n)) || config.floorplan_bounds[2] <= 0 || config.floorplan_bounds[3] <= 0)) fail('floorplan_bounds', 'must contain x, y, positive width and height.');
@@ -194,6 +211,6 @@ export function collectEntities(config) {
       ...room.lights, ...(room.member_lights ?? []), ...room.entities, ...Object.values(room.cleaning ?? {})]),
     ...config.rooms.flatMap(room => (room.objects ?? []).map(item => item.entity)),
     ...(config.floorplan_objects ?? []).map(item => item.entity),
-    ...cleaningEntities(config.cleaning), config.appearance?.night_person, config.appearance?.ambient_person,
+    ...cleaningEntities(config.cleaning), ...laundryEntities(config.laundry), config.appearance?.night_person, config.appearance?.ambient_person,
   ].filter(Boolean))];
 }

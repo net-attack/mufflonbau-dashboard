@@ -10,6 +10,7 @@ import { checkFlusenfels } from './flusenfels-check.mjs';
 import { checkFloorplan } from './floorplan-check.mjs';
 import { checkDetailViews } from './detail-check.mjs';
 import { checkPresence } from './presence-check.mjs';
+import { checkLaundry } from './laundry-check.mjs';
 import { galaxyTabA11 } from './galaxy-tab-a11.mjs';
 import { load, YAML11_SCHEMA } from 'js-yaml';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
@@ -557,6 +558,7 @@ try {
   await renderViews(page, previewConfig, previewHass);
   assert.deepEqual(errors, []);
   await checkPresence(page);
+  await checkLaundry(page);
   console.log('Browser checks passed: rendering, live updates, rotating greetings, localization, warnings, navigation, mobile layout, safe labels, clock cleanup, actual YAML examples, complete dashboard layouts, palette contrast, theme consistency, device controls, action errors, admin drill-down, Recorder ranges/retry/gaps, and Galaxy Tab A11 touch, rotation, scrolling, navigation, and viewport geometry.');
 } catch (error) {
   const page = browser?.contexts()[0]?.pages()[0];

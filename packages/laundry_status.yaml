@@ -1,0 +1,60 @@
+# Shared installation example: ALL appliance entities below are synthetic.
+# Replace them with observed power/plug entities before installing this file.
+# Copy the blueprint to /config/blueprints/automation/mufflonbau/laundry_status.yaml.
+# These helpers are NEW entities created by this package, not discovered devices.
+# No initial: restored phases prevent duplicate notifications after restart.
+input_select:
+  mufflonbau_washer_phase:
+    name: Washer programme phase
+    options: [idle, starting, starting_after_finished, running, finishing, finished]
+    icon: mdi:washing-machine
+  mufflonbau_dryer_phase:
+    name: Dryer programme phase
+    options: [idle, starting, starting_after_finished, running, finishing, finished]
+    icon: mdi:tumble-dryer
+input_datetime:
+  mufflonbau_washer_deadline:
+    name: Washer detection deadline
+    has_date: true
+    has_time: true
+  mufflonbau_washer_last_finished:
+    name: Washer last finished
+    has_date: true
+    has_time: true
+  mufflonbau_dryer_deadline:
+    name: Dryer detection deadline
+    has_date: true
+    has_time: true
+  mufflonbau_dryer_last_finished:
+    name: Dryer last finished
+    has_date: true
+    has_time: true
+automation:
+  - id: mufflonbau_washer_cycle
+    alias: Mufflonbau · Washer cycle
+    use_blueprint:
+      path: mufflonbau/laundry_status.yaml
+      input:
+        power: sensor.example_washer_power
+        plug: switch.example_washer
+        phase: input_select.mufflonbau_washer_phase
+        deadline: input_datetime.mufflonbau_washer_deadline
+        last_finished: input_datetime.mufflonbau_washer_last_finished
+        start_w: 10
+        finish_w: 4
+        start_seconds: 120
+        finish_seconds: 600
+  - id: mufflonbau_dryer_cycle
+    alias: Mufflonbau · Dryer cycle
+    use_blueprint:
+      path: mufflonbau/laundry_status.yaml
+      input:
+        power: sensor.example_dryer_power
+        plug: switch.example_dryer
+        phase: input_select.mufflonbau_dryer_phase
+        deadline: input_datetime.mufflonbau_dryer_deadline
+        last_finished: input_datetime.mufflonbau_dryer_last_finished
+        start_w: 20
+        finish_w: 4
+        start_seconds: 120
+        finish_seconds: 900

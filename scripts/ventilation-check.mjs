@@ -113,6 +113,36 @@ export async function checkVentilation(sourcePage) {
       window.showVentView('ventilation');
     });
     assert.match(await detail.locator('ha-card').innerText(), /Ventilation.*Reading is too old/s);
+    await page.evaluate(async () => {
+      const state = (value, unit) => ({ state: String(value), attributes: { unit_of_measurement: unit }, last_updated: new Date().toISOString() });
+      window.ventConfig.language = 'de';
+      window.ventConfig.ventilation = { outdoor_sources: [
+        { name: 'West', temperature: 'sensor.outdoor_temperature', humidity: 'sensor.outdoor_humidity' },
+        { name: 'East', temperature: 'sensor.east_temperature', humidity: 'sensor.east_humidity' },
+      ] };
+      window.ventHass = { ...window.ventHass, states: { ...window.ventHass.states,
+        'sensor.east_temperature': state(12, '°C'), 'sensor.east_humidity': state(70, '%') } };
+      window.ventDashboard = await customElements.get('ll-strategy-dashboard-mufflonbau').generate(window.ventConfig, window.ventHass);
+      window.showVentView('ventilation');
+    });
+    assert.match(await detail.locator('.ventilation-sources').innerText(), /West: nicht verfügbar oder ungültig.*East: aktiv · Ersatzquelle/s);
+    assert.equal(await detail.locator('.ventilation-dot.dry').count(), 1, 'Healthy backup must retain drying recommendation');
+    await detail.locator('.ventilation-outdoor [data-entity="sensor.east_humidity"]').tap();
+    assert.equal(await page.evaluate(() => window.ventMoreInfo.at(-1)), 'sensor.east_humidity', 'Detail action must target active source');
+    await page.evaluate(() => {
+      window.ventHass = { ...window.ventHass, states: { ...window.ventHass.states,
+        'sensor.outdoor_temperature': { ...window.ventHass.states['sensor.outdoor_temperature'], state: '8', last_updated: new Date().toISOString() } } };
+      document.querySelector('#vent-dashboard').hass = window.ventHass;
+    });
+    assert.match(await detail.locator('.ventilation-sources').innerText(), /West: aktiv.*East: bereit/s);
+    await page.evaluate(() => {
+      window.ventHass = { ...window.ventHass, states: { ...window.ventHass.states,
+        'sensor.outdoor_temperature': { ...window.ventHass.states['sensor.outdoor_temperature'], state: 'unavailable' },
+        'sensor.east_humidity': { ...window.ventHass.states['sensor.east_humidity'], state: 'unavailable' } } };
+      document.querySelector('#vent-dashboard').hass = window.ventHass;
+    });
+    assert.equal(await detail.locator('.ventilation-dot.dry').count(), 0, 'Two incomplete pairs must not be combined');
+    assert.match(await detail.locator('ha-card').innerText(), /Außenwerte fehlen/);
     assert.deepEqual(errors, []);
   } finally { await context.close(); }
 }

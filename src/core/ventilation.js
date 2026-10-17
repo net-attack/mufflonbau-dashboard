@@ -3,8 +3,21 @@ import { availability, numericState } from './state.js';
 export function normalizeVentilation(value, rooms, entity) {
   const fail = (key, message) => { throw new Error(`Mufflonbau: ventilation${key ? `.${key}` : ''} ${message}`); };
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail('', 'must be an object.');
-  for (const key of ['outdoor_temperature', 'outdoor_humidity']) entity(value[key], `ventilation.${key}`);
-  if (value.outdoor_temperature === value.outdoor_humidity) fail('outdoor_humidity', 'must use a separate humidity entity.');
+  if (value.outdoor_sources !== undefined) {
+    if (value.outdoor_temperature !== undefined || value.outdoor_humidity !== undefined) fail('outdoor_sources', 'cannot be combined with outdoor_temperature/outdoor_humidity.');
+    if (!Array.isArray(value.outdoor_sources) || !value.outdoor_sources.length) fail('outdoor_sources', 'must be a non-empty array of temperature/humidity pairs in priority order.');
+  }
+  const used = new Set();
+  for (const [index, source] of outdoorSources(value).entries()) {
+    const key = value.outdoor_sources ? `outdoor_sources[${index}]` : '';
+    if (!source || typeof source !== 'object' || Array.isArray(source)) fail(key, 'must be a temperature/humidity pair.');
+    if (source.name !== undefined && (typeof source.name !== 'string' || !source.name.trim())) fail(`${key}.name`, 'must be a non-empty string.');
+    for (const kind of ['temperature', 'humidity']) {
+      entity(source[kind], `ventilation.${key ? `${key}.${kind}` : `outdoor_${kind}`}`);
+      if (used.has(source[kind])) fail(key, 'must use separate, unique sensor entities.');
+      used.add(source[kind]);
+    }
+  }
   const result = { max_age_minutes: 180, humidity_high: 60, min_drying_difference: 1, ...value };
   for (const [key, min, max] of [['max_age_minutes', 5, 1440], ['humidity_high', 40, 80], ['min_drying_difference', 0.2, 5]]) {
     if (!Number.isFinite(result[key]) || result[key] < min || result[key] > max) fail(key, `must be a number between ${min} and ${max}.`);
@@ -17,7 +30,10 @@ export function normalizeVentilation(value, rooms, entity) {
   return result;
 }
 export function ventilationEntities(config) {
-  return config ? [config.outdoor_temperature, config.outdoor_humidity] : [];
+  return config ? outdoorSources(config).flatMap(source => [source.temperature, source.humidity]) : [];
+}
+function outdoorSources(config) {
+  return config.outdoor_sources ?? [{ temperature: config.outdoor_temperature, humidity: config.outdoor_humidity }];
 }
 export function ventilationRooms(rooms, config) {
   return rooms.filter(room => config.room_ids ? config.room_ids.includes(room.id) : room.temperature || room.humidity);
@@ -57,7 +73,10 @@ function pair(temperature, humidity, states, now, maxAge) {
 }
 export function ventilationStatus(config, rooms, states, now = Date.now()) {
   const settings = { max_age_minutes: 180, humidity_high: 60, min_drying_difference: 1, ...config };
-  const outdoor = pair(settings.outdoor_temperature, settings.outdoor_humidity, states, now, settings.max_age_minutes);
+  const sources = outdoorSources(settings).map(source => ({ source, ...pair(source.temperature, source.humidity, states, now, settings.max_age_minutes) }));
+  // Use one complete, healthy pair. Never mix temperature and humidity across devices.
+  const selected = sources.find(source => !source.issues.length);
+  const outdoor = selected ? { ...selected, sources, fallback: selected !== sources[0] } : { issues: sources.flatMap(source => source.issues), sources, fallback: false };
   const results = ventilationRooms(rooms, settings).map(room => {
     const indoor = pair(room.temperature, room.humidity, states, now, settings.max_age_minutes);
     const issues = [...outdoor.issues, ...indoor.issues];

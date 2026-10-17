@@ -105,7 +105,7 @@ sections are optional; omitted sections generate no corresponding view.
 | `calendars` | Calendar entities for the header summary and native calendar |
 | `rooms` | Room definitions, detailed below |
 | `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, and `map` (camera) IDs |
-| `ventilation` | Optional ventilation traffic light using a fixed outdoor temperature/humidity pair and existing room readings; [configuration](docs/VENTILATION.de.md) |
+| `ventilation` | Optional ventilation traffic light using explicit outdoor temperature/humidity pairs with automatic failover and existing room readings; [configuration](docs/VENTILATION.de.md) |
 | `monitors` | Objects containing `entity`, optional `name`, and optional `battery_below` threshold |
 | `admin` | Optional arrays of entity IDs in `internet`, `network`, `host`, and router-backed `clients` |
 | `kiosk_mode` | Kiosk Mode settings; defaults to `kiosk: true`, `hide_header: true` |

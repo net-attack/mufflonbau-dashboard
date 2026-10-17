@@ -13,6 +13,57 @@ const readings = (insideT = 21, insideH = 65, outsideT = 8, outsideH = 80) => ({
   'sensor.outdoor_temperature': state(outsideT, '°C'), 'sensor.outdoor_humidity': state(outsideH, '%'),
 });
 const model = (states = readings(), config = settings, rooms = [room], time = now) => ventilationStatus(config, rooms, states, time);
+const redundant = { outdoor_sources: [
+  { name: 'West', temperature: settings.outdoor_temperature, humidity: settings.outdoor_humidity },
+  { name: 'East', temperature: 'sensor.east_temperature', humidity: 'sensor.east_humidity' },
+] };
+const redundantReadings = () => ({ ...readings(), 'sensor.east_temperature': state(12, '°C'), 'sensor.east_humidity': state(70, '%') });
+
+test('uses preferred complete outdoor pair, falls back for invalid or stale readings and returns after recovery', () => {
+  const states = redundantReadings();
+  const first = model(states, redundant);
+  assert.equal(first.outdoor.source.name, 'West');
+  assert.equal(first.outdoor.temperature, 8);
+  assert.equal(first.outdoor.fallback, false);
+  const failures = [undefined, state('unavailable', '°C'), state('unknown', '°C'), state('NaN', '°C'), state(80, '°C'), state(8, 'bad'), state(8, '°C', now - 4 * 3600000), { state: '8', attributes: { unit_of_measurement: '°C' } }];
+  for (const failed of failures) {
+    const result = model({ ...states, [settings.outdoor_temperature]: failed }, redundant);
+    assert.equal(result.outdoor.source.name, 'East');
+    assert.equal(result.outdoor.fallback, true);
+    assert.equal(result.outdoor.temperature, 12);
+    assert.equal(result.outdoor.humidity, 70, 'Must use backup humidity even if preferred humidity is healthy');
+    assert.equal(result.outdoor.issues.length, 0, 'Failed inactive pair must not block healthy readings');
+    assert.equal(result.rooms[0].status, 'dry');
+  }
+  states[settings.outdoor_humidity] = state('unavailable', '%');
+  assert.equal(model(states, redundant).outdoor.source.name, 'East');
+  states[settings.outdoor_humidity] = state(80, '%');
+  assert.equal(model(states, redundant).outdoor.source.name, 'West', 'Preferred source resumes on recovery');
+  states['sensor.east_humidity'] = state('unavailable', '%');
+  assert.equal(model(states, redundant).outdoor.source.name, 'West', 'Backup failure must not affect preferred source');
+});
+
+test('never combines partial outdoor pairs or recommends ventilation when all sources fail', () => {
+  const states = redundantReadings();
+  states[settings.outdoor_humidity] = state('unavailable', '%');
+  states['sensor.east_temperature'] = state('unavailable', '°C');
+  const result = model(states, redundant);
+  assert.equal(result.outdoor.source, undefined);
+  assert.equal(result.outdoor.issues.length, 2);
+  assert.equal(result.ready, 0);
+  assert.equal(result.rooms[0].status, 'unknown');
+});
+
+test('explicit redundant configuration tracks every source and rejects ambiguous or shared sources', () => {
+  const config = normalizeConfig({ rooms: [room], ventilation: redundant });
+  for (const source of redundant.outdoor_sources) for (const kind of ['temperature', 'humidity']) assert.ok(collectEntities(config).includes(source[kind]));
+  for (const value of [
+    { ...redundant, ...settings }, { outdoor_sources: [] }, { outdoor_sources: null },
+    { outdoor_sources: [null] }, { outdoor_sources: [{}] },
+    { outdoor_sources: [redundant.outdoor_sources[0], redundant.outdoor_sources[0]] },
+    { outdoor_sources: [{ ...redundant.outdoor_sources[0], name: '' }] },
+  ]) assert.throws(() => normalizeConfig({ rooms: [room], ventilation: value }), /ventilation/);
+});
 
 test('moisture calculations match known psychrometric values and preserve zero humidity', () => {
   const values = moisture(20, 50);

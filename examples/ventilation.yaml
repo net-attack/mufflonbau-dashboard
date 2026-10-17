@@ -5,8 +5,13 @@ language: de
 appearance:
   theme: storybook
 ventilation:
-  outdoor_temperature: sensor.example_outdoor_temperature
-  outdoor_humidity: sensor.example_outdoor_humidity
+  outdoor_sources:
+    - name: Westseite
+      temperature: sensor.example_outdoor_west_temperature
+      humidity: sensor.example_outdoor_west_humidity
+    - name: Ostseite
+      temperature: sensor.example_outdoor_east_temperature
+      humidity: sensor.example_outdoor_east_humidity
   humidity_high: 60
   min_drying_difference: 1
   max_age_minutes: 180

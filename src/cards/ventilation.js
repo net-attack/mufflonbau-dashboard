@@ -65,7 +65,17 @@ export function renderVentilation(owner, card, text) {
   const outdoor = element('section', undefined, 'ventilation-outdoor');
   outdoor.append(element('h3', text.ventilationOutdoor));
   if (model.outdoor.issues.length) model.outdoor.issues.forEach(item => issue(outdoor, item));
-  else readings(outdoor, config.ventilation.outdoor_temperature, config.ventilation.outdoor_humidity, model.outdoor);
+  else readings(outdoor, model.outdoor.source.temperature, model.outdoor.source.humidity, model.outdoor);
+  if (model.outdoor.sources.length > 1) {
+    const sources = element('div', undefined, 'ventilation-metrics ventilation-sources');
+    model.outdoor.sources.forEach(item => {
+      const active = item.source === model.outdoor.source;
+      const label = item.source.name ?? owner._name(item.source.temperature);
+      const status = active ? `${text.ventilationSourceActive}${model.outdoor.fallback ? ` · ${text.ventilationSourceBackup}` : ''}` : item.issues.length ? text.ventilationSourceUnavailable : text.ventilationSourceReady;
+      sources.append(element('div', `${label}: ${status}`));
+    });
+    outdoor.append(sources);
+  }
   card.append(outdoor);
   const grid = element('div', undefined, 'ventilation-rooms');
   for (const item of model.rooms) {

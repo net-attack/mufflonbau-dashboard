@@ -8,13 +8,18 @@ Es werden keine Fenster, Heizungen oder Entfeuchter geschaltet und keine Helfer,
 Automationen oder zusätzlichen Integrationen benötigt.
 
 In HACS unter **Neu herunterladen → Andere Version** die Testversion
-`v0.2.0-ventilation.1` auswählen und anschließend das Dashboard neu laden. In der
+`v0.2.0-ventilation.2` auswählen und anschließend das Dashboard neu laden. In der
 **Strategiekonfiguration** diese Sektion ergänzen; vorhandene Räume behalten:
 
 ```yaml
 ventilation:
-  outdoor_temperature: sensor.example_outdoor_temperature
-  outdoor_humidity: sensor.example_outdoor_humidity
+  outdoor_sources:
+    - name: Westseite
+      temperature: sensor.example_outdoor_west_temperature
+      humidity: sensor.example_outdoor_west_humidity
+    - name: Ostseite
+      temperature: sensor.example_outdoor_east_temperature
+      humidity: sensor.example_outdoor_east_humidity
   humidity_high: 60
   min_drying_difference: 1
   max_age_minutes: 180
@@ -22,13 +27,25 @@ ventilation:
   # room_ids: [living, bedroom]
 ```
 
-Die beiden IDs oben sind synthetisch. Ein vollständiges gemeinsames Beispiel
+Die IDs oben sind synthetisch. Ein vollständiges gemeinsames Beispiel
 steht in [examples/ventilation.yaml](../examples/ventilation.yaml). Jeder betrachtete
 Raum verwendet ausschließlich seine vorhandenen `temperature`- und `humidity`-
 Zuordnungen. Ohne `room_ids` werden Räume mit wenigstens einer dieser Zuordnungen
 angezeigt; unvollständige Paare erhalten keine Empfehlung. Räume ganz ohne
 Klima-Sensoren werden ausgelassen. Im vollständigen Rohkonfigurationseditor gehört
 alles unter `strategy:`. Die Sektion entfernen, um das Feature abzuschalten.
+
+Die Außenpaare stehen in Prioritätsreihenfolge: Das erste vollständige, gültige
+und ausreichend aktuelle Paar wird verwendet. Fällt eine seiner Messungen aus,
+übernimmt das nächste gesunde Paar. Sobald die bevorzugte Quelle wieder gesund
+ist, wird sie erneut verwendet. Temperatur und Feuchte stammen immer aus
+demselben konfigurierten Paar; es wird weder gemischt noch gemittelt. Die Details
+zeigen aktive Quelle, Ersatzbetrieb und Verfügbarkeit der übrigen Quellen.
+Sind alle Paare unbrauchbar, gibt es keine Empfehlung.
+
+Die bisherige Einzelpaar-Konfiguration mit `outdoor_temperature` und
+`outdoor_humidity` funktioniert weiter. Entweder diese beiden Felder oder
+`outdoor_sources` verwenden, niemals beide Formen zusammen. `name` ist optional.
 
 ## Bedeutung der Ampel
 
@@ -42,7 +59,8 @@ alles unter `strategy:`. Die Sektion entfernen, um das Feature abzuschalten.
   Schwelle; unter 40 % erscheint „Luft schon trocken“ in den Details.
 - **„Messwerte prüfen“:** Mindestens ein Wert fehlt, ist unbekannt, unverfügbar,
   unplausibel, hat eine falsche Einheit oder ist zu alt. Es wird keine Empfehlung
-  aus Ersatzsensoren, Nullwerten oder dem Wetterbericht konstruiert.
+  aus Nullwerten oder dem Wetterbericht konstruiert. Bei mehreren Außenpaaren
+  reicht ein vollständig gesundes Paar; ausgefallene Reservefühler blockieren es nicht.
 
 Kühlung ist ein eigener Hinweis: Ab 24 °C innen und mindestens 2 °C kühlerer
 Außenluft wird mögliche Kühlung genannt. Mindestens 2 °C wärmere Außenluft erhält
@@ -88,7 +106,8 @@ Zukunft gibt es keine Empfehlung. Der Browser prüft das Alter zusätzlich jede
 Minute; nach Verlassen der Seite endet der Timer. Gleichbleibende Sensoren ohne
 neuen HA-Zeitstempel können daher trotz erreichbarem Gerät als zu alt erscheinen.
 Der Grenzwert lässt sich an das tatsächliche Meldeintervall anpassen. Weder eine
-andere Raumquelle noch das andere Außengerät wird automatisch eingesetzt.
+andere Raumquelle noch ein nicht ausdrücklich unter `outdoor_sources`
+konfiguriertes Außengerät wird automatisch eingesetzt.
 
 ## Persönlicher Entwurf und Prüfumfang
 
@@ -96,13 +115,16 @@ Im lokalen, ignorierten `examples/ventilation.local.yaml` liegt ein vollständig
 Entwurf mit dem bisherigen persönlichen Layout und den tatsächlich beobachteten
 Sensorzuordnungen. Der Live-Inventarabruf bestätigte ein verfügbares Temperatur-/
 Feuchtepaar desselben Außengeräts an der Westseite. Das östliche Paar war
-unverfügbar und wird nicht als Ersatz verwendet. Innen bleiben die vorhandenen
+unverfügbar und ist als Reserve konfiguriert. West bleibt bevorzugt; bei dessen
+Ausfall übernimmt Ost, sobald dessen beide Messwerte gültig und aktuell sind.
+Innen bleiben die vorhandenen
 Zuordnungen für Wohn-/Essbereich, Arbeitszimmer, Küche, Schlafzimmer und Bad
 erhalten. Der Flur hat kein vollständiges Paar und wird ausgelassen. Persönliche
 Entity-IDs und Inventare bleiben außerhalb der geteilten Dateien.
 
-Es wurde keine Live-Dashboard-Konfiguration geändert. Die YAML wurde mit dem
-HA-Frontend-Parser geprüft; Unit- und Browserprüfungen verwenden synthetische
-Werte. Die echte Sensoraktualität, Platzierung und Ablesbarkeit am Tablet müssen
+Die YAML wird mit dem HA-Frontend-Parser geprüft; Unit- und Browserprüfungen
+verwenden synthetische Werte, einschließlich Ausfall, Alterung, Rückkehr der
+bevorzugten Quelle und vollständigem Ausfall beider Paare.
+Die echte Sensoraktualität, Platzierung und Ablesbarkeit am Tablet müssen
 nach dem Einspielen geprüft werden. Bei „Messwerte prüfen“ öffnen die Sensor-
 Schaltflächen direkt die vorhandenen HA-Entitätsdetails.

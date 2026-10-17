@@ -156,6 +156,10 @@ ${trees}${houses}
       ventilationOutdoor: "Outdoors",
       ventilationAbsolute: "Absolute humidity",
       ventilationDifference: "Drying difference at room temperature",
+      ventilationSourceActive: "active",
+      ventilationSourceBackup: "backup source",
+      ventilationSourceReady: "ready",
+      ventilationSourceUnavailable: "unavailable or invalid",
       ventilationUnit: "Unsupported sensor unit",
       ventilationAgeUnknown: "Reading age unknown",
       ventilationStale: "Reading is too old",
@@ -289,6 +293,10 @@ ${trees}${houses}
       ventilationOutdoor: "Draußen",
       ventilationAbsolute: "Absolute Feuchte",
       ventilationDifference: "Trocknungsdifferenz bei Raumtemperatur",
+      ventilationSourceActive: "aktiv",
+      ventilationSourceBackup: "Ersatzquelle",
+      ventilationSourceReady: "bereit",
+      ventilationSourceUnavailable: "nicht verfügbar oder ungültig",
       ventilationUnit: "Sensoreinheit nicht unterstützt",
       ventilationAgeUnknown: "Alter des Messwerts unbekannt",
       ventilationStale: "Messwert zu alt",
@@ -1798,8 +1806,21 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
       throw new Error(`Mufflonbau: ventilation${key2 ? `.${key2}` : ""} ${message}`);
     };
     if (!value || typeof value !== "object" || Array.isArray(value)) fail2("", "must be an object.");
-    for (const key2 of ["outdoor_temperature", "outdoor_humidity"]) entity2(value[key2], `ventilation.${key2}`);
-    if (value.outdoor_temperature === value.outdoor_humidity) fail2("outdoor_humidity", "must use a separate humidity entity.");
+    if (value.outdoor_sources !== void 0) {
+      if (value.outdoor_temperature !== void 0 || value.outdoor_humidity !== void 0) fail2("outdoor_sources", "cannot be combined with outdoor_temperature/outdoor_humidity.");
+      if (!Array.isArray(value.outdoor_sources) || !value.outdoor_sources.length) fail2("outdoor_sources", "must be a non-empty array of temperature/humidity pairs in priority order.");
+    }
+    const used = /* @__PURE__ */ new Set();
+    for (const [index, source] of outdoorSources(value).entries()) {
+      const key2 = value.outdoor_sources ? `outdoor_sources[${index}]` : "";
+      if (!source || typeof source !== "object" || Array.isArray(source)) fail2(key2, "must be a temperature/humidity pair.");
+      if (source.name !== void 0 && (typeof source.name !== "string" || !source.name.trim())) fail2(`${key2}.name`, "must be a non-empty string.");
+      for (const kind of ["temperature", "humidity"]) {
+        entity2(source[kind], `ventilation.${key2 ? `${key2}.${kind}` : `outdoor_${kind}`}`);
+        if (used.has(source[kind])) fail2(key2, "must use separate, unique sensor entities.");
+        used.add(source[kind]);
+      }
+    }
     const result = { max_age_minutes: 180, humidity_high: 60, min_drying_difference: 1, ...value };
     for (const [key2, min, max] of [["max_age_minutes", 5, 1440], ["humidity_high", 40, 80], ["min_drying_difference", 0.2, 5]]) {
       if (!Number.isFinite(result[key2]) || result[key2] < min || result[key2] > max) fail2(key2, `must be a number between ${min} and ${max}.`);
@@ -1812,7 +1833,10 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
     return result;
   }
   function ventilationEntities(config) {
-    return config ? [config.outdoor_temperature, config.outdoor_humidity] : [];
+    return config ? outdoorSources(config).flatMap((source) => [source.temperature, source.humidity]) : [];
+  }
+  function outdoorSources(config) {
+    return config.outdoor_sources ?? [{ temperature: config.outdoor_temperature, humidity: config.outdoor_humidity }];
   }
   function ventilationRooms(rooms, config) {
     return rooms.filter((room) => config.room_ids ? config.room_ids.includes(room.id) : room.temperature || room.humidity);
@@ -1854,7 +1878,9 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
   }
   function ventilationStatus(config, rooms, states, now = Date.now()) {
     const settings = { max_age_minutes: 180, humidity_high: 60, min_drying_difference: 1, ...config };
-    const outdoor = pair(settings.outdoor_temperature, settings.outdoor_humidity, states, now, settings.max_age_minutes);
+    const sources = outdoorSources(settings).map((source) => ({ source, ...pair(source.temperature, source.humidity, states, now, settings.max_age_minutes) }));
+    const selected = sources.find((source) => !source.issues.length);
+    const outdoor = selected ? { ...selected, sources, fallback: selected !== sources[0] } : { issues: sources.flatMap((source) => source.issues), sources, fallback: false };
     const results = ventilationRooms(rooms, settings).map((room) => {
       const indoor = pair(room.temperature, room.humidity, states, now, settings.max_age_minutes);
       const issues = [...outdoor.issues, ...indoor.issues];
@@ -2729,7 +2755,17 @@ ${flusenfelsShellStyles}`), shell);
     const outdoor = element("section", void 0, "ventilation-outdoor");
     outdoor.append(element("h3", text.ventilationOutdoor));
     if (model.outdoor.issues.length) model.outdoor.issues.forEach((item) => issue(outdoor, item));
-    else readings(outdoor, config.ventilation.outdoor_temperature, config.ventilation.outdoor_humidity, model.outdoor);
+    else readings(outdoor, model.outdoor.source.temperature, model.outdoor.source.humidity, model.outdoor);
+    if (model.outdoor.sources.length > 1) {
+      const sources = element("div", void 0, "ventilation-metrics ventilation-sources");
+      model.outdoor.sources.forEach((item) => {
+        const active = item.source === model.outdoor.source;
+        const label2 = item.source.name ?? owner._name(item.source.temperature);
+        const status = active ? `${text.ventilationSourceActive}${model.outdoor.fallback ? ` · ${text.ventilationSourceBackup}` : ""}` : item.issues.length ? text.ventilationSourceUnavailable : text.ventilationSourceReady;
+        sources.append(element("div", `${label2}: ${status}`));
+      });
+      outdoor.append(sources);
+    }
     card.append(outdoor);
     const grid = element("div", void 0, "ventilation-rooms");
     for (const item of model.rooms) {

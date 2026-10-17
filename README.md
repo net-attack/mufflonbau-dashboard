@@ -160,7 +160,16 @@ an entity uses an unusual name. Fritz DECT temperature and battery sensors are
 not treated as Internet metrics. Network presence is reported by the router's
 device tracker and may be delayed; it does not identify Wi-Fi versus Ethernet
 unless the integration exposes that detail. The expert view also includes the
-discovered admin entities.
+discovered admin entities. Each entity appears in only one admin section: WAN and
+Speedtest under Internet, local LAN/Wi-Fi and clients under Network, and host
+metrics under Home Assistant. Explicit assignments take precedence over discovery;
+an ID listed in multiple admin sections uses the first section in the order
+Internet, Network, Host, Clients.
+
+The expert view uses the available page width and groups unique entity IDs by
+category. Filter by category or search names and IDs; tap any row for Home
+Assistant's entity details. Different entities remain separate even when their
+names or current readings match.
 
 By default, appearance follows `sun.sun`, with the HA dark theme as a fallback.
 An explicit `mode: ambient` or `mode: night` overrides automatic selection.

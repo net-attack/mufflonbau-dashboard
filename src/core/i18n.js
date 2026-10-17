@@ -1,5 +1,7 @@
 export const translations = {
   en: {
+    category: 'Category', allCategories: 'All categories', searchEntities: 'Search entities', noMatchingEntities: 'No matching entities',
+    switches: 'Switches', automations: 'Automations and scripts', sensors: 'Sensors', helpers: 'Helpers', other: 'Other',
     deviceUnavailable: 'Unreachable', currentCleaning: 'Current cleaning', cleaningTypeUnknown: 'Cleaning type not reported', vacuumAndMop: 'Vacuum and mop', mopAfterVacuum: 'Vacuum, then mop',
     monitored: 'Monitored devices', healthyDevices: 'Healthy', stateSince: 'State since', missingCleaningHelper: 'No room action configured',
     wallSwitchUnavailable: 'Unreachable · wall switch may be off', checkWallSwitch: 'Turn on the wall switch to control this light.',
@@ -34,6 +36,8 @@ export const translations = {
     vacuum: 'Vacuum', mop: 'Mop', cleanGenius: 'CleanGenius', cleaningMode: 'Cleaning mode', chooseCleaningRoom: 'Tap a room to start the selected mode.', notConfigured: 'Not configured', room: 'Room', dewPoint: 'Dew point',
   },
   de: {
+    category: 'Kategorie', allCategories: 'Alle Kategorien', searchEntities: 'Entitäten suchen', noMatchingEntities: 'Keine passenden Entitäten',
+    switches: 'Schalter', automations: 'Automationen und Skripte', sensors: 'Sensoren', helpers: 'Helfer', other: 'Weitere',
     deviceUnavailable: 'Nicht erreichbar', currentCleaning: 'Aktuelle Reinigung', cleaningTypeUnknown: 'Reinigungsart nicht gemeldet', vacuumAndMop: 'Saugen und Wischen', mopAfterVacuum: 'Erst saugen, dann wischen',
     monitored: 'Überwachte Geräte', healthyDevices: 'In Ordnung', stateSince: 'Status seit', missingCleaningHelper: 'Keine Raumaktion eingerichtet',
     wallSwitchUnavailable: 'Nicht erreichbar · Wandschalter möglicherweise aus', checkWallSwitch: 'Zum Steuern zuerst den Wandschalter einschalten.',

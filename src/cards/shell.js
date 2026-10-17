@@ -26,6 +26,7 @@ export class MufflonbauShell extends HTMLElement {
     if (!this._config) return;
     const text = translations[this._config.language ?? 'en'];
     const quickBack = ['rooms', 'presence', 'system', 'climate', 'cleaning'].includes(this._config.path);
+    const expertView = this._config.path === 'expert';
     const shell = element('div', undefined, 'shell');
     this.dataset.view = this._config.path;
     if (this._config.full_view) this.setAttribute('data-full-view', 'true'); else this.removeAttribute('data-full-view');
@@ -55,7 +56,7 @@ export class MufflonbauShell extends HTMLElement {
     }
     aside.append(brand, nav, element('div', text.yourSpace, 'footnote'));
     const main = element('main');
-    const back = element('a', `← ${text.home}`, 'back-link'); navigateLink(back, 'home');
+    const back = element('a', `← ${expertView ? text.admin : text.home}`, 'back-link'); navigateLink(back, expertView ? 'admin' : 'home');
     if (quickBack) {
       shell.addEventListener('click', event => {
         const path = event.composedPath();
@@ -66,10 +67,10 @@ export class MufflonbauShell extends HTMLElement {
     const top = element('div', undefined, 'topline');
     const status = element('span', undefined, 'status'); status.append(element('span', undefined, 'dot'), element('span', text.live));
     top.append(element('span', `${this._config.title ?? 'Mufflonbau'} / ${this._config.view_title}`), status);
-    if (!quickBack) main.append(top);
+    if (!quickBack && !expertView) main.append(top);
     if (this._config.path !== 'home' && this._config.path !== 'rooms') {
       const header = element('div', undefined, 'view-header');
-      if (quickBack) header.append(back);
+      if (quickBack || expertView) header.append(back);
       header.append(element('h1', this._config.view_title, 'heading')); main.append(header);
     }
     this._content = element('div', undefined, 'content');

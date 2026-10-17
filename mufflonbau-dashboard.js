@@ -144,6 +144,15 @@ ${trees}${houses}
   // src/core/i18n.js
   var translations = {
     en: {
+      category: "Category",
+      allCategories: "All categories",
+      searchEntities: "Search entities",
+      noMatchingEntities: "No matching entities",
+      switches: "Switches",
+      automations: "Automations and scripts",
+      sensors: "Sensors",
+      helpers: "Helpers",
+      other: "Other",
       deviceUnavailable: "Unreachable",
       currentCleaning: "Current cleaning",
       cleaningTypeUnknown: "Cleaning type not reported",
@@ -241,6 +250,15 @@ ${trees}${houses}
       dewPoint: "Dew point"
     },
     de: {
+      category: "Kategorie",
+      allCategories: "Alle Kategorien",
+      searchEntities: "Entitäten suchen",
+      noMatchingEntities: "Keine passenden Entitäten",
+      switches: "Schalter",
+      automations: "Automationen und Skripte",
+      sensors: "Sensoren",
+      helpers: "Helfer",
+      other: "Weitere",
       deviceUnavailable: "Nicht erreichbar",
       currentCleaning: "Aktuelle Reinigung",
       cleaningTypeUnknown: "Reinigungsart nicht gemeldet",
@@ -529,23 +547,33 @@ ${trees}${houses}
   // src/core/admin.js
   var adminGroups = ["internet", "network", "host"];
   var sourcePatterns = {
-    internet: /speedtest|internet|wan|download|upload|ping|latency|external.?ip|connectivity|connection/i,
-    network: /wlan|wifi|wi-fi|network|lan|wan|speedtest|download|upload|ping|internet|ssid|connection|client/i,
-    host: /raspberry|raspi|\brpi\b|home.?assistant|processor|cpu|memory|ram|disk|swap|uptime/i
+    internet: /speedtest|internet|\bwan\b|download|upload|\bping\b|latency|external.?ip|public.?ip/i,
+    network: /wlan|wifi|wi-fi|network|\blan\b|ssid|connection|client/i,
+    host: /raspberry|raspi|\brpi\b|home.?assistant|processor|\bcpu\b|memory|\bram\b|disk|swap|uptime/i
   };
   function discoverAdminSources(admin, states) {
-    const result = Object.fromEntries([...adminGroups, "clients"].map((key2) => [key2, [...admin[key2] ?? []]]));
+    const result = Object.fromEntries([...adminGroups, "clients"].map((key2) => [key2, []]));
+    const assigned = /* @__PURE__ */ new Set();
+    for (const group of [...adminGroups, "clients"]) {
+      for (const id of admin[group] ?? []) {
+        if (!assigned.has(id)) {
+          result[group].push(id);
+          assigned.add(id);
+        }
+      }
+    }
     for (const [id, state] of Object.entries(states ?? {})) {
+      if (assigned.has(id)) continue;
       const domain = id.split(".")[0];
-      const name = `${id} ${state?.attributes?.friendly_name ?? ""} ${state?.attributes?.device_class ?? ""} ${state?.attributes?.integration ?? ""}`;
+      const name = `${id} ${state?.attributes?.friendly_name ?? ""} ${state?.attributes?.device_class ?? ""} ${state?.attributes?.integration ?? ""}`.replaceAll("_", " ");
       if (adminGroups.includes(domain) || !["sensor", "binary_sensor", "device_tracker"].includes(domain)) continue;
       if (domain === "device_tracker") {
         if (state?.attributes?.source_type === "router" || /fritz|fritzbox|wlan|wifi|wi-fi/i.test(name)) result.clients.push(id);
         continue;
       }
-      for (const group of adminGroups) {
-        if (sourcePatterns[group].test(name)) result[group].push(id);
-      }
+      const routerConnection = /fritz|router/i.test(name) && /connectivity|connection/i.test(name);
+      const group = sourcePatterns.host.test(name) ? "host" : (sourcePatterns.internet.test(name) || routerConnection) && !/wlan|wifi|wi-fi|ssid|\blan\b/i.test(name) ? "internet" : sourcePatterns.network.test(name) ? "network" : void 0;
+      if (group) result[group].push(id);
     }
     for (const key2 of Object.keys(result)) result[key2] = [...new Set(result[key2])];
     return result;
@@ -589,6 +617,33 @@ ${trees}${houses}
     return [...groups.values()];
   }
 
+  // src/core/expert.js
+  var expertCategories = ["internet", "network", "host", "climate", "lights", "cleaning", "people", "calendar", "system", "switches", "automations", "sensors", "helpers", "other"];
+  function categorizeEntities(ids, { rooms = [], cleaning = {}, admin = {}, monitors = [], people = [], calendars = [] } = {}, states = {}) {
+    const cleaningIds = /* @__PURE__ */ new Set([...Object.values(cleaning), ...rooms.flatMap((room) => Object.values(room.cleaning ?? {}))]);
+    const climateIds = new Set(rooms.flatMap((room) => [room.temperature, room.humidity, room.dew_point]));
+    const lightIds = new Set(rooms.flatMap((room) => [...room.lights ?? [], ...room.member_lights ?? []]));
+    const systemIds = new Set(monitors.map((item) => item.entity));
+    return [...new Set(ids)].map((entity2) => {
+      const domain = entity2.split(".")[0];
+      let category = "other";
+      if ((admin.internet ?? []).includes(entity2)) category = "internet";
+      else if ([...admin.network ?? [], ...admin.clients ?? []].includes(entity2)) category = "network";
+      else if ((admin.host ?? []).includes(entity2)) category = "host";
+      else if (cleaningIds.has(entity2) || domain === "vacuum") category = "cleaning";
+      else if (climateIds.has(entity2) || domain === "climate" || ["temperature", "humidity"].includes(states[entity2]?.attributes?.device_class)) category = "climate";
+      else if (lightIds.has(entity2) || domain === "light") category = "lights";
+      else if (people.includes(entity2) || ["person", "device_tracker"].includes(domain)) category = "people";
+      else if (calendars.includes(entity2) || domain === "calendar") category = "calendar";
+      else if (systemIds.has(entity2)) category = "system";
+      else if (domain === "switch") category = "switches";
+      else if (["automation", "script", "scene"].includes(domain)) category = "automations";
+      else if (["sensor", "binary_sensor"].includes(domain)) category = "sensors";
+      else if (domain.startsWith("input_") || ["select", "number", "button", "timer", "counter", "schedule"].includes(domain)) category = "helpers";
+      return { entity: entity2, category };
+    });
+  }
+
   // src/cards/admin.js
   var styles = `
 :host{display:block;min-width:0;color:var(--mb-ink)}*{box-sizing:border-box}
@@ -600,6 +655,12 @@ p,small{color:var(--mb-muted);line-height:1.6}h2{font-size:22px;margin:0 0 10px}
 button.metric{cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:10px}.value{font-size:28px;font-weight:650;letter-spacing:-1px}.label{font-size:13px;color:var(--mb-muted)}
 small{font-size:11px}.problem .value{font-size:15px;letter-spacing:0}.client-list{display:grid;gap:8px;margin-top:16px}.client{display:flex;justify-content:space-between;gap:12px;text-align:left;min-height:48px;padding:14px;border:1px solid var(--mb-line);border-radius:14px;background:var(--mb-soft)}
 a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-offset:3px}a:hover,button:hover{border-color:var(--mb-accent)}.back{display:inline-block;margin-bottom:18px;min-height:44px;padding:10px 0;color:var(--mb-accent)}
+.expert-panel{min-height:max(320px,calc(100dvh - 230px))}.expert-toolbar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px}.expert-toolbar label{display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--mb-muted);flex:1;min-width:min(240px,100%)}
+.expert-toolbar input,.expert-toolbar select{width:100%;min-width:0;min-height:44px;padding:10px 12px;font:inherit;font-size:14px;color:var(--mb-ink);background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:12px}
+.expert-toolbar :focus-visible{outline:2px solid var(--mb-accent);outline-offset:3px}.expert-count{margin:0 0 18px;font-size:12px;color:var(--mb-muted)}
+.expert-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));align-items:start;gap:24px}.expert-group{min-width:0}.expert-group h3{margin-bottom:12px}.expert-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:8px}
+.expert-entity{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;min-height:64px;padding:12px 14px;border:1px solid var(--mb-line);border-radius:14px;background:var(--mb-soft);text-align:start;cursor:pointer}
+.expert-identity{min-width:0;overflow-wrap:anywhere}.expert-identity strong{font-size:13px;display:block}.expert-identity small{display:block;margin-top:4px;font-size:10px}.expert-value{flex:0 1 40%;font-size:14px;text-align:end;overflow-wrap:anywhere}
 @media(max-width:950px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.groups,.metrics{grid-template-columns:1fr}.panel{padding:18px}}
 `;
   var MufflonbauAdmin = class extends HTMLElement {
@@ -614,7 +675,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
     set hass(value) {
       const previous = this._hass;
       this._hass = value;
-      const ids = Object.values(this._config?.admin ?? {}).flat();
+      const ids = [...Object.values(this._config?.admin ?? {}).flat(), ...this._config?.entities ?? []];
       if (!previous || previous.themes !== value.themes || previous.states["sun.sun"] !== value.states["sun.sun"] || ids.some((id) => previous.states[id] !== value.states[id])) this._render();
     }
     getCardSize() {
@@ -626,11 +687,16 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
     _render() {
       if (!this._config || !this._hass) return;
       const { language = "en", admin, section } = this._config;
+      const focusedEntity = this.shadowRoot.activeElement?.dataset?.entity;
+      const focusedFilter = this.shadowRoot.activeElement?.id;
+      const selection = focusedFilter === "expert-search" ? this.shadowRoot.activeElement.selectionStart : void 0;
       const text = translations[language];
       const states = this._hass.states;
       applyTheme(this, appearanceMode(this._config.appearance, states, this._hass.themes?.darkMode), this._config.appearance?.theme);
       const panel = element("div", void 0, "panel");
-      if (section === "overview") {
+      if (section === "expert") {
+        this._expert(panel, text, language);
+      } else if (section === "overview") {
         panel.append(element("h2", text.admin), element("p", text.adminIntro));
         const groups = element("div", void 0, "groups");
         for (const group of adminGroups) {
@@ -702,6 +768,79 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
         }
       }
       this.shadowRoot.replaceChildren(element("style", styles), panel);
+      if (focusedEntity) [...this.shadowRoot.querySelectorAll("[data-entity]")].find((node) => node.dataset.entity === focusedEntity)?.focus();
+      if (focusedFilter) {
+        const control = this.shadowRoot.getElementById(focusedFilter);
+        control?.focus();
+        if (selection !== void 0) control?.setSelectionRange(selection, selection);
+      }
+    }
+    _expert(panel, text, language) {
+      panel.classList.add("expert-panel");
+      const toolbar = element("div", void 0, "expert-toolbar");
+      const searchLabel = element("label", text.searchEntities);
+      searchLabel.htmlFor = "expert-search";
+      const search = element("input");
+      search.id = "expert-search";
+      search.type = "search";
+      search.value = this._query ?? "";
+      search.addEventListener("input", () => {
+        this._query = search.value;
+        this._expertResults(text, language);
+      });
+      searchLabel.append(search);
+      const filterLabel = element("label", text.category);
+      filterLabel.htmlFor = "expert-category";
+      const filter = element("select");
+      filter.id = "expert-category";
+      const available = new Set((this._config.entries ?? []).map((entry) => entry.category));
+      for (const category of ["all", ...expertCategories.filter((key2) => available.has(key2))]) {
+        const option = element("option", category === "all" ? text.allCategories : text[category]);
+        option.value = category;
+        filter.append(option);
+      }
+      filter.value = this._category ?? "all";
+      filter.addEventListener("change", () => {
+        this._category = filter.value;
+        this._expertResults(text, language);
+      });
+      filterLabel.append(filter);
+      toolbar.append(searchLabel, filterLabel);
+      this._expertCount = element("p", void 0, "expert-count");
+      this._expertCount.setAttribute("role", "status");
+      this._expertGroups = element("div", void 0, "expert-groups");
+      panel.append(toolbar, this._expertCount, this._expertGroups);
+      this._expertResults(text, language);
+    }
+    _expertResults(text, language) {
+      const states = this._hass.states;
+      const entries = [...new Map((this._config.entries ?? []).map((entry) => [entry.entity, entry])).values()];
+      const query = (this._query ?? "").trim().toLocaleLowerCase(language);
+      const filtered = entries.filter(({ entity: entity2, category }) => (!this._category || this._category === "all" || category === this._category) && `${entity2} ${states[entity2]?.attributes?.friendly_name ?? ""} ${text[category]}`.toLocaleLowerCase(language).includes(query));
+      this._expertCount.textContent = filtered.length ? `${filtered.length} / ${entries.length}` : text.noMatchingEntities;
+      this._expertGroups.replaceChildren();
+      for (const category of expertCategories) {
+        const members = filtered.filter((entry) => entry.category === category);
+        if (!members.length) continue;
+        members.sort((a, b) => (states[a.entity]?.attributes?.friendly_name ?? a.entity).localeCompare(states[b.entity]?.attributes?.friendly_name ?? b.entity, language));
+        const section = element("section", void 0, "expert-group");
+        section.dataset.category = category;
+        section.append(element("h3", `${text[category]} · ${members.length}`));
+        const list2 = element("div", void 0, "expert-list");
+        for (const { entity: entity2 } of members) {
+          const state = states[entity2];
+          const row = element("button", void 0, "expert-entity");
+          row.type = "button";
+          row.dataset.entity = entity2;
+          const identity = element("span", void 0, "expert-identity");
+          identity.append(element("strong", state?.attributes?.friendly_name ?? entity2), element("small", entity2));
+          row.append(identity, element("span", this._display(state, text, language), "expert-value"));
+          row.addEventListener("click", () => this._info(entity2));
+          list2.append(row);
+        }
+        section.append(list2);
+        this._expertGroups.append(section);
+      }
     }
     _display(state, text, language) {
       return stateProblem(state, language) ?? `${text.states[state.state] ?? state.state}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : ""}`;
@@ -1333,9 +1472,6 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       .../^(light|switch)\./.test(entity2) ? { tap_action: { action: "toggle" }, hold_action: { action: "more-info" } } : {}
     }));
   }
-  function entityList(ids, title) {
-    return ids.length ? [{ type: "entities", title, entities: ids }] : [];
-  }
   function view(path, title, icon2, cards, extra = {}) {
     return { type: "panel", path, title, icon: icon2, cards, ...extra };
   }
@@ -1404,7 +1540,11 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         }))
       ], { subview: true }));
     }
-    if (entities.length) views.push(view("expert", text.expert, "mdi:tune-variant", entityList(entities, text.expert), { subview: true }));
+    if (entities.length) views.push(view("expert", text.expert, "mdi:tune-variant", [{
+      ...adminCard("expert"),
+      entities,
+      entries: categorizeEntities(entities, { ...config, admin }, hass.states)
+    }], { subview: true }));
     return views;
   }
 
@@ -1588,6 +1728,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
   :host([data-view=rooms]) .content { display:flex; flex:1; min-height:0; }
   :host([data-view=rooms]) .slot { width:100%; height:100%; min-height:0; }
   :host([data-view=presence]) main,:host([data-view=system]) main,:host([data-view=climate]) main { padding:20px clamp(16px,3vw,46px) max(120px,var(--mb-nav-space,140px)); }
+  :host([data-view=expert]) main { max-width:none; padding:20px clamp(16px,3vw,46px) max(120px,var(--mb-nav-space,140px)); }
   :host([data-view=cleaning]) main { padding-bottom:max(128px,var(--mb-nav-space,140px)); }
   :host([data-view=presence]) .slot,:host([data-view=system]) .slot,:host([data-view=climate]) .slot.rooms { grid-column:1/-1; }
   :host([data-view=presence]),:host([data-view=system]) { min-height:100dvh; --mb-detail-height:max(320px,calc(100dvh - 230px)); }
@@ -1727,6 +1868,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       if (!this._config) return;
       const text = translations[this._config.language ?? "en"];
       const quickBack = ["rooms", "presence", "system", "climate", "cleaning"].includes(this._config.path);
+      const expertView = this._config.path === "expert";
       const shell = element("div", void 0, "shell");
       this.dataset.view = this._config.path;
       if (this._config.full_view) this.setAttribute("data-full-view", "true");
@@ -1765,8 +1907,8 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       }
       aside.append(brand, nav, element("div", text.yourSpace, "footnote"));
       const main = element("main");
-      const back = element("a", `← ${text.home}`, "back-link");
-      navigateLink(back, "home");
+      const back = element("a", `← ${expertView ? text.admin : text.home}`, "back-link");
+      navigateLink(back, expertView ? "admin" : "home");
       if (quickBack) {
         shell.addEventListener("click", (event) => {
           const path = event.composedPath();
@@ -1778,10 +1920,10 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       const status = element("span", void 0, "status");
       status.append(element("span", void 0, "dot"), element("span", text.live));
       top.append(element("span", `${this._config.title ?? "Mufflonbau"} / ${this._config.view_title}`), status);
-      if (!quickBack) main.append(top);
+      if (!quickBack && !expertView) main.append(top);
       if (this._config.path !== "home" && this._config.path !== "rooms") {
         const header = element("div", void 0, "view-header");
-        if (quickBack) header.append(back);
+        if (quickBack || expertView) header.append(back);
         header.append(element("h1", this._config.view_title, "heading"));
         main.append(header);
       }

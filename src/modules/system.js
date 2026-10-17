@@ -1,6 +1,7 @@
 import { collectEntities } from '../core/config.js';
 import { adminGroups, discoverAdminSources, numericGroups } from '../core/admin.js';
-import { entityList, liveCard, view } from '../core/cards.js';
+import { liveCard, view } from '../core/cards.js';
+import { categorizeEntities } from '../core/expert.js';
 export function systemViews({ config, hass, text, language }) {
   const views = [];
   if (config.monitors.length) views.push(view('system', text.system, 'mdi:alert-circle-outline', [
@@ -18,6 +19,8 @@ export function systemViews({ config, hass, text, language }) {
       })),
     ], { subview: true }));
   }
-  if (entities.length) views.push(view('expert', text.expert, 'mdi:tune-variant', entityList(entities, text.expert), { subview: true }));
+  if (entities.length) views.push(view('expert', text.expert, 'mdi:tune-variant', [{
+    ...adminCard('expert'), entities, entries: categorizeEntities(entities, { ...config, admin }, hass.states),
+  }], { subview: true }));
   return views;
 }

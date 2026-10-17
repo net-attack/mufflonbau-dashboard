@@ -56,7 +56,7 @@ test('collapses configured Hue group members in room views but retains them in e
   assert.equal(roomCards.filter(card => card.entity === 'light.kitchen').length, 1);
   assert.equal(roomCards.some(card => ['light.strip_one', 'light.strip_two'].includes(card.entity)), false);
   const expert = views.find(item => item.path === 'expert').cards[0].cards;
-  assert.deepEqual(expert.find(card => card.type === 'entities').entities, ['light.kitchen', 'light.strip_one', 'light.strip_two']);
+  assert.deepEqual(expert.find(card => card.section === 'expert').entities, ['light.kitchen', 'light.strip_one', 'light.strip_two']);
   assert.deepEqual(room.lights, ['light.kitchen', 'light.strip_one', 'light.strip_two']);
 });
 test('cleaning buttons target exactly the configured helper and do not invent room IDs', () => {

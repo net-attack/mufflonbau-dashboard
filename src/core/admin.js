@@ -2,23 +2,35 @@ import { availability, numericState } from './state.js';
 
 export const adminGroups = ['internet', 'network', 'host'];
 const sourcePatterns = {
-  internet: /speedtest|internet|wan|download|upload|ping|latency|external.?ip|connectivity|connection/i,
-  network: /wlan|wifi|wi-fi|network|lan|wan|speedtest|download|upload|ping|internet|ssid|connection|client/i,
-  host: /raspberry|raspi|\brpi\b|home.?assistant|processor|cpu|memory|ram|disk|swap|uptime/i,
+  internet: /speedtest|internet|\bwan\b|download|upload|\bping\b|latency|external.?ip|public.?ip/i,
+  network: /wlan|wifi|wi-fi|network|\blan\b|ssid|connection|client/i,
+  host: /raspberry|raspi|\brpi\b|home.?assistant|processor|\bcpu\b|memory|\bram\b|disk|swap|uptime/i,
 };
 export function discoverAdminSources(admin, states) {
-  const result = Object.fromEntries([...adminGroups, 'clients'].map(key => [key, [...(admin[key] ?? [])]]));
+  const result = Object.fromEntries([...adminGroups, 'clients'].map(key => [key, []]));
+  const assigned = new Set();
+  // Explicit assignments win over discovery. Each entity belongs to one section.
+  for (const group of [...adminGroups, 'clients']) {
+    for (const id of admin[group] ?? []) {
+      if (!assigned.has(id)) { result[group].push(id); assigned.add(id); }
+    }
+  }
   for (const [id, state] of Object.entries(states ?? {})) {
+    if (assigned.has(id)) continue;
     const domain = id.split('.')[0];
-    const name = `${id} ${state?.attributes?.friendly_name ?? ''} ${state?.attributes?.device_class ?? ''} ${state?.attributes?.integration ?? ''}`;
+    const name = `${id} ${state?.attributes?.friendly_name ?? ''} ${state?.attributes?.device_class ?? ''} ${state?.attributes?.integration ?? ''}`.replaceAll('_', ' ');
     if (adminGroups.includes(domain) || !['sensor', 'binary_sensor', 'device_tracker'].includes(domain)) continue;
     if (domain === 'device_tracker') {
       if (state?.attributes?.source_type === 'router' || /fritz|fritzbox|wlan|wifi|wi-fi/i.test(name)) result.clients.push(id);
       continue;
     }
-    for (const group of adminGroups) {
-      if (sourcePatterns[group].test(name)) result[group].push(id);
-    }
+    // Host metrics and local Wi-Fi/LAN details take precedence over generic
+    // connection words. WAN/Speedtest readings stay exclusively under Internet.
+    const routerConnection = /fritz|router/i.test(name) && /connectivity|connection/i.test(name);
+    const group = sourcePatterns.host.test(name) ? 'host'
+      : (sourcePatterns.internet.test(name) || routerConnection) && !/wlan|wifi|wi-fi|ssid|\blan\b/i.test(name) ? 'internet'
+        : sourcePatterns.network.test(name) ? 'network' : undefined;
+    if (group) result[group].push(id);
   }
   for (const key of Object.keys(result)) result[key] = [...new Set(result[key])];
   return result;

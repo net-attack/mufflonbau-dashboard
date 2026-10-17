@@ -109,6 +109,7 @@ export const shellStyles = `
   :host([data-view=rooms]) .content { display:flex; flex:1; min-height:0; }
   :host([data-view=rooms]) .slot { width:100%; height:100%; min-height:0; }
   :host([data-view=presence]) main,:host([data-view=system]) main,:host([data-view=climate]) main { padding:20px clamp(16px,3vw,46px) max(120px,var(--mb-nav-space,140px)); }
+  :host([data-view=expert]) main { max-width:none; padding:20px clamp(16px,3vw,46px) max(120px,var(--mb-nav-space,140px)); }
   :host([data-view=cleaning]) main { padding-bottom:max(128px,var(--mb-nav-space,140px)); }
   :host([data-view=presence]) .slot,:host([data-view=system]) .slot,:host([data-view=climate]) .slot.rooms { grid-column:1/-1; }
   :host([data-view=presence]),:host([data-view=system]) { min-height:100dvh; --mb-detail-height:max(320px,calc(100dvh - 230px)); }

@@ -445,12 +445,14 @@ try {
       'binary_sensor.wan': { state: 'off', attributes: { friendly_name: 'Internet' } },
       'device_tracker.tablet': { state: 'home', attributes: { friendly_name: 'Galaxy Tab' } },
       'device_tracker.unknown': { state: 'unknown', attributes: { friendly_name: 'Unknown device' } },
+      'sensor.same_one': { state: '12', attributes: { friendly_name: 'Same reading' } },
+      'sensor.same_two': { state: '12', attributes: { friendly_name: 'Same reading' } },
     }, callWS: async payload => {
       window.historyCalls.push(payload);
       if (window.rejectHistory) throw new Error('Recorder unavailable');
       return Object.fromEntries(payload.entity_ids.map(id => [id, Array.from({ length: 13 }, (_, index) => ({ s: index === 7 ? 'unknown' : String((id === 'sensor.cpu' ? 24 : 49) + Math.sin(index * .8) * 4), lu: (now - (12 - index) * 1800000) / 1000 }))]));
     } };
-    window.adminDashboard = await customElements.get('ll-strategy-dashboard-mufflonbau').generate({ language: 'en', admin: {
+    window.adminDashboard = await customElements.get('ll-strategy-dashboard-mufflonbau').generate({ language: 'en', expert_entities: ['sensor.cpu', 'sensor.cpu', 'sensor.same_one', 'sensor.same_two'], admin: {
       internet: ['binary_sensor.wan'], host: ['sensor.cpu', 'sensor.temperature'], clients: ['device_tracker.tablet', 'device_tracker.unknown'],
     } }, window.adminHass);
     window.showAdminView = path => {
@@ -491,6 +493,49 @@ try {
   assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /Network devices · 1\/2/);
   assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /State unknown/);
   assert.ok(!await page.locator('#dashboard mufflonbau-admin .panel').innerText().then(value => value.includes('Offline')));
+  assert.equal(await page.locator('#dashboard mufflonbau-admin button[data-entity="binary_sensor.wan"]').count(), 0, 'Internet readings must not repeat in Network');
+  await page.evaluate(() => { window.showAdminView('expert'); scrollTo(0, 0); });
+  const expert = page.locator('#dashboard mufflonbau-admin');
+  assert.equal(await expert.locator('.expert-entity').count(), 7);
+  assert.equal(await expert.locator('.expert-entity[data-entity="sensor.cpu"]').count(), 1, 'Repeated configuration must produce one row');
+  assert.equal(await expert.locator('.expert-group[data-category=sensors] .expert-entity').count(), 2, 'Separate sensors with matching names and values must remain accessible');
+  for (const viewport of [{ width: 2000, height: 1000 }, { width: 893, height: 533 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    const geometry = await page.locator('#dashboard').evaluate(shell => {
+      const main = shell.shadowRoot.querySelector('main');
+      const card = shell.shadowRoot.querySelector('mufflonbau-admin');
+      return { mainWidth: main.getBoundingClientRect().width, cardWidth: card.getBoundingClientRect().width,
+        padding: parseFloat(getComputedStyle(main).paddingLeft) + parseFloat(getComputedStyle(main).paddingRight),
+        overflow: document.documentElement.scrollWidth - innerWidth };
+    });
+    assert.ok(Math.abs(geometry.cardWidth - (geometry.mainWidth - geometry.padding)) < 2, `Expert must use the content width: ${JSON.stringify(geometry)}`);
+    if (viewport.width === 2000) assert.ok(geometry.mainWidth > 1800, 'Expert must use wide desktop screens');
+    assert.ok(geometry.overflow <= 1, 'Expert filters and rows must fit on phones');
+    await page.screenshot({ path: `test-results/expert-${viewport.width}.png` });
+  }
+  const filter = expert.locator('#expert-category'); const search = expert.locator('#expert-search');
+  await filter.selectOption('host');
+  assert.equal(await expert.locator('.expert-entity').count(), 2);
+  await search.fill('sensor.cpu');
+  assert.equal(await expert.locator('.expert-entity').count(), 1);
+  await page.evaluate(() => {
+    window.adminHass = { ...window.adminHass, states: { ...window.adminHass.states,
+      'sensor.cpu': { ...window.adminHass.states['sensor.cpu'], state: '31' },
+    } }; document.querySelector('#dashboard').hass = window.adminHass;
+  });
+  assert.equal(await filter.inputValue(), 'host'); assert.equal(await search.inputValue(), 'sensor.cpu');
+  assert.equal(await search.evaluate(node => node.getRootNode().activeElement === node), true, 'Live updates must preserve search focus');
+  assert.equal(await expert.locator('.expert-value').innerText(), '31 %');
+  await expert.locator('.expert-entity').click();
+  assert.equal(await page.evaluate(() => window.moreInfo.at(-1)), 'sensor.cpu');
+  await search.fill('does-not-exist');
+  assert.equal(await expert.locator('.expert-entity').count(), 0);
+  assert.equal(await expert.locator('[role=status]').innerText(), 'No matching entities');
+  await search.fill(''); await filter.selectOption('network');
+  assert.equal(await expert.locator('.expert-entity').count(), 2);
+  await filter.selectOption('all');
+  assert.equal(await expert.locator('.expert-entity').count(), 7);
+  await page.locator('#dashboard .back-link').click(); assert.match(page.url(), /\/admin$/);
   await renderViews(page, previewConfig, previewHass);
   assert.deepEqual(errors, []);
   console.log('Browser checks passed: rendering, live updates, rotating greetings, localization, warnings, navigation, mobile layout, safe labels, clock cleanup, actual YAML examples, complete dashboard layouts, palette contrast, theme consistency, device controls, action errors, admin drill-down, Recorder ranges/retry/gaps, and Galaxy Tab A11 touch, rotation, scrolling, navigation, and viewport geometry.');

@@ -19,7 +19,11 @@ function cardsIn(value) {
 test('generates connected feature views with explicit types and localized room names', () => {
   const before = JSON.stringify(fixture);
   const result = generateDashboard(fixture, { states: {} });
-  assert.deepEqual(result.views.map(view => view.path), ['home', 'rooms', 'room-living', 'climate', 'cleaning', 'calendar', 'system', 'admin', 'admin-internet', 'admin-network', 'admin-host', 'expert']);
+  assert.deepEqual(result.views.map(view => view.path), ['home', 'rooms', 'room-living', 'presence', 'climate', 'cleaning', 'calendar', 'system', 'admin', 'admin-internet', 'admin-network', 'admin-host', 'expert']);
+  assert.equal(result.views.find(view => view.path === 'presence').subview, true);
+  assert.equal(result.views[0].cards[0].cards.some(card => card.mode === 'climate' || card.mode === 'people'), false);
+  assert.ok(result.views[0].cards[0].cards.some(card => card.mode === 'room-summary'));
+  assert.ok(result.views[0].cards[0].cards.some(card => card.mode === 'presence-summary'));
   assert.ok(result.views.every(view => view.type === 'panel'));
   assert.equal(result.views.find(view => view.path === 'room-living').title, 'Living room');
   const german = generateDashboard({ ...fixture, language: 'de' }, { states: {} });
@@ -100,10 +104,10 @@ test('system checks warn on low batteries and broken numeric sensors without lis
   assert.deepEqual(warnings.map(item => [item.entity, item.detail]), [['sensor.room_temperature', 'Ungültiger Sensorwert']]);
   assert.equal(monitorWarnings([{ entity: 'sensor.phone_battery' }], { 'sensor.phone_battery': { state: '19', attributes: { unit_of_measurement: '%' } } }, 'de')[0].detail, 'Batterie: 19%');
 });
-test('appearance preserves the old presence rule and falls back to the HA theme', () => {
-  const config = { night_person: 'person.one', ambient_person: 'person.two' };
-  assert.equal(appearanceMode(config, { 'person.one': { state: 'home' }, 'person.two': { state: 'not_home' } }), 'night');
-  assert.equal(appearanceMode(config, { 'person.one': { state: 'home' }, 'person.two': { state: 'home' } }), 'ambient');
+test('appearance follows the sun and falls back to the HA theme', () => {
+  assert.equal(appearanceMode({}, { 'sun.sun': { state: 'above_horizon' } }, true), 'ambient');
+  assert.equal(appearanceMode({}, { 'sun.sun': { state: 'below_horizon' } }, false), 'night');
+  assert.equal(appearanceMode({ night_person: 'person.one' }, { 'person.one': { state: 'home' }, 'sun.sun': { state: 'above_horizon' } }), 'ambient');
   assert.equal(appearanceMode({}, {}, true), 'night');
   assert.equal(appearanceMode({ mode: 'ambient' }, {}, true), 'ambient');
 });

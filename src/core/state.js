@@ -37,9 +37,7 @@ export function monitorWarnings(monitors, states, language) {
 }
 export function appearanceMode(appearance = {}, states = {}, darkMode = false) {
   if (appearance.mode && appearance.mode !== 'auto') return appearance.mode;
-  if (appearance.night_person) {
-    return states[appearance.night_person]?.state === 'home' &&
-      states[appearance.ambient_person]?.state !== 'home' ? 'night' : 'ambient';
-  }
+  if (states['sun.sun']?.state === 'above_horizon') return 'ambient';
+  if (states['sun.sun']?.state === 'below_horizon') return 'night';
   return darkMode ? 'night' : 'ambient';
 }

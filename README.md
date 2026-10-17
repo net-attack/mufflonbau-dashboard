@@ -38,8 +38,8 @@ Choose a design through `appearance.theme`, independently of its light/dark mode
 
 | Theme | Appearance |
 | --- | --- |
-| `atmospheric` (default) | Blue-gray atmosphere, translucent panels, pastel room tiles, large room symbols, circular light controls |
-| `storybook` | Cream, sage, honey yellow, and an original illustrated landscape with houses, balloon, bee, and fox |
+| `atmospheric` | Blue-gray atmosphere, translucent panels, pastel room tiles, large room symbols, circular light controls |
+| `storybook` (default) | Cream, sage, honey yellow, and an original illustrated landscape with houses, balloon, bee, and fox |
 | `calm` | The earlier neutral/sage design with a desktop sidebar |
 
 For the illustrated family theme, merge these options into your existing strategy
@@ -59,15 +59,17 @@ appearance:
   mode: night
 ```
 
-Use `mode: auto` for the existing HA theme/presence-based light/dark selection.
+Use `mode: auto` (the default) to follow `sun.sun`: Ambient while the sun is above
+the horizon, Night after sunset. Without a usable sun state, the HA theme is used.
 All three themes have matching light and dark palettes, including native detail
 cards. No global Home Assistant theme is changed. The original vector illustration
 is bundled locally; the dashboard does not download reference images or fonts.
 See [examples/storybook.yaml](examples/storybook.yaml) for a complete generic example.
 
 The home view combines greeting/date, current weather readings, indoor climate
-averages, calendar summaries, live room tiles, lights, presence, cleaning, and
-warnings. Climate averages include available numeric sensors with matching units.
+averages, and calendar summaries with compact buttons for rooms, presence,
+cleaning, and system checks. Buttons show a short live status and open their
+detailed views. Climate averages include available numeric sensors with matching units.
 German dashboards choose a playful greeting from a rotating family/Smart-Home
 pool. The choice stays stable during live state updates and changes with a new
 day period or card instance.
@@ -96,7 +98,7 @@ sections are optional; omitted sections generate no corresponding view.
 | `admin` | Optional arrays of entity IDs in `internet`, `network`, `host`, and router-backed `clients` |
 | `kiosk_mode` | Kiosk Mode settings; defaults to `kiosk: true`, `hide_header: true` |
 | `expert_entities` | Additional entities to include in the expert view |
-| `appearance` | `theme: atmospheric`, `storybook`, or `calm`; `mode: auto`, `ambient`, or `night` |
+| `appearance` | `theme: storybook` (default), `atmospheric`, or `calm`; `mode: auto` (default), `ambient`, or `night` |
 
 Each room has a unique stable `id` (lowercase slug) and a `name` (string or
 `{en: ..., de: ...}`). Optional fields: `icon`, `temperature`, `humidity`,
@@ -131,11 +133,11 @@ device tracker and may be delayed; it does not identify Wi-Fi versus Ethernet
 unless the integration exposes that detail. The expert view also includes the
 discovered admin entities.
 
-By default, appearance follows the HA dark theme. To preserve presence-based
-switching from an earlier installation, set `appearance.night_person` and
-`appearance.ambient_person`: night mode is used when the first person is home and
-the second is not home. An explicit `mode` overrides this rule. The same palette applies to native detail cards inside the dashboard; no global
-HA theme is changed.
+By default, appearance follows `sun.sun`, with the HA dark theme as a fallback.
+An explicit `mode: ambient` or `mode: night` overrides automatic selection.
+The earlier `night_person` and `ambient_person` options are accepted for configuration
+compatibility but no longer affect the mode. The same palette applies to native
+detail cards inside the dashboard; no global HA theme is changed.
 
 Set `language: auto` to follow your HA profile; reload the dashboard after changing
 the profile language. Custom titles and entity names stay as configured. Optional

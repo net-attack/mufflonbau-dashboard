@@ -10,13 +10,13 @@ export class MufflonbauLiveCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
   }
   setConfig(config) {
-    if (!['header', 'climate', 'floorplan', 'warnings', 'people', 'devices', 'cleaning', 'message'].includes(config.mode)) throw new Error('Mufflonbau: unsupported live card mode.');
+    if (!['header', 'climate', 'room-summary', 'floorplan', 'warnings', 'people', 'presence-summary', 'devices', 'cleaning', 'message'].includes(config.mode)) throw new Error('Mufflonbau: unsupported live card mode.');
     this._config = config;
     this._watched = [...new Set([
       config.weather, ...(config.calendars ?? []), ...(config.entities ?? []), ...(config.people ?? []),
       ...Object.values(config.cleaning ?? {}), ...(config.monitors ?? []).map(item => item.entity),
       ...(config.rooms ?? []).flatMap(room => [room.temperature, room.humidity, room.dew_point, ...(room.lights ?? []), ...(room.objects ?? []).map(item => item.entity)]),
-      config.appearance?.night_person, config.appearance?.ambient_person,
+      'sun.sun',
     ].filter(Boolean))];
     this._render();
     this._startClock();
@@ -63,9 +63,11 @@ export class MufflonbauLiveCard extends HTMLElement {
     applyTheme(card, mode, this._config.appearance?.theme);
     if (this._config.mode === 'header') this._header(card, text);
     if (this._config.mode === 'climate') this._climate(card, text);
+    if (this._config.mode === 'room-summary') this._roomSummary(card, text);
     if (this._config.mode === 'warnings') this._warnings(card, text);
     if (this._config.mode === 'floorplan') this._floorplan(card, text);
     if (this._config.mode === 'people') this._people(card, text);
+    if (this._config.mode === 'presence-summary') this._presenceSummary(card, text);
     if (this._config.mode === 'devices') this._devices(card, text);
     if (this._config.mode === 'cleaning') this._cleaning(card, text);
     if (this._config.mode === 'message') card.append(element('p', this._config.content, 'message'));
@@ -96,7 +98,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     const timezone = this._hass.config?.time_zone;
     const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: timezone }).format(now));
     const grid = element('div', undefined, 'overview-grid');
-    const welcome = element('section');
+    const welcome = element('section', undefined, 'overview-welcome');
     welcome.append(element('h1', this._greeting(text, hour, now, timezone)), element('div', new Intl.DateTimeFormat(this._language, { dateStyle: 'full', timeStyle: 'short', timeZone: timezone }).format(now), 'overview-date'));
     const weather = this._hass.states[this._config.weather];
     if (weather && !isOffline(weather)) {
@@ -213,21 +215,47 @@ export class MufflonbauLiveCard extends HTMLElement {
     }
     card.append(grid);
   }
+  _summaryLink(card, path, iconName, title, detail, meta) {
+    const link = element('a', undefined, 'summary-link'); navigateLink(link, path);
+    const disc = element('span', undefined, 'summary-icon'); disc.append(icon(iconName));
+    const copy = element('span', undefined, 'summary-copy'); copy.append(element('strong', title));
+    const info = element('small', undefined, 'summary-detail');
+    info.append(element('span', detail));
+    if (meta) info.append(element('span', meta, 'summary-meta'));
+    copy.append(info);
+    link.append(disc, copy, icon('arrow')); card.append(link);
+  }
+  _roomSummary(card, text) {
+    card.classList.add('dashboard-summary');
+    const rooms = this._config.rooms ?? [];
+    const temperatures = rooms.map(room => numericState(this._hass.states[room.temperature])).filter(value => value !== null);
+    const humidities = rooms.map(room => numericState(this._hass.states[room.humidity])).filter(value => value !== null);
+    const lights = [...new Set(rooms.flatMap(room => room.lights ?? []))];
+    const lightsOn = lights.filter(id => this._hass.states[id]?.state === 'on').length;
+    const average = values => values.length ? new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(values.reduce((sum, value) => sum + value, 0) / values.length) : '–';
+    this._summaryLink(card, 'rooms', 'rooms', `${rooms.length} ${text.rooms}`,
+      `Ø ${average(temperatures)} °C · Ø ${average(humidities)} %`, `${lightsOn} ${text.lightsOn}`);
+  }
   _warnings(card, text) {
     const warnings = monitorWarnings(this._config.monitors ?? [], this._hass.states, this._language);
+    card.setAttribute('aria-live', 'polite');
+    if (this._config.compact) {
+      card.classList.add('dashboard-summary');
+      this._summaryLink(card, 'system', warnings.length ? 'warning' : 'system', text.system,
+        warnings.length ? `${warnings.length} ${warnings.length === 1 ? text.warning : text.warnings} · ${warnings[0].name}: ${warnings[0].detail}` : text.healthy);
+      return;
+    }
     this._section(card, text.system, warnings.length ? warnings.length : '✓');
     if (!warnings.length) {
       const healthy = element('div', undefined, 'healthy'); healthy.append(icon('system'), element('span', text.healthy)); card.append(healthy);
     }
-    for (const warning of this._config.compact ? warnings.slice(0, 3) : warnings) {
+    for (const warning of warnings) {
       const button = element('button', undefined, 'warning'); button.type = 'button'; button.dataset.entity = warning.entity;
       const disc = element('span', undefined, 'icon-disc'); disc.append(icon('system'));
       const detail = element('span'); detail.append(element('strong', warning.name), element('small', warning.detail));
       if (warning.name !== warning.entity) detail.append(element('small', warning.entity, 'entity-id'));
       button.append(disc, detail); button.addEventListener('click', () => this._moreInfo(warning.entity)); card.append(button);
     }
-    card.setAttribute('aria-live', 'polite');
-    if (this._config.compact) this._link(card, 'system', text.allDetails);
   }
   _name(id) { return this._hass.states[id]?.attributes?.friendly_name ?? id.split('.').at(-1).replaceAll('_', ' '); }
   _state(id, text) {
@@ -245,6 +273,14 @@ export class MufflonbauLiveCard extends HTMLElement {
       row.append(element('span', name.split(' ').map(part => part[0]).slice(0, 2).join('').toUpperCase(), 'avatar'), info,
         element('span', this._state(id, text), `person-state${this._hass.states[id]?.state === 'home' ? ' home' : ''}`)); card.append(row);
     }
+  }
+  _presenceSummary(card, text) {
+    card.classList.add('dashboard-summary');
+    const people = this._config.people ?? [];
+    const home = people.filter(id => this._hass.states[id]?.state === 'home');
+    const names = home.map(id => this._name(id));
+    this._summaryLink(card, 'presence', 'person', `${home.length} ${text.peopleHome}`,
+      names.length ? names.join(' · ') : text.nobodyHome);
   }
   _devices(card, text) {
     this._section(card, this._config.title ?? text.lights, (this._config.entities ?? []).length);
@@ -275,6 +311,13 @@ export class MufflonbauLiveCard extends HTMLElement {
     const link = element('a', undefined, 'link'); navigateLink(link, path); link.append(element('span', title), icon('arrow')); card.append(link);
   }
   _cleaning(card, text) {
+    if (this._config.compact) {
+      card.classList.add('dashboard-summary');
+      const config = this._config.cleaning;
+      this._summaryLink(card, 'cleaning', 'cleaning', text.cleaning, this._state(config.entity, text),
+        config.battery ? `${text.battery} ${this._value(config.battery, '%')}` : undefined);
+      return;
+    }
     this._section(card, text.cleaning);
     const config = this._config.cleaning; const row = element('div', undefined, 'robot'); const disc = element('span', undefined, 'icon-disc'); disc.append(icon('cleaning'));
     const detail = element('div'); detail.append(element('strong', this._name(config.entity)), element('small', this._state(config.entity, text)));

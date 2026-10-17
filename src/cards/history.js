@@ -11,7 +11,7 @@ export class MufflonbauHistory extends HTMLElement {
   set hass(value) {
     const previous = this._hass; this._hass = value;
     if (this.isConnected && (!this._loadedAt || Date.now() - this._loadedAt > 300000)) this._load();
-    else if (!previous || previous.themes !== value.themes) this._render();
+    else if (!previous || previous.themes !== value.themes || previous.states['sun.sun'] !== value.states['sun.sun']) this._render();
   }
   connectedCallback() { this._load(); this._timer = setInterval(() => this._load(), 300000); }
   disconnectedCallback() { clearInterval(this._timer); this._request++; this._loading = false; }

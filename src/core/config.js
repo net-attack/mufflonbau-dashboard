@@ -18,10 +18,11 @@ function label(value, path) {
 }
 export function normalizeConfig(config) {
   object(config, 'configuration');
+  if (config.appearance !== undefined) object(config.appearance, 'appearance');
   if (config.title !== undefined && typeof config.title !== 'string') fail('title', 'must be a string.');
   const result = { ...config, entities: config.entities ?? [], people: config.people ?? [],
     calendars: config.calendars ?? [], rooms: config.rooms ?? [], monitors: config.monitors ?? [],
-    expert_entities: config.expert_entities ?? [] };
+    expert_entities: config.expert_entities ?? [], appearance: { theme: 'storybook', ...(config.appearance ?? {}) } };
   for (const key of ['entities', 'people', 'calendars', 'expert_entities']) {
     list(result[key], key);
     if (key === 'entities' && result[key].some(id => typeof id !== 'string')) {
@@ -145,7 +146,7 @@ export function normalizeConfig(config) {
   result.kiosk_mode ??= { kiosk: true, hide_header: true };
   if (result.appearance !== undefined) {
     object(result.appearance, 'appearance');
-    if (!['calm', 'atmospheric', 'storybook'].includes(result.appearance.theme ?? 'atmospheric')) fail('appearance.theme', 'must be calm, atmospheric, or storybook.');
+    if (!['calm', 'atmospheric', 'storybook'].includes(result.appearance.theme)) fail('appearance.theme', 'must be calm, atmospheric, or storybook.');
     if (!['auto', 'ambient', 'night'].includes(result.appearance.mode ?? 'auto')) fail('appearance.mode', 'must be auto, ambient, or night.');
     for (const key of ['night_person', 'ambient_person']) {
       if (result.appearance[key] !== undefined) entity(result.appearance[key], `appearance.${key}`);

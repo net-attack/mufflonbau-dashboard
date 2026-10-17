@@ -26,7 +26,7 @@ export class MufflonbauCleaning extends HTMLElement {
   set hass(value) {
     const previous = this._hass; this._hass = value;
     const ids = [this._config?.cleaning?.entity, this._config?.cleaning?.battery, this._config?.cleaning?.current_room].filter(Boolean);
-    if (!previous || ids.some(id => previous.states[id] !== value.states[id]) || previous.themes !== value.themes) this._render();
+    if (!previous || ids.some(id => previous.states[id] !== value.states[id]) || previous.states['sun.sun'] !== value.states['sun.sun'] || previous.themes !== value.themes) this._render();
   }
   getCardSize() { return 5; }
   async _service(domain, service, entity, button, feedback, text) {

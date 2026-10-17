@@ -172,11 +172,17 @@ try {
     const main = shell.shadowRoot.querySelector('main'); const content = main.querySelector('.content');
     const navigation = shell.shadowRoot.querySelector('nav').getBoundingClientRect();
     const slots = [...content.children].map(slot => ({ name: slot.className, top: slot.getBoundingClientRect().top, bottom: slot.getBoundingClientRect().bottom }));
-    return { host: shell.getBoundingClientRect().height, main: main.getBoundingClientRect().height, scroll: main.scrollHeight,
+    const summaries = [...content.querySelectorAll('mufflonbau-live')]
+      .filter(card => ['room-summary', 'presence-summary', 'cleaning', 'warnings'].includes(card._config.mode))
+      .map(card => ({ height: card.getBoundingClientRect().height, headings: card.shadowRoot.querySelectorAll('.section-head').length }));
+    return { summaries, host: shell.getBoundingClientRect().height, main: main.getBoundingClientRect().height, scroll: main.scrollHeight,
       nav: { top: navigation.top, bottom: navigation.bottom }, content: [content.clientHeight, content.scrollHeight], slots };
   });
-  assert.ok(homeLayout.host > 800 || homeLayout.scroll > homeLayout.main + 1, `Short tablet view must remain scrollable instead of clipping dashboard cards: ${JSON.stringify(homeLayout)}`);
-  assert.ok(await page.evaluate(() => document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight), 'Short tablet dashboard must allow page scrolling');
+  const homeFitsAboveNavigation = homeLayout.slots.every(slot => slot.bottom <= homeLayout.nav.top - 8);
+  assert.ok(homeLayout.summaries.every(summary => summary.height <= 80 && summary.headings === 0),
+    `Home summary buttons must remain compact without duplicate headings: ${JSON.stringify(homeLayout.summaries)}`);
+  assert.ok(homeFitsAboveNavigation || homeLayout.host > 800 || homeLayout.scroll > homeLayout.main + 1,
+    `Tablet dashboard must fit above navigation or remain scrollable: ${JSON.stringify(homeLayout)}`);
   await page.screenshot({ path: 'test-results/dashboard-ambient-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 800, height: 1340 });
   const portraitOverflow = await page.locator('#dashboard').evaluate(shell => getComputedStyle(shell).overflowY);
@@ -199,6 +205,8 @@ try {
   await galaxyPage.goto(`http://127.0.0.1:${server.address().port}/dashboard-test/home`);
   await galaxyPage.addScriptTag({ url: '/bundle.js' });
   await galaxyPage.evaluate(async ({ config, hass }) => {
+    document.body.style.margin = '0';
+    document.querySelector('main').style.cssText = 'max-width:none;margin:0';
     window.galaxyCalls = [];
     window.galaxyHass = { ...hass, callService: async (...args) => window.galaxyCalls.push(args) };
     const result = await customElements.get('ll-strategy-dashboard-mufflonbau').generate(config, window.galaxyHass);
@@ -226,6 +234,14 @@ try {
         const rect = slot.getBoundingClientRect();
         return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
       });
+      const summaries = [...root.querySelectorAll('mufflonbau-live')]
+        .filter(card => ['room-summary', 'presence-summary', 'cleaning', 'warnings'].includes(card._config.mode))
+        .map(card => {
+          const link = card.shadowRoot.querySelector('.summary-link');
+          const rect = link.getBoundingClientRect();
+          return { mode: card._config.mode, href: link.getAttribute('href'), text: link.textContent.trim(), left: rect.left, right: rect.right, width: rect.width, height: rect.height,
+            cardHeight: card.getBoundingClientRect().height, headings: card.shadowRoot.querySelectorAll('.section-head').length };
+        });
       const targets = [...root.querySelectorAll('nav a, nav summary')]
         .filter(target => !target.closest('details') || target.matches('summary') || target.closest('details').open)
         .map(target => {
@@ -235,23 +251,41 @@ try {
         .filter(target => target.width > 0 && target.height > 0);
       return {
         viewport: { width: innerWidth, height: innerHeight },
+        shellLeft: shell.getBoundingClientRect().left,
+        shellRight: shell.getBoundingClientRect().right,
         horizontalOverflow: document.documentElement.scrollWidth - innerWidth,
         scrollHeight: document.scrollingElement.scrollHeight,
         clientHeight: document.scrollingElement.clientHeight,
         shellOverflowY: getComputedStyle(shell).overflowY,
         nav: { left: nav.left, top: nav.top, right: nav.right, bottom: nav.bottom },
+        summaries,
         slots,
         targets,
       };
     });
     assert.deepEqual(layout.viewport, { width: viewport.width, height: viewport.height });
+    assert.equal(layout.shellLeft, 0, `${viewport.name}: the dashboard background must reach the left screen edge`);
+    assert.equal(layout.shellRight, viewport.width, `${viewport.name}: the dashboard background must reach the right screen edge`);
     assert.ok(layout.horizontalOverflow <= 1, `${viewport.name}: dashboard must not scroll horizontally: ${JSON.stringify(layout)}`);
     assert.notEqual(layout.shellOverflowY, 'hidden', `${viewport.name}: dashboard must not clip vertical content`);
-    assert.ok(layout.scrollHeight > layout.clientHeight, `${viewport.name}: the complete home dashboard must be scrollable`);
+    assert.ok(layout.scrollHeight > layout.clientHeight || layout.slots.every(slot => slot.bottom <= layout.nav.top - 8),
+      `${viewport.name}: the complete home dashboard must fit above navigation or remain scrollable`);
     assert.ok(layout.nav.left >= 0 && layout.nav.right <= viewport.width && layout.nav.top >= 0 && layout.nav.bottom <= viewport.height,
       `${viewport.name}: fixed navigation must remain inside the viewport: ${JSON.stringify(layout.nav)}`);
     assert.ok(layout.slots.every(slot => slot.width > 0 && slot.height > 0 && slot.left >= -1 && slot.right <= viewport.width + 1),
       `${viewport.name}: every dashboard card must have visible, non-overflowing geometry: ${JSON.stringify(layout.slots)}`);
+    assert.deepEqual(layout.summaries.map(summary => summary.mode), ['room-summary', 'presence-summary', 'cleaning', 'warnings']);
+    assert.ok(layout.summaries.every(summary => summary.width >= 44 && summary.height >= 44 && summary.left >= -1 && summary.right <= viewport.width + 1),
+      `${viewport.name}: home summaries must remain visible and touchable: ${JSON.stringify(layout.summaries)}`);
+    assert.ok(layout.summaries.every(summary => summary.cardHeight <= 80 && summary.headings === 0),
+      `${viewport.name}: summary buttons must not grow into large cards or repeat headings: ${JSON.stringify(layout.summaries)}`);
+    assert.match(layout.summaries[0].text, /6 Räume/);
+    assert.match(layout.summaries[0].href, /\/rooms$/);
+    assert.match(layout.summaries[1].href, /\/presence$/);
+    assert.match(layout.summaries[2].href, /\/cleaning$/);
+    assert.match(layout.summaries[2].text, /Reinigung.*An der Station.*92 %/);
+    assert.match(layout.summaries[3].href, /\/system$/);
+    assert.match(layout.summaries[3].text, /Systemprüfung.*in Ordnung/);
     const verticalSlots = [...layout.slots].sort((a, b) => a.top - b.top);
     const verticalGaps = verticalSlots.slice(1).map((slot, index) => slot.top - verticalSlots[index].bottom).filter(gap => gap >= 0);
     assert.ok(verticalGaps.every(gap => gap <= 32),
@@ -276,14 +310,45 @@ try {
       `${viewport.name}: the fixed navigation must not cover the last card: ${JSON.stringify(bottom)}`);
     await galaxyPage.evaluate(() => scrollTo(0, 0));
   }
-  const galaxyToggle = galaxyPage.locator('#galaxy-dashboard button[role=switch]').first();
-  await galaxyToggle.scrollIntoViewIfNeeded();
-  await galaxyToggle.click();
-  assert.deepEqual(await galaxyPage.evaluate(() => window.galaxyCalls[0]), ['homeassistant', 'toggle', {}, { entity_id: 'light.living' }]);
+  await galaxyPage.evaluate(() => {
+    window.galaxyHass = { ...window.galaxyHass, states: { ...window.galaxyHass.states,
+      'sensor.device_battery': { state: '10', attributes: { friendly_name: 'Türsensor' } } } };
+    document.querySelector('#galaxy-dashboard').hass = window.galaxyHass;
+  });
+  const compactWarning = galaxyPage.locator('#galaxy-dashboard .mode-warnings .summary-link');
+  assert.match(await compactWarning.innerText(), /1 Warnung.*Türsensor.*10%/s);
+  assert.ok((await compactWarning.boundingBox()).height <= 80, 'Active warnings must also keep the system button compact');
+  await galaxyPage.evaluate(() => {
+    window.galaxyHass = { ...window.galaxyHass, states: { ...window.galaxyHass.states,
+      'sensor.device_battery': { state: '85', attributes: {} } } };
+    document.querySelector('#galaxy-dashboard').hass = window.galaxyHass;
+  });
+  assert.match(await compactWarning.innerText(), /in Ordnung/);
+  await galaxyPage.evaluate(() => {
+    window.galaxyHass = { ...window.galaxyHass, states: { ...window.galaxyHass.states, 'sun.sun': { state: 'below_horizon', attributes: { elevation: -12 } } } };
+    document.querySelector('#galaxy-dashboard').hass = window.galaxyHass;
+  });
+  assert.equal(await galaxyPage.locator('#galaxy-dashboard').getAttribute('data-theme'), 'storybook');
+  assert.equal(await galaxyPage.locator('#galaxy-dashboard').evaluate(shell => [...shell.shadowRoot.querySelectorAll('mufflonbau-live')]
+    .every(card => card.shadowRoot.querySelector('ha-card').classList.contains('night'))), true,
+  'Galaxy Tab cards must switch to storybook night when the sun goes below the horizon');
+  for (const viewport of [
+    { name: 'portrait', width: 533, height: 893 },
+    { name: 'landscape', width: 893, height: 533 },
+  ]) {
+    await galaxyPage.setViewportSize(viewport);
+    await galaxyPage.evaluate(() => scrollTo(0, 0));
+    await galaxyPage.screenshot({ path: `test-results/galaxy-tab-a11-storybook-night-${viewport.name}.png` });
+  }
   await galaxyContext.close();
   galaxyContext = undefined;
 
   await page.setViewportSize({ width: 1340, height: 800 });
+  await page.evaluate(() => {
+    const shell = document.querySelector('#dashboard');
+    shell.setConfig(window.previewDashboard.views.find(view => view.path === 'rooms').cards[0]);
+    shell.hass = window.previewHass;
+  });
   const toggle = page.locator('#dashboard button[role=switch]').first();
   await toggle.click();
   assert.deepEqual(await page.evaluate(() => window.calls[0]), ['homeassistant', 'toggle', {}, { entity_id: 'light.living' }]);
@@ -339,7 +404,7 @@ try {
     for (const [pair, ratio] of Object.entries(contrast.ratios)) {
       assert.ok(ratio >= 4.5, `${theme}/${mode}: ${pair} contrast must be at least 4.5:1, got ${ratio.toFixed(2)}:1`);
     }
-    const colors = await page.locator('#dashboard').evaluate(shell => [...shell.shadowRoot.querySelectorAll('mufflonbau-live')].filter(card => !['header', 'climate'].includes(card._config.mode)).map(card => getComputedStyle(card.shadowRoot.querySelector('ha-card')).backgroundColor));
+    const colors = await page.locator('#dashboard').evaluate(shell => [...shell.shadowRoot.querySelectorAll('mufflonbau-live')].filter(card => !['header', 'climate'].includes(card._config.mode)).map(card => getComputedStyle(card.shadowRoot.querySelector('.summary-link') ?? card.shadowRoot.querySelector('ha-card')).backgroundColor));
     assert.equal(new Set(colors).size, 1, 'Every content card must use the same surface color');
     await page.screenshot({ path: `test-results/dashboard-${theme}-${mode}-desktop.png`, fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });

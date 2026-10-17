@@ -15,8 +15,8 @@ export const themes = {
   },
 };
 export const palettes = themes.calm;
-export function themeProperties(mode, theme = 'atmospheric') {
-  const palette = (themes[theme] ?? themes.atmospheric)[mode] ?? themes.atmospheric.ambient;
+export function themeProperties(mode, theme = 'storybook') {
+  const palette = (themes[theme] ?? themes.storybook)[mode] ?? themes.storybook.ambient;
   return { ...Object.fromEntries(Object.entries(palette).map(([key, value]) => [`--mb-${key}`, value])),
     '--primary-background-color': palette.canvas, '--secondary-background-color': palette.soft,
     '--card-background-color': palette.surface, '--ha-card-background': palette.surface,
@@ -28,6 +28,6 @@ export function themeProperties(mode, theme = 'atmospheric') {
   };
 }
 export function applyTheme(node, mode, theme) {
-  node.setAttribute('data-theme', theme ?? 'atmospheric');
+  node.setAttribute('data-theme', theme ?? 'storybook');
   for (const [key, value] of Object.entries(themeProperties(mode, theme))) node.style.setProperty(key, value);
 }

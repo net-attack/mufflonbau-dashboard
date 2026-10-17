@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { normalizeConfig } from '../src/core/config.js';
 import { generateDashboard } from '../src/strategy.js';
 import { themeProperties } from '../src/design/tokens.js';
+test('storybook is the default theme', () => {
+  assert.equal(normalizeConfig({}).appearance.theme, 'storybook');
+  assert.equal(generateDashboard({}, { states: {} }).views[0].cards[0].appearance.theme, 'storybook');
+});
 for (const theme of ['calm', 'atmospheric', 'storybook']) {
   test(`${theme} propagates to the shell and live cards without changing entity bindings`, () => {
     const appearance = { theme, mode: 'night' };
@@ -22,5 +26,8 @@ for (const theme of ['calm', 'atmospheric', 'storybook']) {
   });
 }
 test('rejects unknown theme names with an actionable configuration error', () => {
+  for (const appearance of [null, 'storybook', []]) {
+    assert.throws(() => normalizeConfig({ appearance }), /appearance must be an object/);
+  }
   assert.throws(() => normalizeConfig({ appearance: { theme: 'unknown' } }), /appearance.theme must be/);
 });

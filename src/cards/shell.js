@@ -70,7 +70,7 @@ export class MufflonbauShell extends HTMLElement {
     for (const config of this._config.cards) {
       const slot = element('section', undefined, 'slot');
       if (config.mode) slot.classList.add(`mode-${config.mode}`);
-      const layout = { header: 'wide', climate: 'rooms', people: 'compact', devices: 'devices', cleaning: 'cleaning', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
+      const layout = { header: 'wide', climate: 'rooms', 'room-summary': 'compact', people: 'compact', 'presence-summary': 'compact', devices: 'devices', cleaning: 'cleaning', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
       if (layout) slot.classList.add(layout);
       let card;
       if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning'].includes(config.type)) {

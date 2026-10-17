@@ -4,7 +4,7 @@ import { roomViews, climateViews } from './modules/rooms.js';
 import { cleaningViews } from './modules/cleaning.js';
 import { systemViews } from './modules/system.js';
 import { calendarViews } from './modules/calendar.js';
-import { homeView } from './modules/home.js';
+import { homeView, presenceView } from './modules/home.js';
 import { roomLightHierarchy } from './core/light-hierarchy.js';
 export function generateDashboard(rawConfig, hass) {
   const config = normalizeConfig(rawConfig);
@@ -14,7 +14,7 @@ export function generateDashboard(rawConfig, hass) {
   });
   const language = resolveLanguage(config, hass);
   const context = { config, hass, language, text: translations[language] };
-  const views = [...roomViews(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];
+  const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];
   const allViews = [homeView(context, views), ...views];
   const navigation = allViews.filter(item => !item.subview).map(({ path, title, icon }) => ({ path, title, icon }));
   const styledViews = allViews.map(item => ({ ...item, type: 'panel', cards: [{

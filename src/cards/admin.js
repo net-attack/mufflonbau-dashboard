@@ -21,7 +21,7 @@ export class MufflonbauAdmin extends HTMLElement {
   set hass(value) {
     const previous = this._hass; this._hass = value;
     const ids = Object.values(this._config?.admin ?? {}).flat();
-    if (!previous || previous.themes !== value.themes || ids.some(id => previous.states[id] !== value.states[id])) this._render();
+    if (!previous || previous.themes !== value.themes || previous.states['sun.sun'] !== value.states['sun.sun'] || ids.some(id => previous.states[id] !== value.states[id])) this._render();
   }
   getCardSize() { return 6; }
   _info(id) { this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: id }, bubbles: true, composed: true })); }

@@ -37,15 +37,15 @@ export const shellStyles = `
     :host([data-view=home]) main { display:flex; flex-direction:column; padding:20px clamp(18px,2vw,32px) 150px; }
     :host([data-view=home]) .topline { flex:none; margin-bottom:8px; }
     :host([data-view=home]) .heading { flex:none; font-size:28px; margin:0 0 12px; }
-    :host([data-view=home]) .content { flex:1; min-height:0; align-items:stretch; align-content:stretch; grid-template-rows:minmax(120px,1fr) minmax(180px,1.5fr) minmax(90px,.8fr); gap:12px; }
+    :host([data-view=home]) .content { flex:none; min-height:0; align-items:start; align-content:start; grid-template-rows:auto auto auto; gap:12px; }
     :host([data-view=home]) .slot { min-height:0; }
     :host([data-view=home]) .slot.mode-header { grid-column:1/-1; grid-row:1; }
-    :host([data-view=home]) .slot.mode-climate { grid-column:1/-1; grid-row:2; }
-    :host([data-view=home]) .slot.mode-people { grid-column:span 5; grid-row:3; }
-    :host([data-view=home]) .slot.mode-cleaning { grid-column:span 4; grid-row:3; height:100%; min-height:0; max-height:100%; }
-    :host([data-view=home]) .slot.mode-warnings { grid-column:span 3; grid-row:3; }
+    :host([data-view=home]) .slot.mode-room-summary { grid-column:span 7; grid-row:2; }
+    :host([data-view=home]) .slot.mode-presence-summary { grid-column:span 5; grid-row:2; }
+    :host([data-view=home]) .slot.mode-cleaning { grid-column:span 7; grid-row:3; height:auto; min-height:0; max-height:none; }
+    :host([data-view=home]) .slot.mode-warnings { grid-column:span 5; grid-row:3; }
     :host([data-view=home]) .slot.mode-devices { grid-column:1/-1; grid-row:3; }
-    :host([data-view=home]) .slot > * { height:100%; }
+    :host([data-view=home]) .slot > * { height:auto; }
     :host([data-view=home]) .room-board .grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
     :host([data-view=home]) .room-board .room-tile { min-height:0; height:100%; padding:12px; }
     :host([data-view=home]) .room-board .climate-button { padding-right:26px; }
@@ -53,15 +53,15 @@ export const shellStyles = `
     :host([data-view=home]) .room-board .room-art svg { width:48px; height:48px; }
     :host([data-view=home]) .slot.mode-header ha-card { padding:18px 24px; }
   }
-  @media(min-width:701px) and (max-width:1100px), (min-width:701px) and (max-height:850px) {
+  @media(min-width:701px) and (max-width:1100px) {
     :host([data-view=home]) { height:auto; min-height:100dvh; overflow:visible; }
     :host([data-view=home]) .shell,:host([data-view=home]) main { height:auto; min-height:100dvh; }
     :host([data-view=home]) main { padding-bottom:112px; }
-    :host([data-view=home]) .content { display:flex; flex:none; flex-direction:column; align-items:stretch; align-content:start; gap:14px; }
+    :host([data-view=home]) .content { flex:none; align-items:start; align-content:start; gap:14px; }
     :host([data-view=home]) .slot { width:100%; min-height:0; }
     :host([data-view=home]) .slot.mode-header { min-height:0; }
-    :host([data-view=home]) .slot.mode-climate { min-height:0; }
-    :host([data-view=home]) .slot.mode-cleaning { height:auto; min-height:160px; max-height:none; }
+    :host([data-view=home]) .slot.mode-room-summary,:host([data-view=home]) .slot.mode-presence-summary { min-height:0; }
+    :host([data-view=home]) .slot.mode-cleaning { height:auto; min-height:0; max-height:none; }
     :host([data-view=home]) .slot > * { height:auto; }
   }
   :host([data-view=cleaning]) .shell { height:calc(100dvh - 56px); min-height:0; }

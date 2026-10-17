@@ -48,6 +48,9 @@ export const shellStyles = `
     :host([data-view=home]) .slot.mode-presence-summary { grid-column:span 5; grid-row:2; }
     :host([data-view=home]) .slot.mode-cleaning { grid-column:span 7; grid-row:3; height:auto; min-height:0; max-height:none; }
     :host([data-view=home]) .slot.mode-warnings { grid-column:span 5; grid-row:3; }
+    :host([data-view=home]) .slot.mode-ventilation { grid-column:1/-1; grid-row:4; }
+    :host([data-view=home][data-ventilation=true]) { height:auto; min-height:100dvh; overflow:visible; }
+    :host([data-view=home][data-ventilation=true]) .shell,:host([data-view=home][data-ventilation=true]) main { height:auto; min-height:100dvh; }
     :host([data-view=home]) .slot.mode-devices { grid-column:1/-1; grid-row:3; }
     :host([data-view=home]) .slot > * { height:auto; }
     :host([data-view=home]) .room-board .grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }

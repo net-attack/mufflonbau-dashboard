@@ -1,3 +1,5 @@
+import { renderVentilation, ventilationStyles } from './ventilation.js';
+import { ventilationEntities } from '../core/ventilation.js';
 import { liveStyles } from '../design/live-styles.js';
 import { localized, resolveLanguage, translations } from '../core/i18n.js';
 import { appearanceMode, isOffline, monitorGroups, monitorWarnings, numericState, stateProblem } from '../core/state.js';
@@ -12,10 +14,10 @@ export class MufflonbauLiveCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
   }
   setConfig(config) {
-    if (!['header', 'climate', 'room-summary', 'floorplan', 'warnings', 'people', 'presence-summary', 'devices', 'cleaning', 'message'].includes(config.mode)) throw new Error('Mufflonbau: unsupported live card mode.');
+    if (!['ventilation', 'header', 'climate', 'room-summary', 'floorplan', 'warnings', 'people', 'presence-summary', 'devices', 'cleaning', 'message'].includes(config.mode)) throw new Error('Mufflonbau: unsupported live card mode.');
     this._config = config;
     this._watched = [...new Set([
-      config.weather, ...(config.calendars ?? []), ...(config.entities ?? []), ...(config.people ?? []),
+      ...ventilationEntities(config.ventilation), config.weather, ...(config.calendars ?? []), ...(config.entities ?? []), ...(config.people ?? []),
       ...(config.objects ?? []).map(item => item.entity),
       ...cleaningEntities(config.cleaning), ...(config.monitors ?? []).map(item => item.entity),
       ...(config.rooms ?? []).flatMap(room => [room.temperature, room.humidity, room.dew_point, ...(room.lights ?? []), ...(room.objects ?? []).map(item => item.entity)]),
@@ -38,7 +40,7 @@ export class MufflonbauLiveCard extends HTMLElement {
   _startClock() {
     clearInterval(this._timer);
     this._timer = undefined;
-    if (this.isConnected && this._config?.mode === 'header') this._timer = setInterval(() => this._render(), 30000);
+    if (this.isConnected && ['header', 'ventilation'].includes(this._config?.mode)) this._timer = setInterval(() => this._render(), this._config.mode === 'header' ? 30000 : 60000);
   }
   _moreInfo(id) {
     if (id) this.dispatchEvent(new CustomEvent('hass-more-info', { detail: { entityId: id }, bubbles: true, composed: true }));
@@ -63,11 +65,12 @@ export class MufflonbauLiveCard extends HTMLElement {
     const focusedEntity = this.shadowRoot.activeElement?.dataset?.entity;
     const focusedRoom = this.shadowRoot.activeElement?.getAttribute('data-room');
     const focusedMarker = this.shadowRoot.activeElement?.getAttribute('data-marker');
-    const style = element('style', liveStyles);
+    const style = element('style', `${liveStyles}\n${ventilationStyles}`);
     const card = element('ha-card');
     const mode = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
     card.className = `${mode}${this._config.compact ? ' compact' : ''}`;
     applyTheme(card, mode, this._config.appearance?.theme);
+    if (this._config.mode === 'ventilation') renderVentilation(this, card, text);
     if (this._config.mode === 'header') this._header(card, text);
     if (this._config.mode === 'climate') this._climate(card, text);
     if (this._config.mode === 'room-summary') this._roomSummary(card, text);

@@ -18,6 +18,7 @@ const paths = {
   nursery: 'M3 8h16l-3 9H6L3 5H1m6 16h.01M16 21h.01M5 8a6 6 0 0 1 12 0Z',
   home: 'm3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7',
   rooms: 'M3 3h18v18H3zM3 12h9V3M12 12h9M12 12v9',
+  ventilation: 'M3 8h12a3 3 0 1 0-3-3M2 12h17a3 3 0 1 1-3 3M4 16h5a3 3 0 1 1-3 3',
   climate: 'M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0ZM12 8v10',
   cleaning: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM10 10a2 2 0 1 0 4 0 2 2 0 0 0-4 0ZM6 17h12M4.5 18.5 2 21m17.5-2.5L22 21',
   play: 'm8 5 12 7-12 7V5Z',

@@ -1,6 +1,7 @@
 import { normalizeAdmin } from './admin.js';
 import { cleaningEntities } from './cleaning.js';
 import { validateDrawing } from './floorplan.js';
+import { normalizeVentilation, ventilationEntities } from './ventilation.js';
 function fail(path, message) {
   throw new Error(`Mufflonbau: ${path} ${message}`);
 }
@@ -188,6 +189,7 @@ export function normalizeConfig(config) {
       if (result.appearance[key] !== undefined) entity(result.appearance[key], `appearance.${key}`);
     }
   }
+  if (result.ventilation !== undefined) result.ventilation = normalizeVentilation(result.ventilation, result.rooms, entity);
   result.admin = normalizeAdmin(result.admin ?? {}, entity);
   return result;
 }
@@ -195,7 +197,7 @@ export function normalizeConfig(config) {
 export function collectEntities(config) {
   return [...new Set([
     ...Object.values(config.admin ?? {}).flat(), ...config.entities, ...config.people, ...config.calendars, ...config.expert_entities,
-    config.weather, config.shopping?.entity, ...config.monitors.map(monitor => monitor.entity),
+    config.weather, config.shopping?.entity, ...ventilationEntities(config.ventilation), ...config.monitors.map(monitor => monitor.entity),
     ...config.rooms.flatMap(room => [room.temperature, room.humidity, room.dew_point,
       ...room.lights, ...(room.member_lights ?? []), ...room.entities, ...Object.values(room.cleaning ?? {})]),
     ...config.rooms.flatMap(room => (room.objects ?? []).map(item => item.entity)),

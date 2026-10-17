@@ -21,6 +21,7 @@
     nursery: "M3 8h16l-3 9H6L3 5H1m6 16h.01M16 21h.01M5 8a6 6 0 0 1 12 0Z",
     home: "m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7",
     rooms: "M3 3h18v18H3zM3 12h9V3M12 12h9M12 12v9",
+    ventilation: "M3 8h12a3 3 0 1 0-3-3M2 12h17a3 3 0 1 1-3 3M4 16h5a3 3 0 1 1-3 3",
     climate: "M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0ZM12 8v10",
     cleaning: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM10 10a2 2 0 1 0 4 0 2 2 0 0 0-4 0ZM6 17h12M4.5 18.5 2 21m17.5-2.5L22 21",
     play: "m8 5 12 7-12 7V5Z",
@@ -145,6 +146,35 @@ ${trees}${houses}
   // src/core/i18n.js
   var translations = {
     en: {
+      ventilation: "Ventilation",
+      ventilationDry: "Ventilation can dry the room",
+      ventilationWetter: "Outdoor air is more humid",
+      ventilationWait: "Little drying benefit",
+      ventilationNoNeed: "No drying needed",
+      ventilationAlreadyDry: "Air is already dry",
+      ventilationCheck: "Check readings",
+      ventilationIntro: "The traffic light compares indoor and outdoor moisture. Cooling and room comfort are considered separately.",
+      ventilationOutdoor: "Outdoors",
+      ventilationAbsolute: "Absolute humidity",
+      ventilationDifference: "Drying difference at room temperature",
+      ventilationSourceActive: "active",
+      ventilationSourceBackup: "backup source",
+      ventilationSourceReady: "ready",
+      ventilationSourceUnavailable: "unavailable or invalid",
+      ventilationUnit: "Unsupported sensor unit",
+      ventilationAgeUnknown: "Reading age unknown",
+      ventilationStale: "Reading is too old",
+      ventilationOutdoorMissing: "Outdoor readings are missing or invalid. No ventilation recommendation is available.",
+      ventilationDryDetail: "Humidity is elevated and outdoor air contains less moisture. Ventilation can help dry the room.",
+      ventilationWetterDetail: "Outdoor air would bring more moisture into this room. Wait if your goal is drying.",
+      ventilationWaitDetail: "Humidity is elevated, but outdoor air offers too little drying benefit.",
+      ventilationNoNeedDetail: "Humidity is below the configured drying threshold. This does not assess air quality.",
+      ventilationAlreadyDryDetail: "Relative humidity is below 40%. Further drying is not the goal.",
+      ventilationComfort_cold: "Cold outside: avoid cooling the room too far.",
+      ventilationComfort_warmer: "Warmer outside: ventilation may heat up the room.",
+      ventilationComfort_cooling: "Cooler outside: ventilation may also help cool this warm room.",
+      ventilationComfort_neutral: "Consider room temperature and comfort when ventilating.",
+      ventilationHelp: "Green: indoor humidity ≥ {humidity}% and at least {difference} drying benefit, comparing both air masses at indoor temperature. Readings older than {age} minutes are excluded. These are approximate calculations from the configured sensors at similar ambient pressure. The light does not measure CO₂, pollutants, mould risk or window state, and does not estimate a ventilation duration.",
       adminShort: "Admin",
       presenceShort: "Presence",
       category: "Category",
@@ -253,6 +283,35 @@ ${trees}${houses}
       dewPoint: "Dew point"
     },
     de: {
+      ventilation: "Lüftungsampel",
+      ventilationDry: "Lüften trocknet",
+      ventilationWetter: "Draußen feuchter",
+      ventilationWait: "Kaum Trocknungsvorteil",
+      ventilationNoNeed: "Kein Trocknungsbedarf",
+      ventilationAlreadyDry: "Luft schon trocken",
+      ventilationCheck: "Messwerte prüfen",
+      ventilationIntro: "Die Ampel vergleicht die Feuchtigkeit drinnen und draußen. Kühlung und Wohlfühltemperatur werden getrennt betrachtet.",
+      ventilationOutdoor: "Draußen",
+      ventilationAbsolute: "Absolute Feuchte",
+      ventilationDifference: "Trocknungsdifferenz bei Raumtemperatur",
+      ventilationSourceActive: "aktiv",
+      ventilationSourceBackup: "Ersatzquelle",
+      ventilationSourceReady: "bereit",
+      ventilationSourceUnavailable: "nicht verfügbar oder ungültig",
+      ventilationUnit: "Sensoreinheit nicht unterstützt",
+      ventilationAgeUnknown: "Alter des Messwerts unbekannt",
+      ventilationStale: "Messwert zu alt",
+      ventilationOutdoorMissing: "Außenwerte fehlen oder sind ungültig. Eine Lüftungsempfehlung ist nicht möglich.",
+      ventilationDryDetail: "Die Luftfeuchtigkeit ist erhöht und die Außenluft enthält weniger Feuchtigkeit. Lüften kann den Raum trocknen.",
+      ventilationWetterDetail: "Die Außenluft würde mehr Feuchtigkeit in diesen Raum bringen. Zum Trocknen lieber warten.",
+      ventilationWaitDetail: "Die Luftfeuchtigkeit ist erhöht, aber die Außenluft bietet zu wenig Trocknungsvorteil.",
+      ventilationNoNeedDetail: "Die Luftfeuchtigkeit liegt unter der eingestellten Trocknungsschwelle. Das bewertet nicht die Luftqualität.",
+      ventilationAlreadyDryDetail: "Die relative Luftfeuchtigkeit liegt unter 40%. Weiteres Trocknen ist nicht das Ziel.",
+      ventilationComfort_cold: "Draußen kalt: Den Raum beim Lüften nicht zu stark auskühlen lassen.",
+      ventilationComfort_warmer: "Draußen wärmer: Lüften kann den Raum aufheizen.",
+      ventilationComfort_cooling: "Draußen kühler: Lüften kann diesen warmen Raum zusätzlich abkühlen.",
+      ventilationComfort_neutral: "Beim Lüften auch Raumtemperatur und Wohlbefinden beachten.",
+      ventilationHelp: "Grün: innen mindestens {humidity}% Luftfeuchtigkeit und mindestens {difference} Trocknungsvorteil, beide Luftmassen bei Innentemperatur verglichen. Werte älter als {age} Minuten werden ausgeschlossen. Die Berechnung ist eine Näherung aus den gewählten Sensoren bei ähnlichem Luftdruck. Die Ampel misst weder CO₂, Schadstoffe, Schimmelrisiko noch Fensterzustände und schätzt keine Lüftungsdauer.",
       adminShort: "Admin",
       presenceShort: "Anwesenheit",
       category: "Kategorie",
@@ -1870,6 +1929,108 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
     }
   }
 
+  // src/core/ventilation.js
+  function normalizeVentilation(value, rooms, entity2) {
+    const fail2 = (key2, message) => {
+      throw new Error(`Mufflonbau: ventilation${key2 ? `.${key2}` : ""} ${message}`);
+    };
+    if (!value || typeof value !== "object" || Array.isArray(value)) fail2("", "must be an object.");
+    if (value.outdoor_sources !== void 0) {
+      if (value.outdoor_temperature !== void 0 || value.outdoor_humidity !== void 0) fail2("outdoor_sources", "cannot be combined with outdoor_temperature/outdoor_humidity.");
+      if (!Array.isArray(value.outdoor_sources) || !value.outdoor_sources.length) fail2("outdoor_sources", "must be a non-empty array of temperature/humidity pairs in priority order.");
+    }
+    const used = /* @__PURE__ */ new Set();
+    for (const [index, source] of outdoorSources(value).entries()) {
+      const key2 = value.outdoor_sources ? `outdoor_sources[${index}]` : "";
+      if (!source || typeof source !== "object" || Array.isArray(source)) fail2(key2, "must be a temperature/humidity pair.");
+      if (source.name !== void 0 && (typeof source.name !== "string" || !source.name.trim())) fail2(`${key2}.name`, "must be a non-empty string.");
+      for (const kind of ["temperature", "humidity"]) {
+        entity2(source[kind], `ventilation.${key2 ? `${key2}.${kind}` : `outdoor_${kind}`}`);
+        if (used.has(source[kind])) fail2(key2, "must use separate, unique sensor entities.");
+        used.add(source[kind]);
+      }
+    }
+    const result = { max_age_minutes: 180, humidity_high: 60, min_drying_difference: 1, ...value };
+    for (const [key2, min, max] of [["max_age_minutes", 5, 1440], ["humidity_high", 40, 80], ["min_drying_difference", 0.2, 5]]) {
+      if (!Number.isFinite(result[key2]) || result[key2] < min || result[key2] > max) fail2(key2, `must be a number between ${min} and ${max}.`);
+    }
+    if (result.room_ids !== void 0) {
+      if (!Array.isArray(result.room_ids) || !result.room_ids.length || new Set(result.room_ids).size !== result.room_ids.length) fail2("room_ids", "must be a non-empty array of unique room IDs.");
+      for (const id of result.room_ids) if (!rooms.some((room) => room.id === id && room.temperature && room.humidity)) fail2("room_ids", "must reference rooms with configured temperature and humidity.");
+    }
+    if (!ventilationRooms(rooms, result).some((room) => room.temperature && room.humidity)) fail2("", "requires at least one room with temperature and humidity.");
+    return result;
+  }
+  function ventilationEntities(config) {
+    return config ? outdoorSources(config).flatMap((source) => [source.temperature, source.humidity]) : [];
+  }
+  function outdoorSources(config) {
+    return config.outdoor_sources ?? [{ temperature: config.outdoor_temperature, humidity: config.outdoor_humidity }];
+  }
+  function ventilationRooms(rooms, config) {
+    return rooms.filter((room) => config.room_ids ? config.room_ids.includes(room.id) : room.temperature || room.humidity);
+  }
+  function moisture(temperature, humidity) {
+    const vaporPressure = 6.112 * Math.exp(17.67 * temperature / (temperature + 243.5)) * humidity / 100;
+    const gamma = Math.log(vaporPressure / 6.112);
+    return {
+      temperature,
+      humidity,
+      vaporPressure,
+      absolute: 216.74 * vaporPressure / (temperature + 273.15),
+      dewPoint: humidity === 0 ? null : 243.5 * gamma / (17.67 - gamma)
+    };
+  }
+  function reading(id, states, kind, now, maxAge) {
+    const state = states[id];
+    const status = availability(state);
+    if (status !== "available") return { entity: id, problem: id ? status : "notConfigured" };
+    let value = numericState(state);
+    if (value === null) return { entity: id, problem: "invalidValue" };
+    const unit = state.attributes?.unit_of_measurement;
+    if (kind === "temperature") {
+      if (unit === "°F") value = (value - 32) * 5 / 9;
+      else if (unit === "K") value -= 273.15;
+      else if (unit !== "°C") return { entity: id, problem: "ventilationUnit" };
+      if (value < -40 || value > 60) return { entity: id, problem: "invalidValue" };
+    } else if (unit !== "%") return { entity: id, problem: "ventilationUnit" };
+    else if (value < 0 || value > 100) return { entity: id, problem: "invalidValue" };
+    const timestamp = Date.parse(state.last_reported ?? state.last_updated);
+    if (!Number.isFinite(timestamp) || timestamp > now + 3e5) return { entity: id, problem: "ventilationAgeUnknown" };
+    if (now - timestamp > maxAge * 6e4) return { entity: id, problem: "ventilationStale" };
+    return { entity: id, value, timestamp };
+  }
+  function pair(temperature, humidity, states, now, maxAge) {
+    const readings = [reading(temperature, states, "temperature", now, maxAge), reading(humidity, states, "humidity", now, maxAge)];
+    const issues = readings.filter((item) => item.problem);
+    return issues.length ? { issues } : { ...moisture(readings[0].value, readings[1].value), readings, issues };
+  }
+  function ventilationStatus(config, rooms, states, now = Date.now()) {
+    const settings = { max_age_minutes: 180, humidity_high: 60, min_drying_difference: 1, ...config };
+    const sources = outdoorSources(settings).map((source) => ({ source, ...pair(source.temperature, source.humidity, states, now, settings.max_age_minutes) }));
+    const selected = sources.find((source) => !source.issues.length);
+    const outdoor = selected ? { ...selected, sources, fallback: selected !== sources[0] } : { issues: sources.flatMap((source) => source.issues), sources, fallback: false };
+    const results = ventilationRooms(rooms, settings).map((room) => {
+      const indoor = pair(room.temperature, room.humidity, states, now, settings.max_age_minutes);
+      const issues = [...outdoor.issues, ...indoor.issues];
+      if (issues.length) return { room, indoor, issues, status: "unknown", comfort: null };
+      const outdoorAtIndoor = 216.74 * outdoor.vaporPressure / (indoor.temperature + 273.15);
+      const difference = indoor.absolute - outdoorAtIndoor;
+      const drying = difference >= settings.min_drying_difference;
+      const wetter = difference <= -settings.min_drying_difference;
+      const humid = indoor.humidity >= settings.humidity_high;
+      const status = humid && drying ? "dry" : wetter ? "wetter" : humid ? "wait" : indoor.humidity < 40 ? "dryIndoor" : "comfortable";
+      const comfort = outdoor.temperature >= indoor.temperature + 2 ? "warmer" : outdoor.temperature < 10 ? "cold" : indoor.temperature >= 24 && outdoor.temperature <= indoor.temperature - 2 ? "cooling" : "neutral";
+      return { room, indoor, issues, status, comfort, difference, outdoorAtIndoor };
+    });
+    return {
+      outdoor,
+      rooms: results,
+      ready: results.filter((item) => item.status === "dry").length,
+      unknown: results.filter((item) => item.status === "unknown").length
+    };
+  }
+
   // src/core/config.js
   function fail(path, message) {
     throw new Error(`Mufflonbau: ${path} ${message}`);
@@ -2063,6 +2224,7 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
         if (result.appearance[key2] !== void 0) entity(result.appearance[key2], `appearance.${key2}`);
       }
     }
+    if (result.ventilation !== void 0) result.ventilation = normalizeVentilation(result.ventilation, result.rooms, entity);
     result.admin = normalizeAdmin(result.admin ?? {}, entity);
     return result;
   }
@@ -2075,6 +2237,7 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
       ...config.expert_entities,
       config.weather,
       config.shopping?.entity,
+      ...ventilationEntities(config.ventilation),
       ...config.monitors.map((monitor) => monitor.entity),
       ...config.rooms.flatMap((room) => [
         room.temperature,
@@ -2190,6 +2353,7 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
     const shared = { appearance: config.appearance };
     const cards = [liveCard("header", { ...shared, compact: true, title: config.title ?? "Mufflonbau", weather: config.weather, calendars: config.calendars, rooms: config.rooms }, language)];
     if (config.rooms.length) cards.push(liveCard("room-summary", { ...shared, compact: true, rooms: config.rooms }, language));
+    if (config.ventilation) cards.push(liveCard("ventilation", { ...shared, compact: true, ventilation: config.ventilation, rooms: config.rooms }, language));
     if (config.people.length) cards.push(liveCard("presence-summary", { ...shared, compact: true, people: config.people }, language));
     if (config.cleaning?.entity) cards.push(liveCard("cleaning", { ...shared, compact: true, cleaning: config.cleaning }, language));
     if (config.monitors.length) cards.push(liveCard("warnings", { ...shared, monitors: config.monitors, compact: true }, language));
@@ -2221,6 +2385,13 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
     return { lights: configured.filter((id) => !members.has(id)), members: configured.filter((id) => members.has(id)) };
   }
 
+  // src/modules/ventilation.js
+  function ventilationViews({ config, text, language }) {
+    return config.ventilation ? [view("ventilation", text.ventilation, "mdi:weather-windy", [
+      liveCard("ventilation", { ventilation: config.ventilation, rooms: config.rooms, appearance: config.appearance }, language)
+    ], { subview: true })] : [];
+  }
+
   // src/modules/shopping.js
   function shoppingViews({ config, language }) {
     if (!config.shopping) return [];
@@ -2242,7 +2413,7 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
     });
     const language = resolveLanguage(config, hass);
     const context = { config, hass, language, text: translations[language] };
-    const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...shoppingViews(context), ...systemViews(context)];
+    const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...ventilationViews(context), ...cleaningViews(context), ...calendarViews(context), ...shoppingViews(context), ...systemViews(context)];
     const allViews = [homeView(context, views), ...views];
     const firstLinks = ["home", "calendar", "rooms", "cleaning"];
     const navigation = allViews.filter((item) => !item.subview || item.path === "presence").map(({ path, title, icon: icon2 }) => ({ path, title, icon: icon2 })).sort((a, b) => {
@@ -2316,6 +2487,9 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
     :host([data-view=home]) .slot.mode-presence-summary { grid-column:span 5; grid-row:2; }
     :host([data-view=home]) .slot.mode-cleaning { grid-column:span 7; grid-row:3; height:auto; min-height:0; max-height:none; }
     :host([data-view=home]) .slot.mode-warnings { grid-column:span 5; grid-row:3; }
+    :host([data-view=home]) .slot.mode-ventilation { grid-column:1/-1; grid-row:4; }
+    :host([data-view=home][data-ventilation=true]) { height:auto; min-height:100dvh; overflow:visible; }
+    :host([data-view=home][data-ventilation=true]) .shell,:host([data-view=home][data-ventilation=true]) main { height:auto; min-height:100dvh; }
     :host([data-view=home]) .slot.mode-devices { grid-column:1/-1; grid-row:3; }
     :host([data-view=home]) .slot > * { height:auto; }
     :host([data-view=home]) .room-board .grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
@@ -2545,11 +2719,13 @@ form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{
     _render() {
       if (!this._config) return;
       const text = translations[this._config.language ?? "en"];
-      const quickBack = ["rooms", "presence", "system", "climate", "cleaning", "shopping"].includes(this._config.path);
+      const quickBack = ["rooms", "presence", "system", "climate", "cleaning", "shopping", "ventilation"].includes(this._config.path);
       const expertView = this._config.path === "expert";
       const shell = element("div", void 0, "shell");
       this.dataset.view = this._config.path;
       this.toggleAttribute("data-has-shopping", Boolean(this._config.shopping_enabled));
+      if (this._config.path === "home" && this._config.cards.some((card) => card.mode === "ventilation")) this.dataset.ventilation = "true";
+      else delete this.dataset.ventilation;
       if (this._config.path === "cleaning" && this._config.cleaning_theme === "flusenfels") this.dataset.cleaningTheme = "flusenfels";
       else delete this.dataset.cleaningTheme;
       if (this._config.full_view) this.setAttribute("data-full-view", "true");
@@ -2617,7 +2793,7 @@ ${flusenfelsShellStyles}`), shell);
       for (const config of this._config.cards) {
         const slot = element("section", void 0, "slot");
         if (config.mode) slot.classList.add(`mode-${config.mode}`);
-        const layout = { header: "wide", climate: "rooms", "room-summary": "compact", people: "compact", "presence-summary": "compact", devices: "devices", cleaning: "cleaning", warnings: "compact", floorplan: "wide", message: "wide" }[config.mode];
+        const layout = { ventilation: config.compact ? "compact" : "wide", header: "wide", climate: "rooms", "room-summary": "compact", people: "compact", "presence-summary": "compact", devices: "devices", cleaning: "cleaning", warnings: "compact", floorplan: "wide", message: "wide" }[config.mode];
         if (layout) slot.classList.add(layout);
         let card;
         if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history", "custom:mufflonbau-cleaning", "custom:mufflonbau-presence", "custom:mufflonbau-shopping"].includes(config.type)) {
@@ -2663,6 +2839,129 @@ ${flusenfelsShellStyles}`), shell);
       }
     }
   };
+
+  // src/cards/ventilation.js
+  var ventilationStyles = `
+  .ventilation-summary .summary-icon { position:relative; }
+  .ventilation-summary .summary-icon:after { content:''; position:absolute; right:-3px; bottom:-3px; width:10px; height:10px; border-radius:50%; border:2px solid var(--mb-surface); background:var(--mb-muted); }
+  .ventilation-summary[data-status=dry] .summary-icon:after,.ventilation-dot.dry { background:#3e9274; }
+  .ventilation-summary[data-status=wait] .summary-icon:after,.ventilation-dot.wait { background:#b08622; }
+  .ventilation-dot.wetter { background:#b55e45; }
+  .ventilation-intro { color:var(--mb-muted); font-size:14px; line-height:1.6; margin:0 0 18px; }
+  .ventilation-outdoor { border:1px solid var(--mb-line); background:var(--mb-soft); border-radius:16px; padding:16px; margin-bottom:18px; }
+  .ventilation-outdoor h3,.ventilation-room h3 { margin:0; font-size:16px; font-weight:650; }
+  .ventilation-rooms { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr)); gap:14px; }
+  .ventilation-room { border:1px solid var(--mb-line); padding:18px; border-radius:18px; min-width:0; }
+  .ventilation-room h3 a { color:inherit; text-decoration:none; display:flex; min-height:44px; align-items:center; }
+  .ventilation-status { display:flex; align-items:center; gap:9px; font-size:15px; font-weight:650; margin:8px 0 14px; }
+  .ventilation-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; background:var(--mb-muted); }
+  .ventilation-room p { font-size:14px; line-height:1.6; }
+  .ventilation-readings { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
+  .ventilation-readings button { font:inherit; font-size:14px; min-height:44px; border:1px solid var(--mb-line); background:var(--mb-soft); border-radius:10px; padding:8px 12px; }
+  .ventilation-metrics { color:var(--mb-muted); font-size:13px; line-height:1.7; margin-top:8px; }
+  .ventilation-issue { overflow-wrap:anywhere; font-size:13px; line-height:1.6; margin-top:8px; }
+  .ventilation-issue button { text-decoration:underline; min-height:44px; display:block; padding:6px 0; font-size:13px; }
+  .ventilation-help { margin-top:18px; border-top:1px solid var(--mb-line); padding-top:16px; font-size:13px; color:var(--mb-muted); line-height:1.6; }
+`;
+  function renderVentilation(owner, card, text) {
+    const config = owner._config;
+    const model = ventilationStatus(config.ventilation, config.rooms ?? [], owner._hass.states);
+    const number = (value, unit) => value === null ? "—" : `${new Intl.NumberFormat(owner._language, { maximumFractionDigits: 1 }).format(value)} ${unit}`;
+    const title = text.ventilation;
+    if (config.compact) {
+      card.classList.add("dashboard-summary", "ventilation-summary");
+      card.dataset.status = model.ready ? "dry" : model.rooms.some((item) => ["wait", "wetter"].includes(item.status)) ? "wait" : "neutral";
+      const status = model.ready ? `${model.ready} ${model.ready === 1 ? text.room : text.rooms} · ${text.ventilationDry}` : model.unknown === model.rooms.length ? text.ventilationCheck : model.rooms.some((item) => item.status === "wait") ? text.ventilationWait : model.rooms.some((item) => item.status === "wetter") ? text.ventilationWetter : text.ventilationNoNeed;
+      owner._summaryLink(
+        card,
+        "ventilation",
+        "ventilation",
+        title,
+        status,
+        model.unknown && model.unknown < model.rooms.length ? `${model.unknown} ${model.unknown === 1 ? text.room : text.rooms} · ${text.ventilationCheck}` : void 0
+      );
+      return;
+    }
+    owner._section(card, title);
+    card.append(element("p", text.ventilationIntro, "ventilation-intro"));
+    const issue = (parent, item) => {
+      const row = element("div", void 0, "ventilation-issue");
+      row.append(element("span", text[item.problem]));
+      if (item.entity) {
+        const button = element("button", `${owner._name(item.entity)} · ${item.entity}`);
+        button.type = "button";
+        button.dataset.entity = item.entity;
+        button.addEventListener("click", () => owner._moreInfo(item.entity));
+        row.append(button);
+      }
+      parent.append(row);
+    };
+    const readings = (parent, temperature, humidity, values) => {
+      const row = element("div", void 0, "ventilation-readings");
+      for (const [id, value, unit, label2] of [[temperature, values.temperature, "°C", text.temperature], [humidity, values.humidity, "%", text.humidity]]) {
+        const button = element("button", number(value, unit));
+        button.type = "button";
+        button.dataset.entity = id;
+        button.setAttribute("aria-label", `${label2}: ${number(value, unit)}`);
+        button.addEventListener("click", () => owner._moreInfo(id));
+        row.append(button);
+      }
+      parent.append(row);
+      parent.append(element("div", `${text.ventilationAbsolute}: ${number(values.absolute, "g/m³")} · ${text.dewPoint}: ${number(values.dewPoint, "°C")}`, "ventilation-metrics"));
+    };
+    const outdoor = element("section", void 0, "ventilation-outdoor");
+    outdoor.append(element("h3", text.ventilationOutdoor));
+    if (model.outdoor.issues.length) model.outdoor.issues.forEach((item) => issue(outdoor, item));
+    else readings(outdoor, model.outdoor.source.temperature, model.outdoor.source.humidity, model.outdoor);
+    if (model.outdoor.sources.length > 1) {
+      const sources = element("div", void 0, "ventilation-metrics ventilation-sources");
+      model.outdoor.sources.forEach((item) => {
+        const active = item.source === model.outdoor.source;
+        const label2 = item.source.name ?? owner._name(item.source.temperature);
+        const status = active ? `${text.ventilationSourceActive}${model.outdoor.fallback ? ` · ${text.ventilationSourceBackup}` : ""}` : item.issues.length ? text.ventilationSourceUnavailable : text.ventilationSourceReady;
+        sources.append(element("div", `${label2}: ${status}`));
+      });
+      outdoor.append(sources);
+    }
+    card.append(outdoor);
+    const grid = element("div", void 0, "ventilation-rooms");
+    for (const item of model.rooms) {
+      const section = element("section", void 0, "ventilation-room");
+      section.dataset.room = item.room.id;
+      const heading = element("h3");
+      const link = element("a", localized(item.room.name, owner._language));
+      navigateLink(link, `room-${item.room.id}`);
+      heading.append(link);
+      section.append(heading);
+      const status = element("p", void 0, "ventilation-status");
+      status.append(element("span", void 0, `ventilation-dot ${item.status}`), element("span", text[{
+        dry: "ventilationDry",
+        wetter: "ventilationWetter",
+        wait: "ventilationWait",
+        comfortable: "ventilationNoNeed",
+        dryIndoor: "ventilationAlreadyDry",
+        unknown: "ventilationCheck"
+      }[item.status]]));
+      section.append(status);
+      if (item.issues.length) {
+        item.indoor.issues.forEach((problem) => issue(section, problem));
+        if (model.outdoor.issues.length) section.append(element("p", text.ventilationOutdoorMissing));
+      } else {
+        readings(section, item.room.temperature, item.room.humidity, item.indoor);
+        section.append(element("p", text[{
+          dry: "ventilationDryDetail",
+          wetter: "ventilationWetterDetail",
+          wait: "ventilationWaitDetail",
+          comfortable: "ventilationNoNeedDetail",
+          dryIndoor: "ventilationAlreadyDryDetail"
+        }[item.status]]));
+        section.append(element("p", text[`ventilationComfort_${item.comfort}`]));
+        section.append(element("div", `${text.ventilationDifference}: ${number(item.difference, "g/m³")}`, "ventilation-metrics"));
+      }
+      grid.append(section);
+    }
+    card.append(grid, element("p", text.ventilationHelp.replace("{humidity}", String(config.ventilation.humidity_high)).replace("{difference}", number(config.ventilation.min_drying_difference, "g/m³")).replace("{age}", String(config.ventilation.max_age_minutes)), "ventilation-help"));
+  }
 
   // src/design/live-styles.js
   var liveStyles = `
@@ -2946,8 +3245,8 @@ ${flusenfelsShellStyles}`), shell);
       navigateLink(link, `room-${room.id}`);
       const label2 = svgElement("g", { class: "map-room-label", "data-room-label": room.id });
       const labelWidth = Math.min(164, b2.right - b2.x - 10);
-      const reading = (id, unit) => id && numericState(host._hass.states[id]) !== null ? host._value(id, unit) : `— ${unit}`;
-      const readings = [[room.temperature, "°C"], [room.humidity, "%"]].filter(([id]) => id).map(([id, unit]) => reading(id, unit));
+      const reading2 = (id, unit) => id && numericState(host._hass.states[id]) !== null ? host._value(id, unit) : `— ${unit}`;
+      const readings = [[room.temperature, "°C"], [room.humidity, "%"]].filter(([id]) => id).map(([id, unit]) => reading2(id, unit));
       label2.append(svgElement("rect", { x: x - labelWidth / 2, y: y - (readings.length ? 19 : 13), width: labelWidth, height: readings.length ? 44 : 26, rx: 8 }));
       label2.append(svgElement("text", { x, y: y + (readings.length ? -2 : 4), "text-anchor": "middle", class: "room-name" }, localized(room.name, host._language)));
       if (readings.length) label2.append(svgElement("text", { x, y: y + 16, "text-anchor": "middle", class: "room-value" }, readings.join(" · ")));
@@ -3063,9 +3362,10 @@ ${flusenfelsShellStyles}`), shell);
       this.attachShadow({ mode: "open" });
     }
     setConfig(config) {
-      if (!["header", "climate", "room-summary", "floorplan", "warnings", "people", "presence-summary", "devices", "cleaning", "message"].includes(config.mode)) throw new Error("Mufflonbau: unsupported live card mode.");
+      if (!["ventilation", "header", "climate", "room-summary", "floorplan", "warnings", "people", "presence-summary", "devices", "cleaning", "message"].includes(config.mode)) throw new Error("Mufflonbau: unsupported live card mode.");
       this._config = config;
       this._watched = [...new Set([
+        ...ventilationEntities(config.ventilation),
         config.weather,
         ...config.calendars ?? [],
         ...config.entities ?? [],
@@ -3099,7 +3399,7 @@ ${flusenfelsShellStyles}`), shell);
     _startClock() {
       clearInterval(this._timer);
       this._timer = void 0;
-      if (this.isConnected && this._config?.mode === "header") this._timer = setInterval(() => this._render(), 3e4);
+      if (this.isConnected && ["header", "ventilation"].includes(this._config?.mode)) this._timer = setInterval(() => this._render(), this._config.mode === "header" ? 3e4 : 6e4);
     }
     _moreInfo(id) {
       if (id) this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: id }, bubbles: true, composed: true }));
@@ -3127,11 +3427,13 @@ ${flusenfelsShellStyles}`), shell);
       const focusedEntity = this.shadowRoot.activeElement?.dataset?.entity;
       const focusedRoom = this.shadowRoot.activeElement?.getAttribute("data-room");
       const focusedMarker = this.shadowRoot.activeElement?.getAttribute("data-marker");
-      const style = element("style", liveStyles);
+      const style = element("style", `${liveStyles}
+${ventilationStyles}`);
       const card = element("ha-card");
       const mode = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
       card.className = `${mode}${this._config.compact ? " compact" : ""}`;
       applyTheme(card, mode, this._config.appearance?.theme);
+      if (this._config.mode === "ventilation") renderVentilation(this, card, text);
       if (this._config.mode === "header") this._header(card, text);
       if (this._config.mode === "climate") this._climate(card, text);
       if (this._config.mode === "room-summary") this._roomSummary(card, text);
@@ -3190,9 +3492,9 @@ ${flusenfelsShellStyles}`), shell);
       const humidities = (this._config.rooms ?? []).map((room) => numericState(this._hass.states[room.humidity])).filter((value) => value !== null);
       if (compatible.length) {
         const average = compatible.reduce((sum, state) => sum + numericState(state), 0) / compatible.length;
-        const reading = element("div", void 0, "reading");
-        reading.append(icon("climate"), element("strong", `${new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(average)} ${unit}`));
-        climate.append(reading);
+        const reading2 = element("div", void 0, "reading");
+        reading2.append(icon("climate"), element("strong", `${new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(average)} ${unit}`));
+        climate.append(reading2);
         const pills = element("div", void 0, "climate-pills");
         pills.append(element("span", `${compatible.length} · ${text.rooms}`, "chip"));
         if (humidities.length) pills.append(element("span", `${Math.round(humidities.reduce((a, b) => a + b, 0) / humidities.length)}% · ${text.humidity}`, "chip"));
@@ -3296,10 +3598,10 @@ ${flusenfelsShellStyles}`), shell);
         button.dataset.entity = room.temperature ?? room.humidity ?? room.dew_point ?? "";
         button.append(element("strong", localized(room.name, this._language)));
         if (room.temperature) {
-          const reading = element("div", void 0, `value${numericState(this._hass.states[room.temperature]) === null ? " status-value" : ""}`);
-          if (numericState(this._hass.states[room.temperature]) === null) reading.append(this._statusIcon(stateProblem(this._hass.states[room.temperature], this._language) ?? text.invalidValue));
-          else reading.textContent = this._value(room.temperature, "°C");
-          button.append(reading);
+          const reading2 = element("div", void 0, `value${numericState(this._hass.states[room.temperature]) === null ? " status-value" : ""}`);
+          if (numericState(this._hass.states[room.temperature]) === null) reading2.append(this._statusIcon(stateProblem(this._hass.states[room.temperature], this._language) ?? text.invalidValue));
+          else reading2.textContent = this._value(room.temperature, "°C");
+          button.append(reading2);
         }
         if (room.humidity) {
           const value = numericState(this._hass.states[room.humidity]);
@@ -3360,16 +3662,16 @@ ${flusenfelsShellStyles}`), shell);
           const cell = element("td");
           const id = room[column.key];
           if (id) {
-            const reading = element("button", void 0, "climate-reading");
-            reading.type = "button";
-            reading.dataset.entity = id;
+            const reading2 = element("button", void 0, "climate-reading");
+            reading2.type = "button";
+            reading2.dataset.entity = id;
             const value = this._value(id, column.unit);
-            reading.setAttribute("aria-label", `${name} · ${column.label}: ${value}`);
-            reading.title = value;
-            if (numericState(this._hass.states[id]) === null) reading.append(this._statusIcon(value));
-            else reading.textContent = value;
-            reading.addEventListener("click", () => this._moreInfo(id));
-            cell.append(reading);
+            reading2.setAttribute("aria-label", `${name} · ${column.label}: ${value}`);
+            reading2.title = value;
+            if (numericState(this._hass.states[id]) === null) reading2.append(this._statusIcon(value));
+            else reading2.textContent = value;
+            reading2.addEventListener("click", () => this._moreInfo(id));
+            cell.append(reading2);
           } else {
             const missing = element("span", "—", "climate-empty");
             missing.setAttribute("aria-label", text.notConfigured);

@@ -165,10 +165,13 @@ try {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
   const homeLayout = await page.locator('#dashboard').evaluate(shell => {
     const main = shell.shadowRoot.querySelector('main'); const content = main.querySelector('.content');
+    const navigation = shell.shadowRoot.querySelector('nav').getBoundingClientRect();
+    const slots = [...content.children].map(slot => ({ name: slot.className, top: slot.getBoundingClientRect().top, bottom: slot.getBoundingClientRect().bottom }));
     return { host: shell.getBoundingClientRect().height, main: main.getBoundingClientRect().height, scroll: main.scrollHeight,
-      content: [content.clientHeight, content.scrollHeight], slots: [...content.children].map(slot => [slot.className, Math.round(slot.getBoundingClientRect().height), Math.round(slot.scrollHeight)]) };
+      nav: { top: navigation.top, bottom: navigation.bottom }, content: [content.clientHeight, content.scrollHeight], slots };
   });
   assert.ok(homeLayout.host <= 800 && homeLayout.scroll <= homeLayout.main + 1, `Home view should fit the Galaxy Tab A11 viewport: ${JSON.stringify(homeLayout)}`);
+  assert.ok(homeLayout.slots.every(slot => slot.bottom <= homeLayout.nav.top || slot.top >= homeLayout.nav.bottom), `Home cards must not overlap bottom navigation: ${JSON.stringify(homeLayout)}`);
   await page.screenshot({ path: 'test-results/dashboard-ambient-desktop.png', fullPage: true });
   const toggle = page.locator('#dashboard button[role=switch]').first();
   await toggle.click();

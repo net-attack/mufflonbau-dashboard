@@ -34,10 +34,10 @@ export const shellStyles = `
     :host([data-view=home]) { height:100dvh; min-height:0; overflow:hidden; }
     :host([data-view=home]) .shell,:host([data-view=home]) main { height:100%; min-height:0; }
     :host([data-view=home]) aside { min-height:0; padding-top:22px; padding-bottom:22px; }
-    :host([data-view=home]) main { display:flex; flex-direction:column; padding:20px clamp(18px,2vw,32px); }
+    :host([data-view=home]) main { display:flex; flex-direction:column; padding:20px clamp(18px,2vw,32px) 150px; }
     :host([data-view=home]) .topline { flex:none; margin-bottom:8px; }
     :host([data-view=home]) .heading { flex:none; font-size:28px; margin:0 0 12px; }
-    :host([data-view=home]) .content { flex:1; min-height:0; align-content:stretch; grid-template-rows:minmax(120px,1fr) minmax(180px,1.5fr) minmax(90px,.8fr); gap:12px; }
+    :host([data-view=home]) .content { flex:1; min-height:0; align-items:stretch; align-content:stretch; grid-template-rows:minmax(120px,1fr) minmax(180px,1.5fr) minmax(90px,.8fr); gap:12px; }
     :host([data-view=home]) .slot { min-height:0; }
     :host([data-view=home]) .slot.mode-header { grid-column:1/-1; grid-row:1; }
     :host([data-view=home]) .slot.mode-climate { grid-column:1/-1; grid-row:2; }
@@ -67,6 +67,7 @@ export const shellStyles = `
   :host([data-theme=atmospheric]) .brand,:host([data-theme=atmospheric]) .footnote,:host([data-theme=storybook]) .brand,:host([data-theme=storybook]) .footnote { display:none; }
   :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { position:fixed; inset:auto auto 18px 50%; transform:translateX(-50%); z-index:10; flex-direction:row; gap:4px; padding:7px; max-width:calc(100% - 28px); background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:24px; backdrop-filter:blur(22px); box-shadow:0 15px 40px #0002; }
   :host([data-theme=atmospheric]) main,:host([data-theme=storybook]) main { padding-bottom:110px; }
+  :host([data-view=home][data-theme=atmospheric]) main,:host([data-view=home][data-theme=storybook]) main { padding-bottom:150px; }
   :host([data-theme=atmospheric]) .slot.rooms,:host([data-theme=storybook]) .slot.rooms { grid-column:1/-1; }
   :host([data-theme=atmospheric]) .slot.devices,:host([data-theme=storybook]) .slot.devices { grid-column:1/-1; }
   :host([data-theme=storybook]) main { padding-bottom:240px; }

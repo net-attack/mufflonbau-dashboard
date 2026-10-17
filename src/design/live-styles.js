@@ -13,7 +13,7 @@ export const liveStyles = `
   .value { font-size:34px; letter-spacing:-1.5px; font-weight:500; margin-top:10px; line-height:1.3; } .room-tile.lit .icon-disc { background:var(--mb-active); }
   .warning { display:flex; gap:12px; align-items:center; padding:12px 0; width:100%; border-bottom:1px solid var(--mb-line); } .warning:last-child { border:0; } .warning .icon-disc { color:#b67545; } .warning strong { overflow-wrap:anywhere; font-size:12px; font-weight:600; }
   .healthy { display:flex; align-items:center; gap:12px; color:var(--mb-accent); font-size:13px; line-height:1.7; padding:8px 0; }
-  ha-card.compact { padding:14px; }
+  ha-card.compact { height:100%; padding:14px; }
   .hero.compact .overview-grid { min-height:0; padding:0; gap:18px; align-items:center; }
   .hero.compact .overview-grid h1 { font-size:25px; margin:0 0 6px; }
   .hero.compact .overview-grid h2 { margin:0 0 8px; font-size:14px; }

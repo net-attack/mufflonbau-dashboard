@@ -33,12 +33,13 @@ try {
       'sensor.battery': { state: '10', attributes: {} }, 'light.room': { state: 'on', attributes: {} },
     };
     const room = { id: 'living', name: { en: 'Living room', de: 'Wohnzimmer' }, temperature: 'sensor.temperature', humidity: 'sensor.humidity', lights: ['light.room'] };
-    window.sampleHass = { states, locale: { language: 'de' }, config: { time_zone: 'Europe/Berlin' }, themes: { darkMode: false } };
+    window.floorplanCalls = [];
+    window.sampleHass = { states, locale: { language: 'de' }, config: { time_zone: 'Europe/Berlin' }, themes: { darkMode: false }, callService: async (...args) => window.floorplanCalls.push(args) };
     const configs = [
       { mode: 'header', title: 'Mufflonbau' },
       { mode: 'climate', rooms: [room] },
       { mode: 'warnings', monitors: [{ entity: 'sensor.battery', battery_below: 20 }] },
-      { mode: 'floorplan', rooms: [room] },
+      { mode: 'floorplan', rooms: [{ ...room, objects: [{ id: 'lamp', icon: 'light', name: { en: 'Floor lamp', de: 'Stehlampe' }, position: { x: 0.8, y: 0.75 }, entity: 'light.room', action: 'toggle' }] }] },
     ];
     for (const config of configs) {
       const card = document.createElement('mufflonbau-live');
@@ -67,7 +68,10 @@ try {
   assert.match(await page.locator('#warnings ha-card').innerText(), /in Ordnung/);
   assert.equal(await page.locator('#floorplan polygon.lit').count(), 0);
   assert.equal(await page.locator('#floorplan polygon.offline').count(), 1);
-  await page.locator('#floorplan a').click();
+  assert.equal(await page.locator('#floorplan [data-marker=lamp]').getAttribute('aria-label'), 'Stehlampe · room');
+  await page.locator('#floorplan [data-marker=lamp]').click();
+  assert.deepEqual(await page.evaluate(() => window.floorplanCalls[0]), ['homeassistant', 'toggle', {}, { entity_id: 'light.room' }]);
+  await page.locator('#floorplan a[data-room]').click();
   assert.match(page.url(), /\/dashboard-test\/room-living$/);
   await page.evaluate(() => {
     window.sampleHass = { ...window.sampleHass, locale: { language: 'en' }, themes: { darkMode: true } };
@@ -157,6 +161,14 @@ try {
     shell.setConfig(result.views[0].cards[0]); shell.hass = window.previewHass; main.replaceChildren(shell);
   }, { config: previewConfig, hass: previewHass });
   await page.setViewportSize({ width: 1440, height: 1080 });
+  await page.setViewportSize({ width: 1340, height: 800 });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+  const homeLayout = await page.locator('#dashboard').evaluate(shell => {
+    const main = shell.shadowRoot.querySelector('main'); const content = main.querySelector('.content');
+    return { host: shell.getBoundingClientRect().height, main: main.getBoundingClientRect().height, scroll: main.scrollHeight,
+      content: [content.clientHeight, content.scrollHeight], slots: [...content.children].map(slot => [slot.className, Math.round(slot.getBoundingClientRect().height), Math.round(slot.scrollHeight)]) };
+  });
+  assert.ok(homeLayout.host <= 800 && homeLayout.scroll <= homeLayout.main + 1, `Home view should fit the Galaxy Tab A11 viewport: ${JSON.stringify(homeLayout)}`);
   await page.screenshot({ path: 'test-results/dashboard-ambient-desktop.png', fullPage: true });
   const toggle = page.locator('#dashboard button[role=switch]').first();
   await toggle.click();

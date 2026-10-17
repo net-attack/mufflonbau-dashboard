@@ -2,7 +2,7 @@ import { liveStyles } from '../design/live-styles.js';
 import { localized, resolveLanguage, translations } from '../core/i18n.js';
 import { appearanceMode, isOffline, monitorWarnings, numericState, stateProblem } from '../core/state.js';
 
-import { element, svgElement, icon, navigateLink, roomIcon } from '../design/dom.js';
+import { element, svgElement, icon, iconPath, navigateLink, roomIcon } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
 export class MufflonbauLiveCard extends HTMLElement {
   constructor() {
@@ -15,7 +15,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     this._watched = [...new Set([
       config.weather, ...(config.calendars ?? []), ...(config.entities ?? []), ...(config.people ?? []),
       ...Object.values(config.cleaning ?? {}), ...(config.monitors ?? []).map(item => item.entity),
-      ...(config.rooms ?? []).flatMap(room => [room.temperature, room.humidity, room.dew_point, ...(room.lights ?? [])]),
+      ...(config.rooms ?? []).flatMap(room => [room.temperature, room.humidity, room.dew_point, ...(room.lights ?? []), ...(room.objects ?? []).map(item => item.entity)]),
       config.appearance?.night_person, config.appearance?.ambient_person,
     ].filter(Boolean))];
     this._render();
@@ -58,7 +58,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     const focusedRoom = this.shadowRoot.activeElement?.getAttribute('data-room');
     const style = element('style', liveStyles);
     const card = element('ha-card');
-    card.className = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
+    card.className = `${appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode)}${this._config.compact ? ' compact' : ''}`;
     applyTheme(card, card.className, this._config.appearance?.theme);
     if (this._config.mode === 'header') this._header(card, text);
     if (this._config.mode === 'climate') this._climate(card, text);
@@ -290,7 +290,9 @@ export class MufflonbauLiveCard extends HTMLElement {
     }
     rooms.forEach((room, index) => {
       const position = positions[index];
-      const center = polygons[index].flat().reduce((point, item) => [point[0] + item[0] / polygons[index].flat().length, point[1] + item[1] / polygons[index].flat().length], [0, 0]);
+      const points = polygons[index].flat();
+      const bounds = { left: Math.min(...points.map(point => point[0])), top: Math.min(...points.map(point => point[1])), right: Math.max(...points.map(point => point[0])), bottom: Math.max(...points.map(point => point[1])) };
+      const center = [(bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2];
       const link = svgElement('a', { 'data-room': room.id, 'aria-label': localized(room.name, this._language) });
       navigateLink(link, `room-${room.id}`);
       const lit = (room.lights ?? []).some(id => this._hass.states[id]?.state === 'on');
@@ -303,6 +305,26 @@ export class MufflonbauLiveCard extends HTMLElement {
       if (room.temperature) link.append(svgElement('text', { x: center[0], y: center[1] + 18, class: 'room-value', 'text-anchor': textAnchor }, this._value(room.temperature, '°C')));
       if (room.humidity) link.append(svgElement('text', { x: center[0], y: center[1] + 38, class: 'room-value', 'text-anchor': textAnchor }, this._value(room.humidity, '%')));
       svg.append(link);
+      for (const item of room.objects ?? []) {
+        const x = bounds.left + (bounds.right - bounds.left) * item.position.x;
+        const y = bounds.top + (bounds.bottom - bounds.top) * item.position.y;
+        const state = item.entity ? this._hass.states[item.entity] : undefined;
+        const active = state?.state === 'on';
+        const label = localized(item.name, this._language);
+        const marker = svgElement('a', { href: '#', role: 'button', tabindex: '0', 'aria-label': item.entity ? `${label} · ${this._name(item.entity)}` : `${label} · ${localized(room.name, this._language)}`, 'data-marker': item.id ?? label });
+        marker.append(svgElement('circle', { cx: x, cy: y, r: 19, class: `map-marker${active ? ' active' : ''}${isOffline(state) ? ' unavailable' : ''}` }));
+        marker.append(svgElement('path', { d: iconPath(item.icon), transform: `translate(${x - 10} ${y - 10}) scale(.83)`, class: 'map-marker-icon' }));
+        marker.append(svgElement('title', {}, label));
+        marker.addEventListener('click', async event => {
+          event.preventDefault(); event.stopPropagation();
+          if (!item.entity) { window.history.pushState(null, '', `room-${room.id}`); window.dispatchEvent(new Event('location-changed')); return; }
+          if (item.action === 'toggle') {
+            try { await this._hass.callService('homeassistant', 'toggle', {}, { entity_id: item.entity }); }
+            catch { this._moreInfo(item.entity); }
+          } else this._moreInfo(item.entity);
+        });
+        svg.append(marker);
+      }
     });
     card.append(svg);
   }

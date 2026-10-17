@@ -69,6 +69,7 @@ export class MufflonbauShell extends HTMLElement {
     if (generation !== this._generation) return;
     for (const config of this._config.cards) {
       const slot = element('section', undefined, 'slot');
+      if (config.mode) slot.classList.add(`mode-${config.mode}`);
       const layout = { header: 'wide', climate: 'rooms', people: 'compact', devices: 'devices', cleaning: 'cleaning', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
       if (layout) slot.classList.add(layout);
       let card;

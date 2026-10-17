@@ -59,6 +59,25 @@ export function normalizeConfig(config) {
       list(normalized[key], `${path}.${key}`);
       normalized[key].forEach(id => entity(id, `${path}.${key}`));
     }
+    normalized.objects = room.objects ?? [];
+    list(normalized.objects, `${path}.objects`);
+    normalized.objects.forEach((item, itemIndex) => {
+      const itemPath = `${path}.objects[${itemIndex}]`;
+      object(item, itemPath);
+      if (typeof item.icon !== 'string' || !['sofa', 'bed', 'kitchen', 'office', 'nursery', 'home', 'rooms', 'climate', 'cleaning', 'light', 'drop'].includes(item.icon)) {
+        fail(`${itemPath}.icon`, 'must be a supported schematic icon.');
+      }
+      label(item.name, `${itemPath}.name`);
+      object(item.position, `${itemPath}.position`);
+      for (const key of ['x', 'y']) {
+        if (!Number.isFinite(item.position[key]) || item.position[key] < 0 || item.position[key] > 1) {
+          fail(`${itemPath}.position.${key}`, 'must be a fraction between 0 and 1.');
+        }
+      }
+      if (item.entity !== undefined) entity(item.entity, `${itemPath}.entity`);
+      if (item.action !== undefined && !['toggle', 'more-info'].includes(item.action)) fail(`${itemPath}.action`, 'must be toggle or more-info.');
+      if (item.action === 'toggle' && item.entity && !/^(light|switch)\./.test(item.entity)) fail(`${itemPath}.action`, 'toggle requires a light or switch entity.');
+    });
     if (room.cleaning !== undefined) {
       object(room.cleaning, `${path}.cleaning`);
       for (const [key, id] of Object.entries(room.cleaning)) {
@@ -123,6 +142,7 @@ export function normalizeConfig(config) {
       }
     }
   }
+  result.kiosk_mode ??= { kiosk: true, hide_header: true };
   if (result.appearance !== undefined) {
     object(result.appearance, 'appearance');
     if (!['calm', 'atmospheric', 'storybook'].includes(result.appearance.theme ?? 'atmospheric')) fail('appearance.theme', 'must be calm, atmospheric, or storybook.');
@@ -141,6 +161,7 @@ export function collectEntities(config) {
     config.weather, ...config.monitors.map(monitor => monitor.entity),
     ...config.rooms.flatMap(room => [room.temperature, room.humidity, room.dew_point,
       ...room.lights, ...(room.member_lights ?? []), ...room.entities, ...Object.values(room.cleaning ?? {})]),
+    ...config.rooms.flatMap(room => (room.objects ?? []).map(item => item.entity)),
     ...Object.values(config.cleaning ?? {}), config.appearance?.night_person, config.appearance?.ambient_person,
   ].filter(Boolean))];
 }

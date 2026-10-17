@@ -21,7 +21,7 @@ and duplicated installation-specific entity lookups into the new source.
 | Expert placeholder | Deduplicated inventory of configured entity IDs |
 | Presence-based ambient/night palette | Configurable shared appearance rule |
 | Floating popup navigation | Desktop sidebar and compact mobile bottom navigation |
-| Kiosk header hiding | Optional `kiosk_mode` pass-through for the Kiosk Mode plugin |
+| Kiosk header hiding | Enabled by default through `kiosk_mode` pass-through to the Kiosk Mode plugin |
 
 The floorplan is a schematic built from room rectangles and live overlays. Room
 positions from the old plan are retained in the local migration configuration;

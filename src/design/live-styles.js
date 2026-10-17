@@ -13,6 +13,28 @@ export const liveStyles = `
   .value { font-size:34px; letter-spacing:-1.5px; font-weight:500; margin-top:10px; line-height:1.3; } .room-tile.lit .icon-disc { background:var(--mb-active); }
   .warning { display:flex; gap:12px; align-items:center; padding:12px 0; width:100%; border-bottom:1px solid var(--mb-line); } .warning:last-child { border:0; } .warning .icon-disc { color:#b67545; } .warning strong { overflow-wrap:anywhere; font-size:12px; font-weight:600; }
   .healthy { display:flex; align-items:center; gap:12px; color:var(--mb-accent); font-size:13px; line-height:1.7; padding:8px 0; }
+  ha-card.compact { padding:14px; }
+  .hero.compact .overview-grid { min-height:0; padding:0; gap:18px; align-items:center; }
+  .hero.compact .overview-grid h1 { font-size:25px; margin:0 0 6px; }
+  .hero.compact .overview-grid h2 { margin:0 0 8px; font-size:14px; }
+  .hero.compact .overview-date { font-size:10px; }
+  .hero.compact .event { margin-top:8px; padding-top:8px; }
+  .room-board.compact .section-head { margin-bottom:8px; }
+  .room-board.compact .grid { gap:8px; }
+  .room-board.compact:not([data-theme=calm]) .room-tile { min-height:0; padding:10px; border-radius:18px; }
+  .room-board.compact:not([data-theme=calm]) .room-top { top:8px; right:7px; gap:5px; }
+  .room-board.compact:not([data-theme=calm]) .room-link,.room-board.compact:not([data-theme=calm]) .circle-toggle { width:27px; height:27px; }
+  .room-board.compact:not([data-theme=calm]) .value { font-size:20px; margin-top:5px; }
+  .room-board.compact:not([data-theme=calm]) .room-art { display:none; }
+  .room-board.compact .climate-button small { margin-top:3px; }
+  .room-board.compact .status-value { min-height:24px; font-size:12px; }
+  .compact .warning { padding:5px 0; }
+  .compact .warning .icon-disc { width:30px; height:30px; }
+  .compact .people { padding:5px 0; gap:8px; }
+  .compact .avatar { width:32px; height:32px; }
+  .compact .robot { padding:2px 0 8px; gap:10px; }
+  .compact .robot .icon-disc { width:38px; height:38px; }
+  .compact .link { padding-top:8px; }
   .hero { padding:32px; background:var(--mb-hero); overflow:hidden; position:relative; border:0; }
   .hero:after { content:''; position:absolute; width:330px; height:330px; border:1px solid var(--mb-accent); opacity:.1; border-radius:50%; right:90px; top:-170px; box-shadow:0 0 0 50px var(--mb-hero),0 0 0 51px var(--mb-accent); pointer-events:none; }
   .header { display:flex; align-items:center; justify-content:space-between; gap:24px; position:relative; z-index:1; }
@@ -31,6 +53,10 @@ export const liveStyles = `
   .floor-map { display:block; width:min(100%,calc((100dvh - 250px) * .8275)); height:auto; max-height:calc(100dvh - 250px); margin:12px auto 0; } .floor-map text { fill:var(--mb-ink); pointer-events:none; font-size:15px; }
   .floor-map polygon { stroke:var(--mb-line); stroke-width:4; stroke-linejoin:round; fill:var(--mb-soft); vector-effect:non-scaling-stroke; } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
   .floor-map a { cursor:pointer; } .floor-map a:focus-visible polygon { stroke:var(--mb-accent); stroke-width:7; }
+  .floor-map .map-marker { fill:var(--mb-surface); stroke:var(--mb-line); stroke-width:2; vector-effect:non-scaling-stroke; transition:fill .15s,stroke .15s; }
+  .floor-map .map-marker.active { fill:var(--mb-active); stroke:var(--mb-accent); } .floor-map .map-marker.unavailable { stroke:#b67545; stroke-dasharray:3; }
+  .floor-map .map-marker-icon { fill:none; stroke:var(--mb-accent); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
+  .floor-map a[data-marker]:hover .map-marker,.floor-map a[data-marker]:focus-visible .map-marker { stroke:var(--mb-accent); stroke-width:3; }
   .floor-map .floor-wall { fill:none; stroke:var(--mb-ink); stroke-width:8; stroke-linecap:square; stroke-linejoin:miter; opacity:.65; vector-effect:non-scaling-stroke; pointer-events:none; }
   .entity-id { font-family:ui-monospace,monospace; font-size:10px; overflow-wrap:anywhere; opacity:.8; }
   .room-board .value.status-value { display:flex; align-items:center; min-height:32px; font-size:12px; letter-spacing:0; line-height:1.6; }

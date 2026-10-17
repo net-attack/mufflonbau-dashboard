@@ -41,6 +41,9 @@
     node.append(svgElement("path", { d: paths[name] ?? paths.rooms }));
     return node;
   }
+  function iconPath(name = "home") {
+    return paths[name] ?? paths.rooms;
+  }
   function navigationUrl(path) {
     const url = new URL(window.location.href);
     const segments = url.pathname.split("/").filter(Boolean);
@@ -897,6 +900,25 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
         list(normalized[key], `${path}.${key}`);
         normalized[key].forEach((id) => entity(id, `${path}.${key}`));
       }
+      normalized.objects = room.objects ?? [];
+      list(normalized.objects, `${path}.objects`);
+      normalized.objects.forEach((item, itemIndex) => {
+        const itemPath = `${path}.objects[${itemIndex}]`;
+        object(item, itemPath);
+        if (typeof item.icon !== "string" || !["sofa", "bed", "kitchen", "office", "nursery", "home", "rooms", "climate", "cleaning", "light", "drop"].includes(item.icon)) {
+          fail(`${itemPath}.icon`, "must be a supported schematic icon.");
+        }
+        label(item.name, `${itemPath}.name`);
+        object(item.position, `${itemPath}.position`);
+        for (const key of ["x", "y"]) {
+          if (!Number.isFinite(item.position[key]) || item.position[key] < 0 || item.position[key] > 1) {
+            fail(`${itemPath}.position.${key}`, "must be a fraction between 0 and 1.");
+          }
+        }
+        if (item.entity !== void 0) entity(item.entity, `${itemPath}.entity`);
+        if (item.action !== void 0 && !["toggle", "more-info"].includes(item.action)) fail(`${itemPath}.action`, "must be toggle or more-info.");
+        if (item.action === "toggle" && item.entity && !/^(light|switch)\./.test(item.entity)) fail(`${itemPath}.action`, "toggle requires a light or switch entity.");
+      });
       if (room.cleaning !== void 0) {
         object(room.cleaning, `${path}.cleaning`);
         for (const [key, id] of Object.entries(room.cleaning)) {
@@ -959,6 +981,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
         }
       }
     }
+    result.kiosk_mode ??= { kiosk: true, hide_header: true };
     if (result.appearance !== void 0) {
       object(result.appearance, "appearance");
       if (!["calm", "atmospheric", "storybook"].includes(result.appearance.theme ?? "atmospheric")) fail("appearance.theme", "must be calm, atmospheric, or storybook.");
@@ -988,6 +1011,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
         ...room.entities,
         ...Object.values(room.cleaning ?? {})
       ]),
+      ...config.rooms.flatMap((room) => (room.objects ?? []).map((item) => item.entity)),
       ...Object.values(config.cleaning ?? {}),
       config.appearance?.night_person,
       config.appearance?.ambient_person
@@ -1087,10 +1111,10 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   // src/modules/home.js
   function homeView({ config, text, language }, otherViews) {
     const shared = { appearance: config.appearance };
-    const cards = [liveCard("header", { ...shared, title: config.title ?? "Mufflonbau", weather: config.weather, calendars: config.calendars, rooms: config.rooms }, language)];
-    if (config.rooms.length) cards.push(liveCard("climate", { ...shared, rooms: config.rooms }, language));
-    if (config.people.length) cards.push(liveCard("people", { ...shared, people: config.people }, language));
-    if (config.cleaning?.entity) cards.push(liveCard("cleaning", { ...shared, cleaning: config.cleaning }, language));
+    const cards = [liveCard("header", { ...shared, compact: true, title: config.title ?? "Mufflonbau", weather: config.weather, calendars: config.calendars, rooms: config.rooms }, language)];
+    if (config.rooms.length) cards.push(liveCard("climate", { ...shared, compact: true, rooms: config.rooms }, language));
+    if (config.people.length) cards.push(liveCard("people", { ...shared, compact: true, people: config.people }, language));
+    if (config.cleaning?.entity) cards.push(liveCard("cleaning", { ...shared, compact: true, cleaning: config.cleaning }, language));
     if (config.monitors.length) cards.push(liveCard("warnings", { ...shared, monitors: config.monitors, compact: true }, language));
     if (config.entities.length) cards.push(liveCard("devices", { ...shared, entities: config.entities, title: text.overview }, language));
     if (!config.rooms.length && !config.people.length && !config.entities.length && !otherViews.some((item) => !item.path.startsWith("admin"))) {
@@ -1172,6 +1196,29 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   :host([data-view=calendar][data-full-view=true]) .slot.calendar { grid-column:1/-1; min-height:0; height:100%; }
   :host([data-view=calendar][data-full-view=true]) .slot.calendar > * { height:100%; }
   :host([data-view=cleaning]),:host([data-view=calendar][data-full-view=true]) { overflow:hidden; }
+  @media(min-width:701px) {
+    :host([data-view=home]) { height:100dvh; min-height:0; overflow:hidden; }
+    :host([data-view=home]) .shell,:host([data-view=home]) main { height:100%; min-height:0; }
+    :host([data-view=home]) aside { min-height:0; padding-top:22px; padding-bottom:22px; }
+    :host([data-view=home]) main { display:flex; flex-direction:column; padding:20px clamp(18px,2vw,32px); }
+    :host([data-view=home]) .topline { flex:none; margin-bottom:8px; }
+    :host([data-view=home]) .heading { flex:none; font-size:28px; margin:0 0 12px; }
+    :host([data-view=home]) .content { flex:1; min-height:0; align-content:stretch; grid-template-rows:minmax(120px,1fr) minmax(180px,1.5fr) minmax(90px,.8fr); gap:12px; }
+    :host([data-view=home]) .slot { min-height:0; }
+    :host([data-view=home]) .slot.mode-header { grid-column:1/-1; grid-row:1; }
+    :host([data-view=home]) .slot.mode-climate { grid-column:1/-1; grid-row:2; }
+    :host([data-view=home]) .slot.mode-people { grid-column:span 5; grid-row:3; }
+    :host([data-view=home]) .slot.mode-cleaning { grid-column:span 4; grid-row:3; height:100%; min-height:0; max-height:100%; }
+    :host([data-view=home]) .slot.mode-warnings { grid-column:span 3; grid-row:3; }
+    :host([data-view=home]) .slot.mode-devices { grid-column:1/-1; grid-row:3; }
+    :host([data-view=home]) .slot > * { height:100%; }
+    :host([data-view=home]) .room-board .grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+    :host([data-view=home]) .room-board .room-tile { min-height:0; height:100%; padding:12px; }
+    :host([data-view=home]) .room-board .climate-button { padding-right:26px; }
+    :host([data-view=home]) .room-board .room-art { bottom:8px; left:12px; }
+    :host([data-view=home]) .room-board .room-art svg { width:48px; height:48px; }
+    :host([data-view=home]) .slot.mode-header ha-card { padding:18px 24px; }
+  }
   :host([data-view=cleaning]) .shell { height:calc(100dvh - 56px); min-height:0; }
   :host([data-view=cleaning]) main { height:100%; min-height:0; overflow:hidden; padding:18px clamp(18px,3vw,46px) 82px; display:flex; flex-direction:column; }
   :host([data-view=cleaning]) .topline { flex:none; margin-bottom:8px; }
@@ -1281,6 +1328,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       if (generation !== this._generation) return;
       for (const config of this._config.cards) {
         const slot = element("section", void 0, "slot");
+        if (config.mode) slot.classList.add(`mode-${config.mode}`);
         const layout = { header: "wide", climate: "rooms", people: "compact", devices: "devices", cleaning: "cleaning", warnings: "compact", floorplan: "wide", message: "wide" }[config.mode];
         if (layout) slot.classList.add(layout);
         let card;
@@ -1317,6 +1365,28 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   .value { font-size:34px; letter-spacing:-1.5px; font-weight:500; margin-top:10px; line-height:1.3; } .room-tile.lit .icon-disc { background:var(--mb-active); }
   .warning { display:flex; gap:12px; align-items:center; padding:12px 0; width:100%; border-bottom:1px solid var(--mb-line); } .warning:last-child { border:0; } .warning .icon-disc { color:#b67545; } .warning strong { overflow-wrap:anywhere; font-size:12px; font-weight:600; }
   .healthy { display:flex; align-items:center; gap:12px; color:var(--mb-accent); font-size:13px; line-height:1.7; padding:8px 0; }
+  ha-card.compact { padding:14px; }
+  .hero.compact .overview-grid { min-height:0; padding:0; gap:18px; align-items:center; }
+  .hero.compact .overview-grid h1 { font-size:25px; margin:0 0 6px; }
+  .hero.compact .overview-grid h2 { margin:0 0 8px; font-size:14px; }
+  .hero.compact .overview-date { font-size:10px; }
+  .hero.compact .event { margin-top:8px; padding-top:8px; }
+  .room-board.compact .section-head { margin-bottom:8px; }
+  .room-board.compact .grid { gap:8px; }
+  .room-board.compact:not([data-theme=calm]) .room-tile { min-height:0; padding:10px; border-radius:18px; }
+  .room-board.compact:not([data-theme=calm]) .room-top { top:8px; right:7px; gap:5px; }
+  .room-board.compact:not([data-theme=calm]) .room-link,.room-board.compact:not([data-theme=calm]) .circle-toggle { width:27px; height:27px; }
+  .room-board.compact:not([data-theme=calm]) .value { font-size:20px; margin-top:5px; }
+  .room-board.compact:not([data-theme=calm]) .room-art { display:none; }
+  .room-board.compact .climate-button small { margin-top:3px; }
+  .room-board.compact .status-value { min-height:24px; font-size:12px; }
+  .compact .warning { padding:5px 0; }
+  .compact .warning .icon-disc { width:30px; height:30px; }
+  .compact .people { padding:5px 0; gap:8px; }
+  .compact .avatar { width:32px; height:32px; }
+  .compact .robot { padding:2px 0 8px; gap:10px; }
+  .compact .robot .icon-disc { width:38px; height:38px; }
+  .compact .link { padding-top:8px; }
   .hero { padding:32px; background:var(--mb-hero); overflow:hidden; position:relative; border:0; }
   .hero:after { content:''; position:absolute; width:330px; height:330px; border:1px solid var(--mb-accent); opacity:.1; border-radius:50%; right:90px; top:-170px; box-shadow:0 0 0 50px var(--mb-hero),0 0 0 51px var(--mb-accent); pointer-events:none; }
   .header { display:flex; align-items:center; justify-content:space-between; gap:24px; position:relative; z-index:1; }
@@ -1335,6 +1405,10 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   .floor-map { display:block; width:min(100%,calc((100dvh - 250px) * .8275)); height:auto; max-height:calc(100dvh - 250px); margin:12px auto 0; } .floor-map text { fill:var(--mb-ink); pointer-events:none; font-size:15px; }
   .floor-map polygon { stroke:var(--mb-line); stroke-width:4; stroke-linejoin:round; fill:var(--mb-soft); vector-effect:non-scaling-stroke; } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
   .floor-map a { cursor:pointer; } .floor-map a:focus-visible polygon { stroke:var(--mb-accent); stroke-width:7; }
+  .floor-map .map-marker { fill:var(--mb-surface); stroke:var(--mb-line); stroke-width:2; vector-effect:non-scaling-stroke; transition:fill .15s,stroke .15s; }
+  .floor-map .map-marker.active { fill:var(--mb-active); stroke:var(--mb-accent); } .floor-map .map-marker.unavailable { stroke:#b67545; stroke-dasharray:3; }
+  .floor-map .map-marker-icon { fill:none; stroke:var(--mb-accent); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
+  .floor-map a[data-marker]:hover .map-marker,.floor-map a[data-marker]:focus-visible .map-marker { stroke:var(--mb-accent); stroke-width:3; }
   .floor-map .floor-wall { fill:none; stroke:var(--mb-ink); stroke-width:8; stroke-linecap:square; stroke-linejoin:miter; opacity:.65; vector-effect:non-scaling-stroke; pointer-events:none; }
   .entity-id { font-family:ui-monospace,monospace; font-size:10px; overflow-wrap:anywhere; opacity:.8; }
   .room-board .value.status-value { display:flex; align-items:center; min-height:32px; font-size:12px; letter-spacing:0; line-height:1.6; }
@@ -1394,7 +1468,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
         ...config.people ?? [],
         ...Object.values(config.cleaning ?? {}),
         ...(config.monitors ?? []).map((item) => item.entity),
-        ...(config.rooms ?? []).flatMap((room) => [room.temperature, room.humidity, room.dew_point, ...room.lights ?? []]),
+        ...(config.rooms ?? []).flatMap((room) => [room.temperature, room.humidity, room.dew_point, ...room.lights ?? [], ...(room.objects ?? []).map((item) => item.entity)]),
         config.appearance?.night_person,
         config.appearance?.ambient_person
       ].filter(Boolean))];
@@ -1448,7 +1522,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       const focusedRoom = this.shadowRoot.activeElement?.getAttribute("data-room");
       const style = element("style", liveStyles);
       const card = element("ha-card");
-      card.className = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
+      card.className = `${appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode)}${this._config.compact ? " compact" : ""}`;
       applyTheme(card, card.className, this._config.appearance?.theme);
       if (this._config.mode === "header") this._header(card, text);
       if (this._config.mode === "climate") this._climate(card, text);
@@ -1764,7 +1838,9 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       }
       rooms.forEach((room, index) => {
         const position = positions[index];
-        const center = polygons[index].flat().reduce((point, item) => [point[0] + item[0] / polygons[index].flat().length, point[1] + item[1] / polygons[index].flat().length], [0, 0]);
+        const points = polygons[index].flat();
+        const bounds = { left: Math.min(...points.map((point) => point[0])), top: Math.min(...points.map((point) => point[1])), right: Math.max(...points.map((point) => point[0])), bottom: Math.max(...points.map((point) => point[1])) };
+        const center = [(bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2];
         const link = svgElement("a", { "data-room": room.id, "aria-label": localized(room.name, this._language) });
         navigateLink(link, `room-${room.id}`);
         const lit = (room.lights ?? []).some((id) => this._hass.states[id]?.state === "on");
@@ -1777,6 +1853,34 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
         if (room.temperature) link.append(svgElement("text", { x: center[0], y: center[1] + 18, class: "room-value", "text-anchor": textAnchor }, this._value(room.temperature, "°C")));
         if (room.humidity) link.append(svgElement("text", { x: center[0], y: center[1] + 38, class: "room-value", "text-anchor": textAnchor }, this._value(room.humidity, "%")));
         svg.append(link);
+        for (const item of room.objects ?? []) {
+          const x = bounds.left + (bounds.right - bounds.left) * item.position.x;
+          const y = bounds.top + (bounds.bottom - bounds.top) * item.position.y;
+          const state = item.entity ? this._hass.states[item.entity] : void 0;
+          const active = state?.state === "on";
+          const label2 = localized(item.name, this._language);
+          const marker = svgElement("a", { href: "#", role: "button", tabindex: "0", "aria-label": item.entity ? `${label2} · ${this._name(item.entity)}` : `${label2} · ${localized(room.name, this._language)}`, "data-marker": item.id ?? label2 });
+          marker.append(svgElement("circle", { cx: x, cy: y, r: 19, class: `map-marker${active ? " active" : ""}${isOffline(state) ? " unavailable" : ""}` }));
+          marker.append(svgElement("path", { d: iconPath(item.icon), transform: `translate(${x - 10} ${y - 10}) scale(.83)`, class: "map-marker-icon" }));
+          marker.append(svgElement("title", {}, label2));
+          marker.addEventListener("click", async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!item.entity) {
+              window.history.pushState(null, "", `room-${room.id}`);
+              window.dispatchEvent(new Event("location-changed"));
+              return;
+            }
+            if (item.action === "toggle") {
+              try {
+                await this._hass.callService("homeassistant", "toggle", {}, { entity_id: item.entity });
+              } catch {
+                this._moreInfo(item.entity);
+              }
+            } else this._moreInfo(item.entity);
+          });
+          svg.append(marker);
+        }
       });
       card.append(svg);
     }

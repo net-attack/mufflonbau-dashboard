@@ -38,6 +38,7 @@ export function icon(name = 'home') {
   node.append(svgElement('path', { d: paths[name] ?? paths.rooms }));
   return node;
 }
+export function iconPath(name = 'home') { return paths[name] ?? paths.rooms; }
 export function navigationUrl(path) {
   const url = new URL(window.location.href);
   const segments = url.pathname.split('/').filter(Boolean);

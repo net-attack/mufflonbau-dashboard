@@ -108,9 +108,9 @@ test('appearance preserves the old presence rule and falls back to the HA theme'
   assert.equal(appearanceMode({ mode: 'ambient' }, {}, true), 'ambient');
 });
 
-test('passes explicit Kiosk Mode settings through and leaves them off by default', () => {
+test('enables kiosk mode and hides the header by default while allowing explicit overrides', () => {
   const kioskMode = { kiosk: true, hide_header: true };
   assert.deepEqual(generateDashboard({ kiosk_mode: kioskMode }, { states: {} }).kiosk_mode, kioskMode);
-  assert.equal(generateDashboard({}, { states: {} }).kiosk_mode, undefined);
+  assert.deepEqual(generateDashboard({}, { states: {} }).kiosk_mode, kioskMode);
   assert.throws(() => normalizeConfig({ kiosk_mode: { kiosk: 'yes' } }), /kiosk_mode/);
 });

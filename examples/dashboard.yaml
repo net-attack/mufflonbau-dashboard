@@ -1,8 +1,10 @@
 strategy:
   type: custom:mufflonbau
   title: Mufflonbau
+  # Follow the Home Assistant profile, or set en / de explicitly.
+  language: auto
   entities: []
-  # Eigene Entity-IDs eintragen, beispielsweise:
+  # Add your own entity IDs, for example:
   # entities:
-  #   - light.wohnzimmer
-  #   - sensor.aussentemperatur
+  #   - light.living_room
+  #   - sensor.outdoor_temperature

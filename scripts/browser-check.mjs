@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile, readdir, mkdir } from 'node:fs/promises';
 import { previewConfig, previewHass } from './preview-fixture.mjs';
+import { translations } from '../src/core/i18n.js';
 import { load, YAML11_SCHEMA } from 'js-yaml';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 await mkdir(new URL('../test-results/', import.meta.url), { recursive: true });
@@ -19,6 +20,7 @@ const server = createServer((request, response) => {
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 let browser;
+let galaxyContext;
 try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1100, height: 1000 } });
@@ -56,6 +58,8 @@ try {
   assert.match(await page.locator('#climate ha-card').innerText(), /Wohnzimmer/);
   assert.match(await page.locator('#climate ha-card').innerText(), /21,5/);
   assert.match(await page.locator('#warnings ha-card').innerText(), /Batterie: 10%/);
+  const germanGreeting = await page.locator('#header h1').innerText();
+  assert.ok(Object.values(translations.de.greetings).flat().includes(germanGreeting), `Unexpected German greeting: ${germanGreeting}`);
   await page.locator('#climate .climate-button').click();
   assert.deepEqual(await page.evaluate(() => window.moreInfo), ['sensor.temperature']);
   await page.evaluate(() => {
@@ -68,6 +72,7 @@ try {
   assert.match(await page.locator('#warnings ha-card').innerText(), /in Ordnung/);
   assert.equal(await page.locator('#floorplan polygon.lit').count(), 0);
   assert.equal(await page.locator('#floorplan polygon.offline').count(), 1);
+  assert.equal(await page.locator('#header h1').innerText(), germanGreeting, 'Greeting must not change during live state updates');
   assert.equal(await page.locator('#floorplan [data-marker=lamp]').getAttribute('aria-label'), 'Stehlampe · room');
   await page.locator('#floorplan [data-marker=lamp]').click();
   assert.deepEqual(await page.evaluate(() => window.floorplanCalls[0]), ['homeassistant', 'toggle', {}, { entity_id: 'light.room' }]);
@@ -177,6 +182,107 @@ try {
   const portraitOverflow = await page.locator('#dashboard').evaluate(shell => getComputedStyle(shell).overflowY);
   assert.notEqual(portraitOverflow, 'hidden', 'Galaxy Tab portrait home view must allow scrolling');
   await page.screenshot({ path: 'test-results/dashboard-ambient-tablet-portrait.png', fullPage: true });
+
+  // The Galaxy Tab A11 panel is 1340x800. Android display scaling makes the
+  // browser's CSS viewport smaller, so exercise both orientations with touch,
+  // a coarse pointer, and a 1.5 device pixel ratio instead of checking the raw
+  // panel dimensions only.
+  galaxyContext = await browser.newContext({
+    viewport: { width: 533, height: 893 },
+    screen: { width: 800, height: 1340 },
+    deviceScaleFactor: 1.5,
+    isMobile: true,
+    hasTouch: true,
+  });
+  const galaxyPage = await galaxyContext.newPage();
+  galaxyPage.on('pageerror', error => errors.push(`Galaxy Tab A11: ${error.message}`));
+  await galaxyPage.goto(`http://127.0.0.1:${server.address().port}/dashboard-test/home`);
+  await galaxyPage.addScriptTag({ url: '/bundle.js' });
+  await galaxyPage.evaluate(async ({ config, hass }) => {
+    window.galaxyCalls = [];
+    window.galaxyHass = { ...hass, callService: async (...args) => window.galaxyCalls.push(args) };
+    const result = await customElements.get('ll-strategy-dashboard-mufflonbau').generate(config, window.galaxyHass);
+    const shell = document.createElement('mufflonbau-shell');
+    shell.id = 'galaxy-dashboard';
+    shell.setConfig(result.views.find(view => view.path === 'home').cards[0]);
+    shell.hass = window.galaxyHass;
+    document.querySelector('main').replaceChildren(shell);
+  }, { config: previewConfig, hass: previewHass });
+  await galaxyPage.locator('#galaxy-dashboard mufflonbau-live ha-card').first().waitFor();
+  assert.equal(await galaxyPage.evaluate(() => navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches), true,
+    'Galaxy Tab A11 profile must emulate a touch-first Android browser');
+  assert.equal(await galaxyPage.evaluate(() => devicePixelRatio), 1.5);
+
+  for (const viewport of [
+    { name: 'portrait', width: 533, height: 893 },
+    { name: 'landscape', width: 893, height: 533 },
+  ]) {
+    await galaxyPage.setViewportSize(viewport);
+    await galaxyPage.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const layout = await galaxyPage.locator('#galaxy-dashboard').evaluate(shell => {
+      const root = shell.shadowRoot;
+      const nav = root.querySelector('nav').getBoundingClientRect();
+      const slots = [...root.querySelectorAll('.slot')].map(slot => {
+        const rect = slot.getBoundingClientRect();
+        return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+      });
+      const targets = [...root.querySelectorAll('nav a, nav summary')]
+        .filter(target => !target.closest('details') || target.matches('summary') || target.closest('details').open)
+        .map(target => {
+          const rect = target.getBoundingClientRect();
+          return { label: target.textContent.trim(), width: rect.width, height: rect.height };
+        })
+        .filter(target => target.width > 0 && target.height > 0);
+      return {
+        viewport: { width: innerWidth, height: innerHeight },
+        horizontalOverflow: document.documentElement.scrollWidth - innerWidth,
+        scrollHeight: document.scrollingElement.scrollHeight,
+        clientHeight: document.scrollingElement.clientHeight,
+        shellOverflowY: getComputedStyle(shell).overflowY,
+        nav: { left: nav.left, top: nav.top, right: nav.right, bottom: nav.bottom },
+        slots,
+        targets,
+      };
+    });
+    assert.deepEqual(layout.viewport, { width: viewport.width, height: viewport.height });
+    assert.ok(layout.horizontalOverflow <= 1, `${viewport.name}: dashboard must not scroll horizontally: ${JSON.stringify(layout)}`);
+    assert.notEqual(layout.shellOverflowY, 'hidden', `${viewport.name}: dashboard must not clip vertical content`);
+    assert.ok(layout.scrollHeight > layout.clientHeight, `${viewport.name}: the complete home dashboard must be scrollable`);
+    assert.ok(layout.nav.left >= 0 && layout.nav.right <= viewport.width && layout.nav.top >= 0 && layout.nav.bottom <= viewport.height,
+      `${viewport.name}: fixed navigation must remain inside the viewport: ${JSON.stringify(layout.nav)}`);
+    assert.ok(layout.slots.every(slot => slot.width > 0 && slot.height > 0 && slot.left >= -1 && slot.right <= viewport.width + 1),
+      `${viewport.name}: every dashboard card must have visible, non-overflowing geometry: ${JSON.stringify(layout.slots)}`);
+    const verticalSlots = [...layout.slots].sort((a, b) => a.top - b.top);
+    const verticalGaps = verticalSlots.slice(1).map((slot, index) => slot.top - verticalSlots[index].bottom).filter(gap => gap >= 0);
+    assert.ok(verticalGaps.every(gap => gap <= 32),
+      `${viewport.name}: dashboard cards must not be separated by unexplained blank space: ${JSON.stringify(verticalGaps)}`);
+    assert.ok(layout.targets.length >= 5 && layout.targets.every(target => target.width >= 44 && target.height >= 44),
+      `${viewport.name}: navigation touch targets must be at least 44x44 CSS pixels: ${JSON.stringify(layout.targets)}`);
+    assert.ok(layout.targets.length <= 5,
+      `${viewport.name}: tablet navigation must collapse secondary destinations into More: ${JSON.stringify(layout.targets)}`);
+    await galaxyPage.screenshot({ path: `test-results/galaxy-tab-a11-${viewport.name}.png` });
+
+    await galaxyPage.evaluate(() => scrollTo(0, document.scrollingElement.scrollHeight));
+    await galaxyPage.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+    const bottom = await galaxyPage.locator('#galaxy-dashboard').evaluate(shell => {
+      const root = shell.shadowRoot;
+      const nav = root.querySelector('nav').getBoundingClientRect();
+      const slots = [...root.querySelectorAll('.slot')];
+      const last = slots.at(-1).getBoundingClientRect();
+      return { lastBottom: last.bottom, navTop: nav.top, scrollY, maxScroll: document.scrollingElement.scrollHeight - innerHeight };
+    });
+    assert.ok(Math.abs(bottom.scrollY - bottom.maxScroll) <= 1, `${viewport.name}: page must reach its maximum scroll position`);
+    assert.ok(bottom.lastBottom <= bottom.navTop - 8,
+      `${viewport.name}: the fixed navigation must not cover the last card: ${JSON.stringify(bottom)}`);
+    await galaxyPage.evaluate(() => scrollTo(0, 0));
+  }
+  const galaxyToggle = galaxyPage.locator('#galaxy-dashboard button[role=switch]').first();
+  await galaxyToggle.scrollIntoViewIfNeeded();
+  await galaxyToggle.click();
+  assert.deepEqual(await galaxyPage.evaluate(() => window.galaxyCalls[0]), ['homeassistant', 'toggle', {}, { entity_id: 'light.living' }]);
+  await galaxyContext.close();
+  galaxyContext = undefined;
+
   await page.setViewportSize({ width: 1340, height: 800 });
   const toggle = page.locator('#dashboard button[role=switch]').first();
   await toggle.click();
@@ -194,6 +300,45 @@ try {
       shell.hass = window.previewHass;
     }, { mode, theme });
     await page.setViewportSize({ width: 1440, height: 1080 });
+    const contrast = await page.locator('#dashboard').evaluate(shell => {
+      const properties = ['--mb-canvas', '--mb-surface', '--mb-soft', '--mb-ink', '--mb-muted', '--mb-accent', '--mb-active'];
+      const expected = Object.fromEntries(properties.map(property => [property, getComputedStyle(shell).getPropertyValue(property).trim()]));
+      const cards = [...shell.shadowRoot.querySelectorAll('mufflonbau-live')].map(card => card.shadowRoot.querySelector('ha-card'));
+      const mismatches = cards.flatMap((card, index) => properties
+        .filter(property => getComputedStyle(card).getPropertyValue(property).trim() !== expected[property])
+        .map(property => ({ card: index, property, expected: expected[property], actual: getComputedStyle(card).getPropertyValue(property).trim() })));
+      const parse = value => {
+        const hex = value.trim().replace('#', '');
+        if (![6, 8].includes(hex.length)) throw new Error(`Unsupported palette color: ${value}`);
+        return { r: parseInt(hex.slice(0, 2), 16), g: parseInt(hex.slice(2, 4), 16), b: parseInt(hex.slice(4, 6), 16), a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1 };
+      };
+      const canvas = parse(expected['--mb-canvas']);
+      const onCanvas = color => ({
+        r: color.r * color.a + canvas.r * (1 - color.a),
+        g: color.g * color.a + canvas.g * (1 - color.a),
+        b: color.b * color.a + canvas.b * (1 - color.a),
+        a: 1,
+      });
+      const luminance = color => {
+        const channel = value => { const normalized = value / 255; return normalized <= .04045 ? normalized / 12.92 : ((normalized + .055) / 1.055) ** 2.4; };
+        return .2126 * channel(color.r) + .7152 * channel(color.g) + .0722 * channel(color.b);
+      };
+      const ratio = (foreground, background) => {
+        const values = [luminance(parse(expected[foreground])), luminance(onCanvas(parse(expected[background])))].sort((a, b) => b - a);
+        return (values[0] + .05) / (values[1] + .05);
+      };
+      return { mismatches, ratios: {
+        'ink/canvas': ratio('--mb-ink', '--mb-canvas'),
+        'ink/surface': ratio('--mb-ink', '--mb-surface'),
+        'ink/soft': ratio('--mb-ink', '--mb-soft'),
+        'muted/surface': ratio('--mb-muted', '--mb-surface'),
+        'accent/active': ratio('--mb-accent', '--mb-active'),
+      } };
+    });
+    assert.deepEqual(contrast.mismatches, [], `${theme}/${mode}: every card must inherit the active theme palette`);
+    for (const [pair, ratio] of Object.entries(contrast.ratios)) {
+      assert.ok(ratio >= 4.5, `${theme}/${mode}: ${pair} contrast must be at least 4.5:1, got ${ratio.toFixed(2)}:1`);
+    }
     const colors = await page.locator('#dashboard').evaluate(shell => [...shell.shadowRoot.querySelectorAll('mufflonbau-live')].filter(card => !['header', 'climate'].includes(card._config.mode)).map(card => getComputedStyle(card.shadowRoot.querySelector('ha-card')).backgroundColor));
     assert.equal(new Set(colors).size, 1, 'Every content card must use the same surface color');
     await page.screenshot({ path: `test-results/dashboard-${theme}-${mode}-desktop.png`, fullPage: true });
@@ -271,12 +416,13 @@ try {
   assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /State unknown/);
   assert.ok(!await page.locator('#dashboard mufflonbau-admin .panel').innerText().then(value => value.includes('Offline')));
   assert.deepEqual(errors, []);
-  console.log('Browser checks passed: rendering, live updates, localization, warnings, navigation, mobile layout, safe labels, clock cleanup, actual YAML examples, complete dashboard layouts, theme consistency, device controls, action errors, admin drill-down, Recorder ranges/retry/gaps, and Galaxy Tab A11 viewport overflow.');
+  console.log('Browser checks passed: rendering, live updates, rotating greetings, localization, warnings, navigation, mobile layout, safe labels, clock cleanup, actual YAML examples, complete dashboard layouts, palette contrast, theme consistency, device controls, action errors, admin drill-down, Recorder ranges/retry/gaps, and Galaxy Tab A11 touch, rotation, scrolling, navigation, and viewport geometry.');
 } catch (error) {
   const page = browser?.contexts()[0]?.pages()[0];
   if (page) await page.screenshot({ path: 'test-results/failure.png', fullPage: true }).catch(() => {});
   throw error;
 } finally {
+  await galaxyContext?.close();
   await browser?.close();
   await new Promise(resolve => server.close(resolve));
 }

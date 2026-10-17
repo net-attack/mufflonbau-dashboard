@@ -68,6 +68,9 @@ See [examples/storybook.yaml](examples/storybook.yaml) for a complete generic ex
 The home view combines greeting/date, current weather readings, indoor climate
 averages, calendar summaries, live room tiles, lights, presence, cleaning, and
 warnings. Climate averages include available numeric sensors with matching units.
+German dashboards choose a playful greeting from a rotating family/Smart-Home
+pool. The choice stays stable during live state updates and changes with a new
+day period or card instance.
 Room symbols use the configured icon or recognizable room ID. Tap a circular bulb
 to toggle its configured light; use the arrow for room details. The detailed
 calendar and history remain in their own views. The illustrated theme is a visual
@@ -205,7 +208,12 @@ from Git and are not uploaded to GitHub.
 Browser checks cover live state updates, English/German text, battery warnings,
 entity detail events, floorplan links, mobile overflow, safe labels, clock cleanup,
 rendering of the actual YAML examples, consistent surface colors, complete
-desktop/mobile layouts for all six theme/mode combinations, light toggles, and action failures. GitHub Actions runs on every push and
+desktop/mobile layouts for all six theme/mode combinations, light toggles, and action failures. A dedicated Galaxy Tab A11 profile exercises the official
+1340 x 800 display in both orientations at 150% Android display scaling, including
+touch input, horizontal overflow, scrolling, card geometry, navigation placement,
+44 x 44 CSS pixel touch targets, and unobstructed access to the last card. Every
+theme/mode combination also checks palette propagation and WCAG 4.5:1 contrast
+for its primary text roles. GitHub Actions runs on every push and
 pull request, installs Chromium and its system dependencies, and retains browser
 screenshots as artifacts for seven days. Screenshots are written to the ignored
 `test-results/` directory. `npm run test:browser` runs just the browser checks.

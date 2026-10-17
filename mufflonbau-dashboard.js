@@ -100,17 +100,17 @@ ${trees}${houses}
 
   // src/design/tokens.js
   var calm = {
-    ambient: { canvas: "#f4f3ee", surface: "#ffffff", soft: "#f0f1e9", ink: "#252b25", muted: "#72796c", line: "#e5e7dc", accent: "#53704b", active: "#e5eddb", hero: "#e9eddf", wallpaper: "none" },
+    ambient: { canvas: "#f4f3ee", surface: "#ffffff", soft: "#f0f1e9", ink: "#252b25", muted: "#6f7669", line: "#e5e7dc", accent: "#53704b", active: "#e5eddb", hero: "#e9eddf", wallpaper: "none" },
     night: { canvas: "#171d19", surface: "#222b24", soft: "#2a342b", ink: "#eef1e7", muted: "#a7b29f", line: "#354136", accent: "#b6d29a", active: "#3b5033", hero: "#2c3c2c", wallpaper: "none" }
   };
   var themes = {
     calm,
     atmospheric: {
-      ambient: { canvas: "#e5ecee", surface: "#f9fcfce6", soft: "#e7eef0", ink: "#202d35", muted: "#586d76", line: "#cad6dd", accent: "#506e90", active: "#e5e4fb", hero: "#ffffff0a", wallpaper: "radial-gradient(ellipse at 65% 50%,#a7c5d980,transparent 65%),radial-gradient(ellipse at 25% 10%,#c9c0df90,transparent 55%)" },
+      ambient: { canvas: "#e5ecee", surface: "#f9fcfce6", soft: "#e7eef0", ink: "#202d35", muted: "#586d76", line: "#cad6dd", accent: "#486685", active: "#e5e4fb", hero: "#ffffff0a", wallpaper: "radial-gradient(ellipse at 65% 50%,#a7c5d980,transparent 65%),radial-gradient(ellipse at 25% 10%,#c9c0df90,transparent 55%)" },
       night: { canvas: "#111820", surface: "#1e2933d9", soft: "#2b3741", ink: "#eef4f6", muted: "#afc4cc", line: "#3c4b58", accent: "#d2c5ff", active: "#37354e", hero: "#ffffff00", wallpaper: "radial-gradient(ellipse at 60% 65%,#49728b80,transparent 62%),radial-gradient(ellipse at 35% 0%,#4a647680,transparent 55%),linear-gradient(145deg,#10131880,#13202b80)" }
     },
     storybook: {
-      ambient: { canvas: "#eee9dc", surface: "#fffdf5ed", soft: "#f0ecdc", ink: "#344a40", muted: "#687b68", line: "#d9dcc8", accent: "#627f62", active: "#e9ddb5", hero: "#fffdf56b", wallpaper: storybookWallpaper },
+      ambient: { canvas: "#eee9dc", surface: "#fffdf5ed", soft: "#f0ecdc", ink: "#344a40", muted: "#62755f", line: "#d9dcc8", accent: "#465f48", active: "#e9ddb5", hero: "#fffdf56b", wallpaper: storybookWallpaper },
       night: { canvas: "#172c2b", surface: "#223a38ed", soft: "#2e4640", ink: "#f3ecdb", muted: "#c0c9b1", line: "#4e6355", accent: "#e8c981", active: "#4d5940", hero: "#233a376b", wallpaper: `linear-gradient(#112c2acc,#112c2acc),${storybookWallpaper}` }
     }
   };
@@ -267,6 +267,108 @@ ${trees}${houses}
       morning: "Guten Morgen.",
       afternoon: "Guten Tag.",
       evening: "Guten Abend.",
+      greetings: [
+        "Willkommen im Chaos.",
+        "Ah, du schon wieder.",
+        "Schön, dass du da bist.",
+        "Familienmitglied erkannt.",
+        "Zutritt gewährt.",
+        "Willkommen zuhause.",
+        "Da bist du ja!",
+        "Endlich Verstärkung.",
+        "Raum betreten. Stimmung steigt.",
+        "Moin, Lieblingsmensch.",
+        "Hallöchen Popöchen.",
+        "Servus, Meister.",
+        "Grüß Gott im Chaos.",
+        "Willkommen im Familienhauptquartier.",
+        "Eintritt auf eigene Gefahr.",
+        "Schuhe aus. Spaß an.",
+        "Willkommen in der Kommandozentrale.",
+        "Schön reingeschlichen.",
+        "Erwischt!",
+        "Bewegung erkannt. Verdächtig.",
+        "Mensch entdeckt.",
+        "Bewohner identifiziert.",
+        "Familienmodus aktiviert.",
+        "Home sweet Home Assistant.",
+        "Willkommen zurück, Legende.",
+        "Na, ausgeschlafen?",
+        "Kaffee wäre jetzt richtig.",
+        "Gute Entscheidung, hier reinzukommen.",
+        "Dieser Raum freut sich.",
+        "Ich hab dich gesehen.",
+        "Keine Sorge, ich petze nicht.",
+        "Das Haus beobachtet dich.",
+        "Bewegungsmelder sagt Hallo.",
+        "Big Brother sagt Servus.",
+        "Keine Panik. Nur Smart Home.",
+        "Willkommen, Erdling.",
+        "Oh. Besuch.",
+        "Überraschung! Ein Zimmer.",
+        "Plot Twist: Du bist hier.",
+        "Mission Raum betreten erfolgreich.",
+        "Achievement unlocked: Zimmer.",
+        "Level gestartet.",
+        "Spieler 1 ist da.",
+        "Spieler 2 ist da.",
+        "Respawn erfolgreich.",
+        "Schnellreise abgeschlossen.",
+        "Willkommen im nächsten Level.",
+        "Checkpoint erreicht.",
+        "NPCs wurden informiert.",
+        "Bossraum? Vielleicht.",
+        "Vorsicht, hier wohnt Familie.",
+        "Familienrat wurde informiert.",
+        "Die Belegschaft ist vollständig.",
+        "Verstärkung ist eingetroffen.",
+        "Die Gang ist da.",
+        "Team Wagner assemble!",
+        "Familienzentrale online.",
+        "Heimathafen erreicht.",
+        "Basis betreten.",
+        "Willkommen an Bord.",
+        "Captain ist an Deck.",
+        "Crewmitglied erkannt.",
+        "Alle Systeme normal.",
+        "Atmosphäre: gemütlich.",
+        "Sauerstoff vorhanden. Weitergehen.",
+        "Kühlschrankstatus: interessant.",
+        "Snacks vermutlich verfügbar.",
+        "Kaffeepegel kritisch.",
+        "Kuschelmodus verfügbar.",
+        "Sofamodus empfohlen.",
+        "Heute schon jemanden umarmt?",
+        "Familienzeit detected.",
+        "Zeit für Quatsch.",
+        "Zeit für eine Pause.",
+        "Willkommen im gemütlichen Teil.",
+        "Mach's dir bequem.",
+        "Nimm Platz. Oder auch nicht.",
+        "Licht an, Gehirn aus.",
+        "Alltag erfolgreich betreten.",
+        "Willkommen im echten Leben.",
+        "Tür auf. Mensch rein.",
+        "Rein da.",
+        "Zack, angekommen.",
+        "Läuft bei dir.",
+        "Guter Auftritt.",
+        "Eleganter Eintritt.",
+        "Stark reingekommen.",
+        "10/10 Raumwahl.",
+        "Mutige Entscheidung.",
+        "Damit hat niemand gerechnet.",
+        "Das ging schnell.",
+        "Schon wieder ein Mensch.",
+        "Na sowas!",
+        "Wer kommt denn da?",
+        "Ah, die Prominenz.",
+        "Unsere VIPs sind da.",
+        "Majestät betritt den Raum.",
+        "Applaus bitte.",
+        "Konfetti wäre jetzt angemessen.",
+        "Willkommen. Jetzt wird’s gemütlich."
+      ],
       people: "Wer ist zuhause",
       allDetails: "Details ansehen",
       floorplan: "Grundriss",
@@ -1239,6 +1341,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   @media(min-width:1700px) { .shell { grid-template-columns:240px minmax(0,1fr); } }
   @media(max-width:1100px) { .shell { grid-template-columns:170px minmax(0,1fr); } aside { padding:28px 12px; } .brand { font-size:16px; } .slot.rooms,.slot.devices { grid-column:span 12; } .slot.compact { grid-column:span 6; } }
   @media(max-width:700px) { .shell { display:flex; flex-direction:column; } aside { padding:16px; border:0; gap:18px; display:contents; } .brand,.footnote { display:none; } main { padding:22px 16px 92px; } .topline { margin-bottom:22px; letter-spacing:1px; } .heading { font-size:28px; } nav { position:fixed; inset:auto 12px 12px; z-index:10; flex-direction:row; overflow:visible; gap:2px; padding:7px; border:1px solid var(--mb-line); background:var(--mb-surface); border-radius:22px; box-shadow:0 8px 28px #00000012; } a { flex:1; min-width:58px; gap:5px; flex-direction:column; padding:10px 5px; font-size:9px; white-space:nowrap; } .secondary { display:none; } .more-menu { display:block; flex:1; min-width:58px; } summary { display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 5px; font-size:9px; color:var(--mb-muted); cursor:pointer; list-style:none; } summary::-webkit-details-marker { display:none; } .more-links { position:absolute; bottom:calc(100% + 12px); right:0; min-width:180px; padding:8px; background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:18px; box-shadow:0 8px 24px #0002; } .more-links a { flex-direction:row; font-size:12px; padding:14px; } nav svg { width:19px; height:19px; } .content { gap:16px; } .slot,.slot.compact { grid-column:1/-1; } .status { font-size:9px; } :host([data-view=cleaning]) main { padding:12px 10px 76px; } :host([data-view=cleaning]) .topline { margin-bottom:6px; } :host([data-view=cleaning]) .heading { font-size:22px; } }
+  @media(max-width:700px) { :host([data-view=home]) .slot.cleaning { height:auto; min-height:0; } }
   :host([data-theme=atmospheric]) .shell,:host([data-theme=storybook]) .shell { grid-template-columns:minmax(0,1fr); }
   :host([data-theme=atmospheric]) aside,:host([data-theme=storybook]) aside { display:contents; }
   :host([data-theme=atmospheric]) .brand,:host([data-theme=atmospheric]) .footnote,:host([data-theme=storybook]) .brand,:host([data-theme=storybook]) .footnote { display:none; }
@@ -1248,6 +1351,13 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   :host([data-theme=atmospheric]) .slot.rooms,:host([data-theme=storybook]) .slot.rooms { grid-column:1/-1; }
   :host([data-theme=atmospheric]) .slot.devices,:host([data-theme=storybook]) .slot.devices { grid-column:1/-1; }
   :host([data-theme=storybook]) main { padding-bottom:240px; }
+  @media(min-width:701px) and (max-width:1100px) {
+    :host([data-theme=atmospheric]) nav .secondary,:host([data-theme=storybook]) nav .secondary { display:none; }
+    :host([data-theme=atmospheric]) .more-menu,:host([data-theme=storybook]) .more-menu { display:block; position:relative; }
+    :host([data-theme=atmospheric]) summary,:host([data-theme=storybook]) summary { display:flex; align-items:center; gap:13px; min-height:48px; padding:12px 15px; color:var(--mb-muted); font-size:13px; font-weight:600; cursor:pointer; list-style:none; }
+    :host([data-theme=atmospheric]) summary::-webkit-details-marker,:host([data-theme=storybook]) summary::-webkit-details-marker { display:none; }
+    :host([data-theme=atmospheric]) .more-links,:host([data-theme=storybook]) .more-links { position:absolute; right:0; bottom:calc(100% + 12px); min-width:210px; padding:8px; background:var(--mb-soft); border:1px solid var(--mb-line); border-radius:18px; box-shadow:0 8px 24px #0002; }
+  }
   @media(max-width:700px) { :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { inset:auto 12px 12px; transform:none; } }
   @media(max-width:1100px) { :host([data-view=calendar][data-full-view=true]) main { padding-left:18px; padding-right:18px; } }
   @media(prefers-reduced-motion:no-preference) { a { transition:background .15s,color .15s; } }
@@ -1534,8 +1644,9 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       const focusedRoom = this.shadowRoot.activeElement?.getAttribute("data-room");
       const style = element("style", liveStyles);
       const card = element("ha-card");
-      card.className = `${appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode)}${this._config.compact ? " compact" : ""}`;
-      applyTheme(card, card.className, this._config.appearance?.theme);
+      const mode = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
+      card.className = `${mode}${this._config.compact ? " compact" : ""}`;
+      applyTheme(card, mode, this._config.appearance?.theme);
       if (this._config.mode === "header") this._header(card, text);
       if (this._config.mode === "climate") this._climate(card, text);
       if (this._config.mode === "warnings") this._warnings(card, text);
@@ -1554,6 +1665,16 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       if (label2 !== void 0) head.append(element("span", String(label2), "eyebrow"));
       card.append(head);
     }
+    _greeting(text, hour, now, timezone) {
+      const period = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+      const options = Array.isArray(text.greetings) ? text.greetings : text.greetings?.[period] ?? [text[period]];
+      const day = new Intl.DateTimeFormat("en-CA", { dateStyle: "short", timeZone: timezone }).format(now);
+      const key = `${this._language}:${day}:${period}`;
+      if (this._greetingCache?.key !== key) {
+        this._greetingCache = { key, value: options[Math.floor(Math.random() * options.length)] };
+      }
+      return this._greetingCache.value;
+    }
     _header(card, text) {
       if (this._config.appearance?.theme === "calm") return this._calmHeader(card, text);
       card.classList.add("hero");
@@ -1562,7 +1683,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: timezone }).format(now));
       const grid = element("div", void 0, "overview-grid");
       const welcome = element("section");
-      welcome.append(element("h1", hour < 12 ? text.morning : hour < 18 ? text.afternoon : text.evening), element("div", new Intl.DateTimeFormat(this._language, { dateStyle: "full", timeStyle: "short", timeZone: timezone }).format(now), "overview-date"));
+      welcome.append(element("h1", this._greeting(text, hour, now, timezone)), element("div", new Intl.DateTimeFormat(this._language, { dateStyle: "full", timeStyle: "short", timeZone: timezone }).format(now), "overview-date"));
       const weather = this._hass.states[this._config.weather];
       if (weather && !isOffline(weather)) {
         const chips = element("div", void 0, "weather-chips");
@@ -1613,7 +1734,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       card.classList.add("hero");
       const now = /* @__PURE__ */ new Date();
       const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: this._hass.config?.time_zone }).format(now));
-      const greeting = hour < 12 ? text.morning : hour < 18 ? text.afternoon : text.evening;
+      const greeting = this._greeting(text, hour, now, this._hass.config?.time_zone);
       const header = element("div", void 0, "header");
       const info = element("div");
       info.append(element("span", text.yourSpace, "eyebrow"), element("h1", greeting), element("p", this._config.title ?? "Mufflonbau", "hero-copy"));

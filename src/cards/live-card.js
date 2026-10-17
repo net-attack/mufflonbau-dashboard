@@ -58,8 +58,9 @@ export class MufflonbauLiveCard extends HTMLElement {
     const focusedRoom = this.shadowRoot.activeElement?.getAttribute('data-room');
     const style = element('style', liveStyles);
     const card = element('ha-card');
-    card.className = `${appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode)}${this._config.compact ? ' compact' : ''}`;
-    applyTheme(card, card.className, this._config.appearance?.theme);
+    const mode = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
+    card.className = `${mode}${this._config.compact ? ' compact' : ''}`;
+    applyTheme(card, mode, this._config.appearance?.theme);
     if (this._config.mode === 'header') this._header(card, text);
     if (this._config.mode === 'climate') this._climate(card, text);
     if (this._config.mode === 'warnings') this._warnings(card, text);
@@ -78,6 +79,16 @@ export class MufflonbauLiveCard extends HTMLElement {
     if (label !== undefined) head.append(element('span', String(label), 'eyebrow'));
     card.append(head);
   }
+  _greeting(text, hour, now, timezone) {
+    const period = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+    const options = Array.isArray(text.greetings) ? text.greetings : text.greetings?.[period] ?? [text[period]];
+    const day = new Intl.DateTimeFormat('en-CA', { dateStyle: 'short', timeZone: timezone }).format(now);
+    const key = `${this._language}:${day}:${period}`;
+    if (this._greetingCache?.key !== key) {
+      this._greetingCache = { key, value: options[Math.floor(Math.random() * options.length)] };
+    }
+    return this._greetingCache.value;
+  }
   _header(card, text) {
     if (this._config.appearance?.theme === 'calm') return this._calmHeader(card, text);
     card.classList.add('hero');
@@ -86,7 +97,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: timezone }).format(now));
     const grid = element('div', undefined, 'overview-grid');
     const welcome = element('section');
-    welcome.append(element('h1', hour < 12 ? text.morning : hour < 18 ? text.afternoon : text.evening), element('div', new Intl.DateTimeFormat(this._language, { dateStyle: 'full', timeStyle: 'short', timeZone: timezone }).format(now), 'overview-date'));
+    welcome.append(element('h1', this._greeting(text, hour, now, timezone)), element('div', new Intl.DateTimeFormat(this._language, { dateStyle: 'full', timeStyle: 'short', timeZone: timezone }).format(now), 'overview-date'));
     const weather = this._hass.states[this._config.weather];
     if (weather && !isOffline(weather)) {
       const chips = element('div', undefined, 'weather-chips');
@@ -125,7 +136,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     card.classList.add('hero');
     const now = new Date();
     const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: this._hass.config?.time_zone }).format(now));
-    const greeting = hour < 12 ? text.morning : hour < 18 ? text.afternoon : text.evening;
+    const greeting = this._greeting(text, hour, now, this._hass.config?.time_zone);
     const header = element('div', undefined, 'header');
     const info = element('div');
     info.append(element('span', text.yourSpace, 'eyebrow'), element('h1', greeting), element('p', this._config.title ?? 'Mufflonbau', 'hero-copy'));

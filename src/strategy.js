@@ -7,6 +7,7 @@ import { calendarViews } from './modules/calendar.js';
 import { homeView, presenceView } from './modules/home.js';
 import { roomLightHierarchy } from './core/light-hierarchy.js';
 import { cleaningPageText } from './core/cleaning-theme.js';
+import { weatherPopups } from './core/weather-alerts.js';
 export function generateDashboard(rawConfig, hass) {
   const config = normalizeConfig(rawConfig);
   config.rooms = config.rooms.map(room => {
@@ -27,7 +28,10 @@ export function generateDashboard(rawConfig, hass) {
     type: 'custom:mufflonbau-shell', title: config.title || 'Mufflonbau', language, appearance: config.appearance,
     path: item.path, view_title: item.path === 'cleaning' && config.cleaning?.theme === 'flusenfels' ? cleaningPageText(config.cleaning, language).title : item.title,
     cleaning_theme: item.path === 'cleaning' ? config.cleaning?.theme : undefined,
-    full_view: item.fullView, navigation, cards: item.cards,
+    full_view: item.fullView, navigation, weather_alerts: config.weather_alerts, cards: [...item.cards,
+      ...weatherPopups(config.weather_alerts, language, config.appearance),
+      ...(config.weather_alerts && item.path !== 'home' ? [{ type: 'custom:mufflonbau-weather-alerts', mode: 'observer', weather_alerts: config.weather_alerts, language, appearance: config.appearance }] : []),
+    ],
   }] }));
   return { ...(config.kiosk_mode ? { kiosk_mode: config.kiosk_mode } : {}), title: config.title || 'Mufflonbau', views: styledViews };
 }

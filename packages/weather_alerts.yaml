@@ -1,0 +1,107 @@
+# Copy to /config/packages/weather_alerts.yaml; configure the three lists below.
+# Import packages/weather_alerts.jinja as /config/custom_templates/mufflonbau_weather_alerts.jinja.
+# This package CREATES sensor.mufflonbau_weather_alerts; it is not an upstream entity.
+template:
+  - triggers:
+      - trigger: event
+        event_type: mufflonbau_weather_snapshot
+    sensor:
+      - name: Mufflonbau Weather Alerts
+        default_entity_id: sensor.mufflonbau_weather_alerts
+        unique_id: mufflonbau_weather_alerts
+        state: "{{ trigger.event.data.warnings | count }}"
+        attributes:
+          warnings: "{{ trigger.event.data.warnings }}"
+          problems: "{{ trigger.event.data.problems }}"
+          ledger: >-
+            {% from 'mufflonbau_weather_alerts.jinja' import advance %}
+            {{ (advance | as_function)(trigger.event.data.warnings, this.attributes.get('ledger', {}), as_timestamp(now())).ledger }}
+          popup_token: >-
+            {% from 'mufflonbau_weather_alerts.jinja' import advance %}
+            {% set result = (advance | as_function)(trigger.event.data.warnings, this.attributes.get('ledger', {}), as_timestamp(now())) %}
+            {{ (result.popup | map(attribute='id') | join('|') ~ ':' ~ trigger.event.time_fired.isoformat())
+               if result.popup else this.attributes.get('popup_token', '') }}
+          sound_token: >-
+            {% from 'mufflonbau_weather_alerts.jinja' import advance %}
+            {% set result = (advance | as_function)(trigger.event.data.warnings, this.attributes.get('ledger', {}), as_timestamp(now())) %}
+            {{ (result.sound | map(attribute='id') | join('|') ~ ':' ~ trigger.event.time_fired.isoformat())
+               if result.sound else this.attributes.get('sound_token', '') }}
+          sound_events: >-
+            {% from 'mufflonbau_weather_alerts.jinja' import advance %}
+            {{ (advance | as_function)(trigger.event.data.warnings, this.attributes.get('ledger', {}), as_timestamp(now())).sound }}
+
+automation:
+  - id: mufflonbau_weather_collect
+    alias: Mufflonbau · Warnungen zusammenführen
+    mode: queued
+    max: 30
+    triggers:
+      # No polling: filter source state/attribute changes before queuing actions.
+      - trigger: event
+        event_type: state_changed
+      - trigger: homeassistant
+        event: start
+    variables:
+      nina_entities: []
+      dwd_entities: []
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.platform in ['homeassistant', 'state'] or
+             trigger.event.data.entity_id in nina_entities + dwd_entities }}
+    actions:
+      - variables:
+          details: {}
+          active_nina: "{{ nina_entities | select('is_state', 'on') | list }}"
+      - if: "{{ active_nina | count > 0 }}"
+        then:
+          - action: nina.get_details
+            target:
+              entity_id: "{{ active_nina }}"
+            response_variable: details
+            continue_on_error: true
+      - variables:
+          snapshot: >-
+            {% from 'mufflonbau_weather_alerts.jinja' import normalize %}
+            {{ (normalize | as_function)(nina_entities, dwd_entities, details, as_timestamp(now())) }}
+      - event: mufflonbau_weather_snapshot
+        event_data:
+          warnings: "{{ snapshot.warnings }}"
+          problems: "{{ snapshot.problems if nina_entities + dwd_entities else ['Keine Warnquellen konfiguriert'] }}"
+
+  - id: mufflonbau_weather_tablet_alert
+    alias: Mufflonbau · neue wichtige Warnung am Tablet
+    mode: queued
+    max: 20
+    triggers:
+      - trigger: state
+        entity_id: sensor.mufflonbau_weather_alerts
+        attribute: sound_token
+    conditions:
+      # Restoring the sensor at startup never replays the old alert.
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none and trigger.to_state is not none and
+             trigger.from_state.state not in ['unknown', 'unavailable'] and
+             trigger.to_state.attributes.get('sound_events', []) | count > 0 }}
+    actions:
+      # Set to the observed notify.mobile_app_* action of the wall tablet.
+      # An empty action keeps this shared package silent until configured.
+      - variables:
+          tablet_notify_action: ''
+          tablet_dashboard_url: /dashboard-mufflonbau/home#mufflonbau-weather-warnings
+      - condition: template
+        value_template: "{{ tablet_notify_action.startswith('notify.mobile_app_') }}"
+      - action: "{{ tablet_notify_action }}"
+        data:
+          title: "{{ trigger.to_state.attributes.sound_events[0].source }} · Warnung"
+          message: "{{ trigger.to_state.attributes.sound_events | map(attribute='title') | join(' · ') }}"
+          data:
+            channel: Mufflonbau Warnungen
+            importance: high
+            priority: high
+            ttl: 0
+            notification_icon: mdi:alert
+            tag: "{{ trigger.to_state.attributes.sound_token | sha256 }}"
+            alert_once: true
+            clickAction: "{{ tablet_dashboard_url }}"

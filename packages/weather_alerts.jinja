@@ -1,0 +1,73 @@
+{# Copy to /config/custom_templates/mufflonbau_weather_alerts.jinja. #}
+{% macro normalize(nina_entities, dwd_entities, details, stamp, returns) %}
+  {% set ns = namespace(warnings=[], problems=[]) %}
+  {% for id in nina_entities %}
+    {% if not has_value(id) %}
+      {% set ns.problems = ns.problems + ['NINA: ' ~ id ~ ' nicht verfügbar'] %}
+    {% elif is_state(id, 'on') %}
+      {% set d = details.get(id) or {} %}
+      {% if not d %}
+        {% set ns.problems = ns.problems + ['NINA: Details fehlen für ' ~ id] %}
+      {% else %}
+        {% set severity = d.get('severity', 'Unknown') | lower %}
+        {% set level = dict(minor=1, moderate=2, severe=3, extreme=4).get(severity, 1) %}
+        {% set end = d.get('expires') or '' %}
+        {% set start = d.get('start') or d.get('sent') or '' %}
+        {% set area = d.get('affected_areas') or '' %}
+        {% set title = d.get('headline') or 'NINA Warnung' %}
+        {% set identity = d.get('id') or ([title, start, area] | join('|')) %}
+        {% if not end or as_timestamp(end, stamp + 1) > stamp %}
+          {% set ns.warnings = ns.warnings + [dict(id='NINA:' ~ identity, source='NINA', title=title,
+            type=d.get('category') or d.get('event') or '', severity=severity, level=level, area=area,
+            start=start, end=end, description=(d.get('description') or '') | striptags,
+            instruction=(d.get('recommended_actions') or '') | striptags)] %}
+        {% endif %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+  {% for id in dwd_entities %}
+    {% if not has_value(id) %}
+      {% set ns.problems = ns.problems + ['DWD: ' ~ id ~ ' nicht verfügbar'] %}
+    {% else %}
+      {% set attrs = states[id].attributes %}
+      {% for i in range(1, (attrs.get('warning_count', 0) | int(0)) + 1) %}
+        {% set prefix = 'warning_' ~ i ~ '_' %}
+        {% set level = attrs.get(prefix ~ 'level', 0) | int(0) %}
+        {% set title = attrs.get(prefix ~ 'headline') or attrs.get(prefix ~ 'name') or 'DWD Warnung' %}
+        {% set start = attrs.get(prefix ~ 'start') | string %}
+        {% set end = attrs.get(prefix ~ 'end') | string %}
+        {% set area = attrs.get('region_name') or '' %}
+        {# Warning index, advance/current bucket and update timestamp are NOT identity. #}
+        {% set identity = ['DWD', attrs.get('region_id', area), attrs.get(prefix ~ 'type', title), start] | join('|') %}
+        {% if level in [1, 2, 3, 4] and as_timestamp(end, stamp + 1) > stamp and identity not in ns.warnings | map(attribute='id') | list %}
+          {% set ns.warnings = ns.warnings + [dict(id=identity, source='DWD', title=title,
+            type=attrs.get(prefix ~ 'name') or '', severity='Stufe ' ~ level, level=level,
+            area=area, start=start, end=end, description=(attrs.get(prefix ~ 'description') or '') | striptags,
+            instruction=(attrs.get(prefix ~ 'instruction') or '') | striptags)] %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endfor %}
+  {% do returns(dict(warnings=ns.warnings | sort(attribute='level', reverse=true), problems=ns.problems)) %}
+{% endmacro %}
+
+{% macro advance(warnings, previous, stamp, returns) %}
+  {% set ns = namespace(ledger={}, popup=[], sound=[]) %}
+  {% for key, record in previous.items() %}
+    {# Keep cleared/outage warnings for a week after their last known expiry. #}
+    {% if record.get('retain_until', 0) | float(0) > stamp %}
+      {% set ns.ledger = dict(ns.ledger, **{key: record}) %}
+    {% endif %}
+  {% endfor %}
+  {% for w in warnings %}
+    {% set old = ns.ledger.get(w.id, {}).get('level', 0) | int(0) %}
+    {% set level = w.level | int(0) %}
+    {% if level > old and level >= 3 %}
+      {% set ns.popup = ns.popup + [w] %}
+      {% if w.source == 'NINA' or level >= 4 %}{% set ns.sound = ns.sound + [w] %}{% endif %}
+    {% endif %}
+    {% set expiry = as_timestamp(w.end, stamp) %}
+    {% set ns.ledger = dict(ns.ledger, **{w.id: dict(level=[old, level] | max, retain_until=[expiry, stamp] | max + 604800)}) %}
+  {% endfor %}
+  {% do returns(dict(ledger=ns.ledger, popup=ns.popup, sound=ns.sound)) %}
+{% endmacro %}

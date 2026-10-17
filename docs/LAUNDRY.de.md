@@ -35,9 +35,9 @@ enthalten und können bei Bedarf im lokalen Checkout eingesehen werden.
 
 ## Backend installieren
 
-Es wurde nichts in der laufenden HA-Instanz installiert und keine Testmeldung
-verschickt. Für HA-Dateien steht hier kein verwalteter Datei-Schreibzugriff zur
-Verfügung. Vor Änderungen die betroffenen HA-Dateien sichern.
+Das Frontend installiert das Backend nicht automatisch. Vor Änderungen die
+betroffenen HA-Dateien sichern. Die folgende Anleitung beschreibt die
+Installation per Paket oder über Helfer und Blueprint im HA-Editor.
 
 1. [`blueprints/automation/mufflonbau/laundry_status.yaml`](../blueprints/automation/mufflonbau/laundry_status.yaml)
    nach `/config/blueprints/automation/mufflonbau/laundry_status.yaml` übernehmen.
@@ -53,6 +53,10 @@ Verfügung. Vor Änderungen die betroffenen HA-Dateien sichern.
    Danach zwei Automationen aus dem Blueprint erstellen und die echten
    Messentitäten sowie die jeweiligen Helfer auswählen. Helfer nie mit einem
    festen `initial` konfigurieren, damit Wiederherstellung erhalten bleibt.
+   Die beiden neuen „Zuletzt fertig“-Helfer einmalig auf `1970-01-01 00:00:00`
+   setzen: HA initialisiert neue Datum-Helfer sonst mit dem heutigen Datum,
+   das fälschlich als bisheriges Programmende erscheinen würde. Dies ist nur
+   der Startwert beim Anlegen, kein festes `initial` für jeden Neustart.
 3. Konfiguration in HA prüfen. Bei der erstmaligen Installation von YAML-Helfern
    kann ein HA-Neustart nötig sein; diesen bewusst einplanen. Automationen können
    separat neu geladen werden. Danach alle Helfer und beide Automationen prüfen.

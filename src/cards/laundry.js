@@ -6,9 +6,9 @@ import { laundryEntities, laundryStatus, laundryText } from '../core/laundry.js'
 
 const styles = `
 :host{display:block;min-width:0;color:var(--mb-ink);font-family:Inter,'Avenir Next',system-ui,sans-serif}*{box-sizing:border-box}
-.panel{display:block;padding:14px 18px;background:var(--mb-surface);border:1px solid var(--mb-line);border-radius:24px}
+.panel{display:block;padding:0;background:transparent;border:0;border-radius:16px;box-shadow:none}
 button{font:inherit;color:inherit;cursor:pointer}button:focus-visible{outline:2px solid var(--mb-accent);outline-offset:3px}
-.open{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;border:0;padding:0;background:none;text-align:left}.open>svg{flex:none;color:var(--mb-accent)}.copy{flex:1;min-width:0}.copy strong,.copy small{display:block}.copy small{font-size:12px;color:var(--mb-muted);line-height:1.6;overflow-wrap:anywhere}.ready{border-color:var(--mb-accent);background:var(--mb-active)}
+.open{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;min-height:64px;border:1px solid var(--mb-line);border-radius:16px;padding:10px 12px;background:var(--mb-surface);text-align:left}.open>svg{color:var(--mb-accent)}.summary-icon{width:32px;height:32px;display:grid;place-items:center;color:var(--mb-accent);background:var(--mb-active);border-radius:10px}.summary-icon svg{width:19px;height:19px}.copy{min-width:0}.copy strong,.copy small{display:block}.copy strong{font-size:13px;line-height:1.4}.copy small{margin-top:2px;font-size:10px;color:var(--mb-muted);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ready .open{border-color:var(--mb-accent);background:var(--mb-active)}
 dialog{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:20px;border:1px solid var(--mb-line);border-radius:24px;background:var(--mb-surface);color:var(--mb-ink);overflow:auto}dialog::backdrop{background:#101c2b88}header{display:flex;align-items:center;gap:12px}h2{font-size:21px;margin:0;flex:1}h3{margin:0;font-size:18px}.close,.ack{min-height:44px;border:1px solid var(--mb-line);border-radius:14px;background:var(--mb-soft);padding:10px 14px}.item{border-top:1px solid var(--mb-line);margin-top:16px;padding-top:16px}.state{font-size:17px;color:var(--mb-accent);margin:8px 0}.meta,.note{font-size:14px;color:var(--mb-muted);line-height:1.6}.ack{background:var(--mb-active);margin-top:10px}.error{color:#ac493b}button:disabled{opacity:.5;cursor:default}
 `;
 
@@ -32,8 +32,12 @@ export class MufflonbauLaundry extends HTMLElement {
     const results = items.map(item => laundryStatus(item, this._hass.states, language));
     const panel = element('ha-card', undefined, `panel${results.some(item => item.status === 'finished') ? ' ready' : ''}`);
     const open = element('button', undefined, 'open'); open.type = 'button'; open.dataset.action = 'open'; open.setAttribute('aria-haspopup', 'dialog');
-    const copy = element('span', undefined, 'copy'); copy.append(element('strong', text.title), element('small', results.map(item => `${item.name}: ${item.label}`).join(' · ')));
-    open.append(icon('drop'), copy, icon('arrow')); panel.append(open);
+    const description = results.map(item => `${item.name}: ${item.label}`).join(' · ');
+    const copy = element('span', undefined, 'copy'); const detail = element('small', description); detail.title = description;
+    copy.append(element('strong', text.title), detail);
+    const badge = element('span', undefined, 'summary-icon'); badge.append(icon('drop'));
+    open.setAttribute('aria-label', `${text.title}: ${description}`);
+    open.append(badge, copy, icon('arrow')); panel.append(open);
     const dialog = element('dialog'); dialog.setAttribute('aria-label', text.title);
     const header = element('header'); const close = element('button', text.close, 'close'); close.type = 'button'; close.dataset.action = 'close';
     close.addEventListener('click', () => { dialog.close(); open.focus(); }); header.append(icon('drop'), element('h2', text.title), close); dialog.append(header);

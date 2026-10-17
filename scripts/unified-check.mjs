@@ -39,6 +39,8 @@ export async function checkUnified(sourcePage, config, hass) {
       assert.equal(summaries.length, 6, 'All six status tiles must be covered by the width check');
       const widths = summaries.map(slot => slot.right - slot.left);
       assert.ok(Math.max(...widths) - Math.min(...widths) <= 1, `${viewport.width}px: home status tiles must all have equal widths: ${JSON.stringify(widths)}`);
+      const heights = summaries.map(slot => slot.bottom - slot.top);
+      assert.ok(Math.max(...heights) - Math.min(...heights) <= 1, `${viewport.width}px: home status tiles must all have equal heights: ${JSON.stringify(heights)}`);
       for (let i = 0; i < geometry.slots.length; i++) for (const other of geometry.slots.slice(i + 1)) {
         const slot = geometry.slots[i];
         const overlap = Math.min(slot.right, other.right) - Math.max(slot.left, other.left) > 1 && Math.min(slot.bottom, other.bottom) - Math.max(slot.top, other.top) > 1;

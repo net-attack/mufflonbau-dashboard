@@ -32,6 +32,19 @@ Do not paste a dashboard strategy into a card editor: it is not a custom card.
 In HACS, use **Update information** before **Redownload** if a newer commit does
 not appear. Reload the browser after downloading.
 
+## Design
+
+The dashboard uses its own full-width layout with a sidebar on desktop and a
+bottom navigation bar on phones. The home view combines a greeting and clock,
+room climate cards, direct light switches, presence, cleaning status, and warnings.
+A warm neutral palette with sage accents and a matching dark palette share the
+same design tokens across custom and native detail cards. The weekly calendar
+has its own view; room arrows open room details and sensor values open HA details.
+
+Keep `appearance.mode: auto` to retain your existing theme/presence behavior, or
+choose `ambient` for the light palette and `night` for the dark palette. Existing
+strategy configurations continue to work without migration.
+
 ## Configuration
 
 Start with [examples/strategy.yaml](examples/strategy.yaml) for the expanded
@@ -43,14 +56,14 @@ sections are optional; omitted sections generate no corresponding view.
 | `title` | Dashboard title; default `Mufflonbau` |
 | `language` | `auto` (HA profile), `en`, or `de`; unsupported profile languages use English |
 | `entities` | Favorite entities on the home view; preserves the original minimal configuration |
-| `people` | Person entities displayed using native HA state translations |
+| `people` | Presence cards with translated states |
 | `weather` | Optional weather entity |
 | `calendars` | Calendar entities for the header summary and native calendar |
 | `rooms` | Room definitions, detailed below |
 | `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, and `map` (camera) IDs |
 | `monitors` | Objects containing `entity`, optional `name`, and optional `battery_below` threshold |
 | `expert_entities` | Additional entities to include in the expert view |
-| `appearance` | `mode: auto`, `ambient`, or `night`; applies to Mufflonbau live cards |
+| `appearance` | `mode: auto`, `ambient`, or `night`; shared across the complete dashboard |
 | `kiosk_mode` | Optional pass-through for the separately installed Kiosk Mode plugin |
 
 Each room has a unique stable `id` (lowercase slug) and a `name` (string or
@@ -79,8 +92,8 @@ monitored devices. The expert view collects all referenced entities without dupl
 By default, appearance follows the HA dark theme. To preserve presence-based
 switching from an earlier installation, set `appearance.night_person` and
 `appearance.ambient_person`: night mode is used when the first person is home and
-the second is not home. An explicit `mode` overrides this rule. Native HA cards
-continue to follow your HA theme.
+the second is not home. An explicit `mode` overrides this rule. The same palette applies to native detail cards inside the dashboard; no global
+HA theme is changed.
 
 Set `language: auto` to follow your HA profile; reload the dashboard after changing
 the profile language. Custom titles and entity names stay as configured. Optional
@@ -130,7 +143,8 @@ from Git and are not uploaded to GitHub.
 
 Browser checks cover live state updates, English/German text, battery warnings,
 entity detail events, floorplan links, mobile overflow, safe labels, clock cleanup,
-and rendering of the actual YAML examples. GitHub Actions runs on every push and
+rendering of the actual YAML examples, consistent surface colors, complete
+desktop/mobile layouts, light toggles, and action failures. GitHub Actions runs on every push and
 pull request, installs Chromium and its system dependencies, and retains browser
 screenshots as artifacts for seven days. Screenshots are written to the ignored
 `test-results/` directory. `npm run test:browser` runs just the browser checks.

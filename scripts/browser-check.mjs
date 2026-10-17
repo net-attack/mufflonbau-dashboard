@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile, readdir, mkdir } from 'node:fs/promises';
+import { previewConfig, previewHass } from './preview-fixture.mjs';
 import { load, YAML11_SCHEMA } from 'js-yaml';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 await mkdir(new URL('../test-results/', import.meta.url), { recursive: true });
@@ -13,8 +14,8 @@ for (const file of await readdir(new URL('../examples/', import.meta.url))) {
 }
 const bundle = await readFile(new URL('../mufflonbau-dashboard.js', import.meta.url));
 const server = createServer((request, response) => {
-  response.setHeader('Content-Type', request.url === '/bundle.js' ? 'text/javascript' : 'text/html');
-  response.end(request.url === '/bundle.js' ? bundle : '<!doctype html><html lang="en"><style>body{margin:16px;font-family:system-ui}main{display:grid;gap:16px;max-width:1000px;margin:auto}ha-card{display:block}</style><main></main></html>');
+  response.setHeader('Content-Type', request.url === '/bundle.js' ? 'text/javascript; charset=utf-8' : 'text/html; charset=utf-8');
+  response.end(request.url === '/bundle.js' ? bundle : '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:16px;font-family:system-ui}main{display:grid;gap:16px;max-width:1000px;margin:auto}ha-card{display:block}</style><main></main></html>');
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 let browser;
@@ -87,34 +88,88 @@ try {
   });
   assert.equal(await page.locator('#climate img').count(), 0);
   assert.match(await page.locator('#climate ha-card').innerText(), /<img/);
-  // Exercise the actual YAML examples through the shipped bundle and render all
-  // custom live modes. Native HA cards are validated structurally, not simulated.
-  await page.evaluate(async samples => {
-    const Strategy = customElements.get('ll-strategy-dashboard-mufflonbau');
-    for (const config of samples) {
-      const dashboard = await Strategy.generate(config, window.sampleHass);
+  // Render the actual YAML examples through the shipped shell. A minimal native
+  // card double checks the helper boundary and inherited theme variables.
+  await page.evaluate(() => {
+    customElements.define('test-native-card', class extends HTMLElement {
+      constructor() { super(); const root = this.attachShadow({ mode: 'open' }); const body = document.createElement('div'); body.className = 'native-surface'; body.style.cssText = 'padding:24px;border-radius:var(--ha-card-border-radius);background:var(--ha-card-background);color:var(--primary-text-color)'; body.textContent = 'Native card'; root.append(body); }
+    });
+    window.loadCardHelpers = async () => ({ createCardElement: () => document.createElement('test-native-card') });
+  });
+  for (const sample of samples) {
+    await page.evaluate(async config => {
+      const dashboard = await customElements.get('ll-strategy-dashboard-mufflonbau').generate(config, window.sampleHass);
       document.querySelector('main').replaceChildren();
       for (const view of dashboard.views) {
-        if (!view.type) throw new Error('Missing view type');
-        for (const cardConfig of view.cards) {
-          if (!cardConfig.type) throw new Error('Missing card type');
-          if (cardConfig.type !== 'custom:mufflonbau-live') continue;
-          const card = document.createElement('mufflonbau-live');
-          card.setConfig(cardConfig);
-          card.hass = window.sampleHass;
-          document.querySelector('main').append(card);
-          if (!card.shadowRoot.querySelector('ha-card')) throw new Error('Live card failed to render');
-          for (const rect of card.shadowRoot.querySelectorAll('svg rect')) {
+        if (view.type !== 'panel') throw new Error('Expected a full-width panel');
+        const shell = document.createElement('mufflonbau-shell');
+        shell.setConfig(view.cards[0]); shell.hass = window.sampleHass;
+        document.querySelector('main').append(shell);
+      }
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      for (const shell of document.querySelectorAll('mufflonbau-shell')) {
+        if (!shell.shadowRoot.querySelector('.slot')) throw new Error('Shell did not render cards');
+        for (const live of shell.shadowRoot.querySelectorAll('mufflonbau-live')) {
+          if (!live.shadowRoot.querySelector('ha-card')) throw new Error('Live card failed to render');
+          for (const rect of live.shadowRoot.querySelectorAll('.floor-map rect')) {
             for (const key of ['x', 'y', 'width', 'height']) {
               if (!rect.hasAttribute(key) || !Number.isFinite(Number(rect.getAttribute(key)))) throw new Error(`Invalid floorplan ${key}`);
             }
           }
         }
       }
-    }
-  }, samples);
+    }, sample);
+  }
+  // Full dashboard previews use synthetic data only, including CI artifacts.
+  await page.evaluate(async ({ config, hass }) => {
+    document.body.style.margin = '0';
+    const main = document.querySelector('main'); main.style.cssText = 'display:block;max-width:none;margin:0';
+    window.calls = []; window.failAction = false;
+    window.previewHass = { ...hass, callService: async (...args) => { if (window.failAction) throw new Error('Test failure'); window.calls.push(args); } };
+    const result = await customElements.get('ll-strategy-dashboard-mufflonbau').generate(config, window.previewHass);
+    window.previewDashboard = result;
+    const shell = document.createElement('mufflonbau-shell'); shell.id = 'dashboard';
+    shell.setConfig(result.views[0].cards[0]); shell.hass = window.previewHass; main.replaceChildren(shell);
+  }, { config: previewConfig, hass: previewHass });
+  await page.setViewportSize({ width: 1440, height: 1080 });
+  await page.screenshot({ path: 'test-results/dashboard-ambient-desktop.png', fullPage: true });
+  const toggle = page.locator('#dashboard button[role=switch]').first();
+  await toggle.click();
+  assert.deepEqual(await page.evaluate(() => window.calls[0]), ['homeassistant', 'toggle', {}, { entity_id: 'light.living' }]);
+  await page.evaluate(() => { window.failAction = true; });
+  await toggle.click();
+  assert.match(await page.locator('#dashboard [role=alert]').innerText(), /fehlgeschlagen/);
+  await page.evaluate(() => { window.failAction = false; document.querySelector('#dashboard').hass = { ...window.previewHass, states: { ...window.previewHass.states, 'light.living': { state: 'unavailable', attributes: { friendly_name: 'Wohnzimmer' } } } }; });
+  assert.equal(await page.locator('#dashboard button[role=switch]').first().isDisabled(), true);
+  for (const mode of ['ambient', 'night']) {
+    await page.evaluate(mode => {
+      const shell = document.querySelector('#dashboard');
+      shell.setConfig({ ...window.previewDashboard.views[0].cards[0], appearance: { mode }, cards: window.previewDashboard.views[0].cards[0].cards.map(card => ({ ...card, appearance: { mode } })) });
+      shell.hass = window.previewHass;
+    }, mode);
+    await page.setViewportSize({ width: 1440, height: 1080 });
+    const colors = await page.locator('#dashboard').evaluate(shell => [...shell.shadowRoot.querySelectorAll('mufflonbau-live')].filter(card => card._config.mode !== 'header').map(card => getComputedStyle(card.shadowRoot.querySelector('ha-card')).backgroundColor));
+    assert.equal(new Set(colors).size, 1, 'Every content card must use the same surface color');
+    await page.screenshot({ path: `test-results/dashboard-${mode}-desktop.png`, fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await page.screenshot({ path: `test-results/dashboard-${mode}-mobile.png`, fullPage: true });
+  }
+  await page.locator('#dashboard summary').click();
+  await page.locator('#dashboard .more-links a').filter({ hasText: 'Kalender' }).click();
+  assert.match(page.url(), /\/dashboard-test\/calendar$/);
+  await page.locator('#dashboard nav a').filter({ hasText: 'Klima' }).click();
+  assert.match(page.url(), /\/dashboard-test\/climate$/);
+  // Verify that secondary native cards inherit the same palette as custom cards.
+  await page.evaluate(() => {
+    const config = window.previewDashboard.views.find(view => view.path === 'system').cards[0];
+    const shell = document.querySelector('#dashboard'); shell.setConfig({ ...config, appearance: { mode: 'night' }, cards: config.cards.map(card => ({ ...card, appearance: { mode: 'night' } })) }); shell.hass = window.previewHass;
+  });
+  await page.locator('#dashboard .native-surface').waitFor();
+  assert.equal(await page.locator('#dashboard .native-surface').evaluate(node => getComputedStyle(node).backgroundColor),
+    await page.locator('#dashboard mufflonbau-live ha-card').evaluate(node => getComputedStyle(node).backgroundColor));
   assert.deepEqual(errors, []);
-  console.log('Browser checks passed: rendering, live updates, localization, warnings, navigation, mobile layout, safe labels, clock cleanup, and actual YAML examples.');
+  console.log('Browser checks passed: rendering, live updates, localization, warnings, navigation, mobile layout, safe labels, clock cleanup, actual YAML examples, complete dashboard layouts, theme consistency, device controls, and action errors.');
 } catch (error) {
   const page = browser?.contexts()[0]?.pages()[0];
   if (page) await page.screenshot({ path: 'test-results/failure.png', fullPage: true }).catch(() => {});

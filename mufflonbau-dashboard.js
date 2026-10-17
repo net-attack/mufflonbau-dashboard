@@ -152,6 +152,21 @@
       offline: "Offline",
       battery: "Battery",
       healthy: "All monitored devices are healthy.",
+      systemShort: "System",
+      more: "More",
+      navigation: "Navigation",
+      live: "Connected to your home",
+      yourSpace: "A little space. All yours.",
+      morning: "Good morning.",
+      afternoon: "Good afternoon.",
+      evening: "Good evening.",
+      people: "Who’s home",
+      allDetails: "View details",
+      floorplan: "Floorplan",
+      noEvents: "No upcoming events",
+      actionFailed: "Action failed. Please try again.",
+      cardLoadError: "Card could not be loaded. Reload the dashboard.",
+      states: { on: "On", off: "Off", home: "Home", not_home: "Away", docked: "At the dock", cleaning: "Cleaning", returning: "Returning home", paused: "Paused", idle: "Ready" },
       vacuum: "Vacuum",
       mop: "Mop",
       room: "Room",
@@ -176,6 +191,21 @@
       offline: "Offline",
       battery: "Batterie",
       healthy: "Alle überwachten Geräte sind in Ordnung.",
+      systemShort: "System",
+      more: "Mehr",
+      navigation: "Navigation",
+      live: "Mit deinem Zuhause verbunden",
+      yourSpace: "Dein Zuhause. Dein Rückzugsort.",
+      morning: "Guten Morgen.",
+      afternoon: "Guten Tag.",
+      evening: "Guten Abend.",
+      people: "Wer ist zuhause",
+      allDetails: "Details ansehen",
+      floorplan: "Grundriss",
+      noEvents: "Keine anstehenden Termine",
+      actionFailed: "Aktion fehlgeschlagen. Bitte erneut versuchen.",
+      cardLoadError: "Karte konnte nicht geladen werden. Bitte Dashboard neu laden.",
+      states: { on: "An", off: "Aus", home: "Zuhause", not_home: "Unterwegs", docked: "An der Station", cleaning: "Reinigung läuft", returning: "Fährt zur Station", paused: "Pausiert", idle: "Bereit" },
       vacuum: "Saugen",
       mop: "Wischen",
       room: "Raum",
@@ -206,11 +236,8 @@
   function entityList(ids, title) {
     return ids.length ? [{ type: "entities", title, entities: ids }] : [];
   }
-  function navigation(path, name, icon) {
-    return { type: "button", name, icon, tap_action: { action: "navigate", navigation_path: path } };
-  }
-  function view(path, title, icon, cards, extra = {}) {
-    return { type: "masonry", path, title, icon, cards, ...extra };
+  function view(path, title, icon2, cards, extra = {}) {
+    return { type: "panel", path, title, icon: icon2, cards, ...extra };
   }
   function liveCard(mode, config, language) {
     return { type: "custom:mufflonbau-live", mode, language, ...config };
@@ -222,7 +249,7 @@
     if (!config.rooms.length) return [];
     const overview = view("rooms", text.rooms, "mdi:floor-plan", [
       liveCard("floorplan", { rooms: config.rooms, appearance: config.appearance }, language),
-      ...config.rooms.map((room) => navigation(`room-${room.id}`, localized(room.name, language), room.icon ?? "mdi:door"))
+      liveCard("climate", { rooms: config.rooms, appearance: config.appearance }, language)
     ]);
     return [overview, ...config.rooms.map((room) => view(`room-${room.id}`, localized(room.name, language), room.icon ?? "mdi:door", [
       liveCard("climate", { rooms: [room], appearance: config.appearance }, language),
@@ -285,30 +312,27 @@
     return views;
   }
 
+  // src/modules/calendar.js
+  function calendarViews({ config, text }) {
+    return config.calendars.length ? [view("calendar", text.calendar, "mdi:calendar-month-outline", [
+      { type: "calendar", initial_view: "listWeek", entities: config.calendars }
+    ])] : [];
+  }
+
   // src/modules/home.js
-  function homeView({ config, text, language, hass }, otherViews) {
-    const cards = [{ type: "markdown", content: text.welcome }];
-    const available = config.entities.filter((id) => Object.hasOwn(hass.states, id));
-    const missing = config.entities.filter((id) => !Object.hasOwn(hass.states, id));
-    if (available.length) cards.push(...entityList(available, text.overview));
-    else if (!config.rooms.length && !config.people.length && !config.weather && !config.calendars.length && !config.cleaning && !config.monitors.length) cards.push({ type: "markdown", content: text.empty });
-    if (missing.length) cards.push({ type: "markdown", content: `${text.missing}: ${missing.map((id) => `\`${id}\``).join(", ")}` });
-    if (config.rooms.length || config.people.length || config.weather || config.calendars.length) {
-      cards.push(liveCard("header", { title: config.title ?? "Mufflonbau", weather: config.weather, calendars: config.calendars, appearance: config.appearance }, language));
+  function homeView({ config, text, language }, otherViews) {
+    const shared = { appearance: config.appearance };
+    const cards = [liveCard("header", { ...shared, title: config.title ?? "Mufflonbau", weather: config.weather, calendars: config.calendars }, language)];
+    if (config.rooms.length) cards.push(liveCard("climate", { ...shared, rooms: config.rooms }, language));
+    if (config.people.length) cards.push(liveCard("people", { ...shared, people: config.people }, language));
+    const lights = [...new Set(config.rooms.flatMap((room) => room.lights))];
+    if (lights.length) cards.push(liveCard("devices", { ...shared, entities: lights, title: text.lights }, language));
+    if (config.cleaning?.entity) cards.push(liveCard("cleaning", { ...shared, cleaning: config.cleaning }, language));
+    if (config.monitors.length) cards.push(liveCard("warnings", { ...shared, monitors: config.monitors, compact: true }, language));
+    if (config.entities.length) cards.push(liveCard("devices", { ...shared, entities: config.entities, title: text.overview }, language));
+    if (!config.rooms.length && !config.people.length && !config.entities.length && !otherViews.length) {
+      cards.push(liveCard("message", { ...shared, content: text.empty }, language));
     }
-    cards.push(...entityList(config.people, text.home));
-    if (config.weather) cards.push({ type: "weather-forecast", entity: config.weather, show_forecast: false });
-    if (config.calendars.length) cards.push({ type: "calendar", initial_view: "listWeek", entities: config.calendars });
-    if (config.rooms.length) cards.push(liveCard("climate", { rooms: config.rooms, appearance: config.appearance }, language));
-    cards.push(...entityList(config.rooms.flatMap((room) => room.lights), text.lights));
-    if (config.cleaning?.entity) cards.push(...entityList([config.cleaning.entity], text.cleaning));
-    if (config.monitors.length) cards.push(liveCard("warnings", { monitors: config.monitors, appearance: config.appearance }, language));
-    if (otherViews.length) cards.push({
-      type: "grid",
-      columns: 3,
-      square: false,
-      cards: otherViews.filter((item) => !item.subview).map((item) => navigation(item.path, item.title, item.icon))
-    });
     return view("home", text.home, "mdi:home", cards);
   }
 
@@ -317,8 +341,100 @@
     const config = normalizeConfig(rawConfig);
     const language = resolveLanguage(config, hass);
     const context = { config, hass, language, text: translations[language] };
-    const views = [...roomViews(context), ...climateViews(context), ...cleaningViews(context), ...systemViews(context)];
-    return { ...config.kiosk_mode ? { kiosk_mode: config.kiosk_mode } : {}, title: config.title || "Mufflonbau", views: [homeView(context, views), ...views] };
+    const views = [...roomViews(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];
+    const allViews = [homeView(context, views), ...views];
+    const navigation = allViews.filter((item) => !item.subview).map(({ path, title, icon: icon2 }) => ({ path, title, icon: icon2 }));
+    const styledViews = allViews.map((item) => ({ ...item, type: "panel", cards: [{
+      type: "custom:mufflonbau-shell",
+      title: config.title || "Mufflonbau",
+      language,
+      appearance: config.appearance,
+      path: item.path,
+      view_title: item.title,
+      navigation,
+      cards: item.cards
+    }] }));
+    return { ...config.kiosk_mode ? { kiosk_mode: config.kiosk_mode } : {}, title: config.title || "Mufflonbau", views: styledViews };
+  }
+
+  // src/design/dom.js
+  function element(tag, text, className) {
+    const node = document.createElement(tag);
+    if (text !== void 0) node.textContent = text;
+    if (className) node.className = className;
+    return node;
+  }
+  function svgElement(tag, attributes = {}, text) {
+    const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+    if (text !== void 0) node.textContent = text;
+    return node;
+  }
+  var paths = {
+    home: "m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7",
+    rooms: "M3 3h18v18H3zM3 12h9V3M12 12h9M12 12v9",
+    climate: "M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0ZM12 8v10",
+    cleaning: "M4 9h16v10H4zM9 9V5h6v4M8 19v2m8-2v2M8 13h.01M16 13h.01M9 16h6",
+    system: "M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Zm-4 9 3 3 5-6",
+    expert: "M4 7h16M4 17h16M8 4v6m8 4v6",
+    light: "M9 18h6m-6 3h6M8 13a6 6 0 1 1 8 0l-1 2H9l-1-2Z",
+    arrow: "M5 12h14m-6-6 6 6-6 6",
+    sun: "M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M5.6 18.4 7 17m10-10 1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
+    drop: "M12 3s-7 8-7 12a7 7 0 0 0 14 0c0-4-7-12-7-12Z",
+    person: "M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-2a8 8 0 0 1 16 0v2",
+    calendar: "M4 5h16v16H4zM8 3v4m8-4v4M4 11h16"
+  };
+  function icon(name = "home") {
+    const node = svgElement("svg", { viewBox: "0 0 24 24", width: 22, height: 22, fill: "none", stroke: "currentColor", "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+    node.append(svgElement("path", { d: paths[name] ?? paths.rooms }));
+    return node;
+  }
+  function navigationUrl(path) {
+    const url = new URL(window.location.href);
+    const segments = url.pathname.split("/").filter(Boolean);
+    if (segments.length > 1) segments.pop();
+    url.pathname = `/${segments.join("/")}/${path}`;
+    url.hash = "";
+    return url.pathname;
+  }
+  function navigateLink(link, path) {
+    link.setAttribute("href", navigationUrl(path));
+    link.addEventListener("click", (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      window.history.pushState(null, "", navigationUrl(path));
+      window.dispatchEvent(new Event("location-changed"));
+    });
+  }
+
+  // src/design/tokens.js
+  var palettes = {
+    ambient: { canvas: "#f4f3ee", surface: "#ffffff", soft: "#f0f1e9", ink: "#252b25", muted: "#72796c", line: "#e5e7dc", accent: "#53704b", active: "#e5eddb", hero: "#e9eddf" },
+    night: { canvas: "#171d19", surface: "#222b24", soft: "#2a342b", ink: "#eef1e7", muted: "#a7b29f", line: "#354136", accent: "#b6d29a", active: "#3b5033", hero: "#2c3c2c" }
+  };
+  function themeProperties(mode) {
+    const palette = palettes[mode] ?? palettes.ambient;
+    return {
+      ...Object.fromEntries(Object.entries(palette).map(([key, value]) => [`--mb-${key}`, value])),
+      "--primary-background-color": palette.canvas,
+      "--secondary-background-color": palette.soft,
+      "--card-background-color": palette.surface,
+      "--ha-card-background": palette.surface,
+      "--primary-text-color": palette.ink,
+      "--secondary-text-color": palette.muted,
+      "--divider-color": palette.line,
+      "--ha-card-border-color": palette.line,
+      "--primary-color": palette.accent,
+      "--accent-color": palette.accent,
+      "--ha-card-border-radius": "24px",
+      "--ha-card-border-width": "1px",
+      "--ha-card-box-shadow": "none",
+      "--state-light-active-color": palette.accent,
+      "--state-switch-active-color": palette.accent
+    };
+  }
+  function applyTheme(node, mode) {
+    for (const [key, value] of Object.entries(themeProperties(mode))) node.style.setProperty(key, value);
   }
 
   // src/core/state.js
@@ -351,48 +467,182 @@
     return darkMode ? "night" : "ambient";
   }
 
+  // src/cards/shell.js
+  var shellStyles = `
+  :host { display:block; min-width:0; min-height:calc(100dvh - 56px); background:var(--mb-canvas); color:var(--mb-ink); font-family:Inter,'Avenir Next',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; } .shell { display:grid; grid-template-columns:210px minmax(0,1fr); min-height:inherit; }
+  aside { padding:38px 22px; border-right:1px solid var(--mb-line); display:flex; flex-direction:column; gap:48px; }
+  .brand { display:flex; gap:12px; align-items:center; font-weight:750; font-size:19px; letter-spacing:-.6px; }
+  .monogram { display:grid; place-items:center; width:40px; height:40px; border-radius:14px; background:var(--mb-accent); color:var(--mb-canvas); font-size:23px; }
+  nav { display:flex; flex-direction:column; gap:8px; position:sticky; top:30px; }
+  nav svg { flex-shrink:0; }
+  a { display:flex; align-items:center; gap:13px; padding:14px 15px; color:var(--mb-muted); text-decoration:none; border-radius:14px; font-size:13px; font-weight:600; }
+  a[aria-current=page] { background:var(--mb-active); color:var(--mb-accent); } a:hover { color:var(--mb-accent); background:var(--mb-soft); }
+  .more-menu { display:none; }
+  a:focus-visible { outline:2px solid var(--mb-accent); outline-offset:3px; }
+  .footnote { margin-top:auto; padding:24px 12px 0; font-size:10px; line-height:1.7; letter-spacing:2px; color:var(--mb-muted); text-transform:uppercase; }
+  main { min-width:0; padding:38px clamp(20px,3vw,52px) 48px; max-width:1560px; width:100%; margin:0 auto; }
+  .topline { display:flex; justify-content:space-between; align-items:center; margin:0 0 30px; color:var(--mb-muted); font-size:10px; letter-spacing:2px; text-transform:uppercase; }
+  .status { display:flex; align-items:center; gap:7px; letter-spacing:1px; } .dot { width:6px; height:6px; border-radius:50%; background:var(--mb-accent); }
+  .heading { font-size:36px; letter-spacing:-1.6px; font-weight:600; margin:0 0 30px; }
+  .content { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); align-items:start; gap:22px; }
+  .slot { min-width:0; grid-column:span 6; } .slot.wide { grid-column:1/-1; } .slot.rooms { grid-column:span 8; } .slot.compact { grid-column:span 4; }
+  .slot.devices { grid-column:span 8; } .slot ha-card { background:var(--mb-surface); }
+  @media(min-width:1700px) { .shell { grid-template-columns:240px minmax(0,1fr); } }
+  @media(max-width:1100px) { .shell { grid-template-columns:170px minmax(0,1fr); } aside { padding:28px 12px; } .brand { font-size:16px; } .slot.rooms,.slot.devices { grid-column:span 12; } .slot.compact { grid-column:span 6; } }
+  @media(max-width:700px) { .shell { display:flex; flex-direction:column; } aside { padding:16px; border:0; gap:18px; display:contents; } .brand,.footnote { display:none; } main { padding:22px 16px 92px; } .topline { margin-bottom:22px; letter-spacing:1px; } .heading { font-size:28px; } nav { position:fixed; inset:auto 12px 12px; z-index:10; flex-direction:row; overflow-x:auto; gap:2px; padding:7px; border:1px solid var(--mb-line); background:var(--mb-surface); border-radius:22px; box-shadow:0 8px 28px #00000012; } a { flex:1; min-width:58px; gap:5px; flex-direction:column; padding:10px 5px; font-size:9px; white-space:nowrap; } .secondary { display:none; } .more-menu { display:block; flex:1; min-width:58px; } summary { display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 5px; font-size:9px; color:var(--mb-muted); cursor:pointer; list-style:none; } summary::-webkit-details-marker { display:none; } .more-links { position:fixed; bottom:94px; right:14px; min-width:180px; padding:8px; background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:18px; box-shadow:0 8px 24px #0002; } .more-links a { flex-direction:row; font-size:12px; padding:14px; } nav svg { width:19px; height:19px; } .content { gap:16px; } .slot,.slot.compact { grid-column:1/-1; } .status { font-size:9px; } }
+  @media(prefers-reduced-motion:no-preference) { a { transition:background .15s,color .15s; } }
+`;
+  var MufflonbauShell = class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this._children = [];
+      this._generation = 0;
+    }
+    setConfig(config) {
+      this._config = config;
+      this._generation++;
+      this._render();
+      this._loadCards(this._generation);
+    }
+    set hass(hass) {
+      this._hass = hass;
+      applyTheme(this, appearanceMode(this._config?.appearance, hass.states, hass.themes?.darkMode));
+      for (const card of this._children) card.hass = hass;
+    }
+    getCardSize() {
+      return 12;
+    }
+    _render() {
+      if (!this._config) return;
+      const text = translations[this._config.language ?? "en"];
+      const shell = element("div", void 0, "shell");
+      const aside = element("aside");
+      const brand = element("div", void 0, "brand");
+      brand.append(element("span", "m", "monogram"), element("span", this._config.title ?? "Mufflonbau"));
+      const nav = element("nav");
+      nav.setAttribute("aria-label", text.navigation);
+      const extraLinks = [];
+      for (const [index, item] of (this._config.navigation ?? []).entries()) {
+        const link = element("a");
+        link.append(icon(item.path), element("span", item.path === "system" ? text.systemShort : item.title));
+        navigateLink(link, item.path);
+        if (item.path === this._config.path || item.path === "rooms" && this._config.path.startsWith("room-")) link.setAttribute("aria-current", "page");
+        if (index >= 4) {
+          link.classList.add("secondary");
+          extraLinks.push(item);
+        }
+        nav.append(link);
+      }
+      if (extraLinks.length) {
+        const more = element("details", void 0, "more-menu");
+        const summary = element("summary");
+        summary.append(icon("expert"), element("span", text.more));
+        const links = element("div", void 0, "more-links");
+        for (const item of extraLinks) {
+          const link = element("a");
+          link.append(icon(item.path), element("span", item.path === "system" ? text.systemShort : item.title));
+          navigateLink(link, item.path);
+          if (item.path === this._config.path) link.setAttribute("aria-current", "page");
+          links.append(link);
+        }
+        more.append(summary, links);
+        nav.append(more);
+      }
+      aside.append(brand, nav, element("div", text.yourSpace, "footnote"));
+      const main = element("main");
+      const top = element("div", void 0, "topline");
+      const status = element("span", void 0, "status");
+      status.append(element("span", void 0, "dot"), element("span", text.live));
+      top.append(element("span", `${this._config.title ?? "Mufflonbau"} / ${this._config.view_title}`), status);
+      main.append(top);
+      if (this._config.path !== "home") main.append(element("h1", this._config.view_title, "heading"));
+      this._content = element("div", void 0, "content");
+      main.append(this._content);
+      shell.append(aside, main);
+      this._children = [];
+      this.shadowRoot.replaceChildren(element("style", shellStyles), shell);
+      if (this._hass) this.hass = this._hass;
+    }
+    async _loadCards(generation) {
+      let helpers;
+      if (this._config.cards.some((card) => !card.type.startsWith("custom:mufflonbau-"))) {
+        try {
+          helpers = await window.loadCardHelpers?.();
+        } catch {
+        }
+      }
+      if (generation !== this._generation) return;
+      for (const config of this._config.cards) {
+        const slot = element("section", void 0, "slot");
+        const layout = { header: "wide", climate: "rooms", people: "compact", devices: "devices", cleaning: "compact", warnings: "compact", floorplan: "wide", message: "wide" }[config.mode];
+        if (layout) slot.classList.add(layout);
+        let card;
+        if (config.type === "custom:mufflonbau-live") {
+          card = document.createElement("mufflonbau-live");
+          card.setConfig(config);
+        } else if (helpers) card = helpers.createCardElement(config);
+        else card = element("p", translations[this._config.language ?? "en"].cardLoadError);
+        if (this._hass) card.hass = this._hass;
+        this._children.push(card);
+        slot.append(card);
+        this._content.append(slot);
+      }
+    }
+  };
+
   // src/cards/live-card.js
   var liveStyles = `
-  :host { display:block; min-width:0; }
-  ha-card { display:block; box-sizing:border-box; padding:20px; border-radius:22px; color:var(--primary-text-color); }
-  ha-card.ambient { background:linear-gradient(145deg,#f8f3e8,#e2d8c6); color:#3a342d; --muted:#665f54; --accent:#507e63; }
-  ha-card.night { background:linear-gradient(145deg,#07111a,#08232e); color:#eef8fc; --muted:#b4d3de; --accent:#64e7b5; }
-  h2 { margin:0 0 12px; font-size:18px; } p { margin:6px 0; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:12px; }
-  button { min-width:0; overflow-wrap:anywhere; text-align:start; font:inherit; color:inherit; padding:14px; border-radius:16px; border:1px solid color-mix(in srgb,currentColor 18%,transparent); background:transparent; cursor:pointer; }
-  button:focus-visible, a:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
-  strong, small { display:block; } small { color:var(--muted); margin-top:5px; }
-  .value { font-size:24px; margin-top:8px; } .warning { border-inline-start:4px solid #bf6149; }
-  .clock { font-size:30px; font-variant-numeric:tabular-nums; } svg { width:100%; height:auto; max-height:72vh; }
-  svg text { fill:currentColor; pointer-events:none; } svg rect { stroke:var(--muted); stroke-width:3; fill:var(--card-background-color,#f4efe4); }
-  .night svg rect { fill:#173642; } .night svg .lit { fill:#506238; }
-  svg .lit { fill:#e9d68e; } svg .offline { stroke:#bf6149; stroke-dasharray:6; }
-  .room-name { font-size:18px; font-weight:600; } .room-value { font-size:17px; }
-  a { color:inherit; cursor:pointer; } .header { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  :host { display:block; min-width:0; font-family:Inter,'Avenir Next',system-ui,sans-serif; }
+  * { box-sizing:border-box; } ha-card { display:block; padding:26px; border-radius:24px; background:var(--mb-surface); color:var(--mb-ink); border:1px solid var(--mb-line); box-shadow:none; }
+  h2 { margin:0; font-size:17px; letter-spacing:-.4px; font-weight:650; } p { margin:6px 0; }
+  .section-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; } .eyebrow { font-size:10px; font-weight:650; letter-spacing:2px; text-transform:uppercase; color:var(--mb-muted); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; }
+  button { min-width:0; text-align:start; font:inherit; color:inherit; border:0; background:transparent; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; } button:focus-visible,a:focus-visible { outline:2px solid var(--mb-accent); outline-offset:4px; }
+  strong,small { display:block; } small { color:var(--mb-muted); font-size:11px; line-height:1.6; margin-top:5px; }
+  svg { flex-shrink:0; } .icon-disc { display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:13px; background:var(--mb-soft); color:var(--mb-accent); }
+  .room-tile { padding:18px; border:1px solid var(--mb-line); border-radius:20px; min-width:0; } .room-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .room-link { color:var(--mb-muted); } .room-link svg { width:17px; } .climate-button { padding:0; width:100%; } .climate-button strong { font-size:12px; font-weight:550; color:var(--mb-muted); }
+  .value { font-size:34px; letter-spacing:-1.5px; font-weight:500; margin-top:10px; line-height:1.3; } .room-tile.lit .icon-disc { background:var(--mb-active); }
+  .warning { display:flex; gap:12px; align-items:center; padding:12px 0; width:100%; border-bottom:1px solid var(--mb-line); } .warning:last-child { border:0; } .warning .icon-disc { color:#b67545; } .warning strong { overflow-wrap:anywhere; font-size:12px; font-weight:600; }
+  .healthy { display:flex; align-items:center; gap:12px; color:var(--mb-accent); font-size:13px; line-height:1.7; padding:8px 0; }
+  .hero { padding:32px; background:var(--mb-hero); overflow:hidden; position:relative; border:0; }
+  .hero:after { content:''; position:absolute; width:330px; height:330px; border:1px solid var(--mb-accent); opacity:.1; border-radius:50%; right:90px; top:-170px; box-shadow:0 0 0 50px var(--mb-hero),0 0 0 51px var(--mb-accent); pointer-events:none; }
+  .header { display:flex; align-items:center; justify-content:space-between; gap:24px; position:relative; z-index:1; }
+  h1 { margin:12px 0; font-size:clamp(30px,3.3vw,48px); letter-spacing:-2px; line-height:1.15; font-weight:550; }
+  .hero-copy { color:var(--mb-muted); font-size:12px; } .clock { font-size:52px; font-weight:400; letter-spacing:-3px; font-variant-numeric:tabular-nums; line-height:1.2; }
+  .clock-wrap { text-align:right; } .weather { display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--mb-accent); margin-top:12px; }
+  .event { display:flex; align-items:center; gap:12px; border-top:1px solid var(--mb-line); margin-top:25px; padding-top:18px; font-size:12px; } .event small { margin:0; }
+  .people { display:flex; gap:13px; align-items:center; padding:12px 0; } .avatar { width:42px; height:42px; border-radius:50%; display:grid; place-items:center; background:var(--mb-soft); font-size:13px; font-weight:600; color:var(--mb-accent); } .people strong { font-size:13px; } .people small { margin:2px 0 0; }
+  .person-state { margin-left:auto; font-size:10px; color:var(--mb-muted); } .person-state.home { background:var(--mb-active); color:var(--mb-accent); padding:6px 9px; border-radius:8px; }
+  .device { padding:16px; border:1px solid var(--mb-line); border-radius:18px; display:flex; flex-direction:column; gap:15px; } .device.is-on { background:var(--mb-soft); border-color:transparent; }
+  .device-top { display:flex; justify-content:space-between; align-items:center; } .device-label { padding:0; width:100%; } .device strong { font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
+  .switch { width:36px; height:22px; padding:3px; background:var(--mb-line); border-radius:20px; } .switch:after { content:''; display:block; width:16px; height:16px; border-radius:50%; background:var(--mb-surface); transition:transform .15s; }
+  .switch[aria-checked=true] { background:var(--mb-accent); } .switch[aria-checked=true]:after { transform:translateX(14px); }
+  .robot { display:flex; align-items:center; gap:16px; padding:8px 0 18px; } .robot .icon-disc { width:62px; height:62px; border-radius:50%; } .robot strong { font-size:13px; line-height:1.5; }
+  .link { display:flex; align-items:center; justify-content:space-between; padding-top:15px; border-top:1px solid var(--mb-line); font-size:12px; color:var(--mb-accent); text-decoration:none; }
+  .floor-map { width:100%; height:auto; max-height:65vh; margin-top:12px; } .floor-map text { fill:var(--mb-ink); pointer-events:none; }
+  .floor-map rect { stroke:var(--mb-line); stroke-width:3; fill:var(--mb-soft); } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
+  .room-name { font-size:18px; font-weight:600; } .room-value { font-size:17px; } .message { color:var(--mb-muted); line-height:1.7; font-size:13px; }
+  @media(max-width:700px) { ha-card { padding:20px; } .hero { padding:26px 22px; } .header { align-items:start; flex-wrap:wrap; } .clock { font-size:42px; } .clock-wrap { text-align:left; } h1 { font-size:34px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .room-tile { padding:14px; } .value { font-size:28px; } .device { padding:14px; } }
+  @media(prefers-reduced-motion:reduce) { .switch:after { transition:none; } }
 `;
-  function element(tag, text, className) {
-    const node = document.createElement(tag);
-    if (text !== void 0) node.textContent = text;
-    if (className) node.className = className;
-    return node;
-  }
-  function svgElement(tag, attributes = {}, text) {
-    const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
-    for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
-    if (text !== void 0) node.textContent = text;
-    return node;
-  }
   var MufflonbauLiveCard = class extends HTMLElement {
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
     }
     setConfig(config) {
-      if (!["header", "climate", "floorplan", "warnings"].includes(config.mode)) throw new Error("Mufflonbau: unsupported live card mode.");
+      if (!["header", "climate", "floorplan", "warnings", "people", "devices", "cleaning", "message"].includes(config.mode)) throw new Error("Mufflonbau: unsupported live card mode.");
       this._config = config;
       this._watched = [...new Set([
         config.weather,
         ...config.calendars ?? [],
+        ...config.entities ?? [],
+        ...config.people ?? [],
+        ...Object.values(config.cleaning ?? {}),
         ...(config.monitors ?? []).map((item) => item.entity),
         ...(config.rooms ?? []).flatMap((room) => [room.temperature, room.humidity, room.dew_point, ...room.lights ?? []]),
         config.appearance?.night_person,
@@ -442,88 +692,212 @@
       const style = element("style", liveStyles);
       const card = element("ha-card");
       card.className = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
+      applyTheme(card, card.className);
       if (this._config.mode === "header") this._header(card, text);
       if (this._config.mode === "climate") this._climate(card, text);
       if (this._config.mode === "warnings") this._warnings(card, text);
       if (this._config.mode === "floorplan") this._floorplan(card, text);
+      if (this._config.mode === "people") this._people(card, text);
+      if (this._config.mode === "devices") this._devices(card, text);
+      if (this._config.mode === "cleaning") this._cleaning(card, text);
+      if (this._config.mode === "message") card.append(element("p", this._config.content, "message"));
       this.shadowRoot.replaceChildren(style, card);
       if (focusedEntity) [...this.shadowRoot.querySelectorAll("button")].find((button) => button.dataset.entity === focusedEntity)?.focus();
       if (focusedRoom) [...this.shadowRoot.querySelectorAll("a")].find((link) => link.getAttribute("data-room") === focusedRoom)?.focus();
     }
+    _section(card, title, label2) {
+      const head = element("div", void 0, "section-head");
+      head.append(element("h2", title));
+      if (label2 !== void 0) head.append(element("span", String(label2), "eyebrow"));
+      card.append(head);
+    }
     _header(card, text) {
+      card.classList.add("hero");
+      const now = /* @__PURE__ */ new Date();
+      const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: this._hass.config?.time_zone }).format(now));
+      const greeting = hour < 12 ? text.morning : hour < 18 ? text.afternoon : text.evening;
       const header = element("div", void 0, "header");
       const info = element("div");
-      info.append(element("h2", this._config.title ?? "Mufflonbau"));
-      info.append(element("p", new Intl.DateTimeFormat(this._language, { dateStyle: "full", timeZone: this._hass.config?.time_zone }).format(/* @__PURE__ */ new Date())));
-      header.append(info, element("div", new Intl.DateTimeFormat(this._language, { hour: "2-digit", minute: "2-digit", timeZone: this._hass.config?.time_zone }).format(/* @__PURE__ */ new Date()), "clock"));
-      card.append(header);
+      info.append(element("span", text.yourSpace, "eyebrow"), element("h1", greeting), element("p", this._config.title ?? "Mufflonbau", "hero-copy"));
       const weather = this._hass.states[this._config.weather];
-      if (weather && !isOffline(weather)) card.append(element("p", `${weather.attributes.friendly_name ?? ""} ${weather.attributes.temperature ?? "–"} ${weather.attributes.temperature_unit ?? ""}`));
+      if (weather && !isOffline(weather)) {
+        const weatherLine = element("div", void 0, "weather");
+        weatherLine.append(icon("sun"), element("span", `${weather.attributes.temperature ?? "–"} ${weather.attributes.temperature_unit ?? "°C"}`));
+        info.append(weatherLine);
+      }
+      const clock = element("div", void 0, "clock-wrap");
+      clock.append(
+        element("div", new Intl.DateTimeFormat(this._language, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: this._hass.config?.time_zone }).format(now), "clock"),
+        element("small", new Intl.DateTimeFormat(this._language, { weekday: "long", day: "numeric", month: "long", timeZone: this._hass.config?.time_zone }).format(now))
+      );
+      header.append(info, clock);
+      card.append(header);
       for (const id of this._config.calendars ?? []) {
         const calendar = this._hass.states[id];
         if (!calendar || isOffline(calendar)) continue;
-        const row = element("p", `${text.calendar}: ${calendar.attributes.message ?? "–"}`);
+        const row = element("div", void 0, "event");
+        const detail = element("div");
+        detail.append(element("strong", calendar.attributes.message ?? text.noEvents));
         const start = calendar.attributes.start_time;
-        if (start && Number.isFinite(new Date(start).getTime())) row.append(element("small", new Intl.DateTimeFormat(this._language, { dateStyle: "medium", timeStyle: "short", timeZone: this._hass.config?.time_zone }).format(new Date(start))));
+        if (start && Number.isFinite(new Date(start).getTime())) detail.append(element("small", new Intl.DateTimeFormat(this._language, { dateStyle: "medium", timeStyle: "short", timeZone: this._hass.config?.time_zone }).format(new Date(start))));
+        row.append(icon("calendar"), detail);
         card.append(row);
       }
     }
     _climate(card, text) {
+      this._section(card, text.rooms, String((this._config.rooms ?? []).length).padStart(2, "0"));
       const grid = element("div", void 0, "grid");
       for (const room of this._config.rooms ?? []) {
-        const button = element("button");
+        const lit = (room.lights ?? []).some((id) => this._hass.states[id]?.state === "on");
+        const tile = element("article", void 0, `room-tile${lit ? " lit" : ""}`);
+        const top = element("div", void 0, "room-top");
+        const disc = element("span", void 0, "icon-disc");
+        disc.append(icon("rooms"));
+        const link = element("a", void 0, "room-link");
+        link.setAttribute("aria-label", localized(room.name, this._language));
+        link.setAttribute("data-room", room.id);
+        navigateLink(link, `room-${room.id}`);
+        link.append(icon("arrow"));
+        top.append(disc, link);
+        const button = element("button", void 0, "climate-button");
         button.type = "button";
         button.dataset.entity = room.temperature ?? room.humidity ?? room.dew_point ?? "";
         button.append(element("strong", localized(room.name, this._language)));
         if (room.temperature) button.append(element("div", this._value(room.temperature, "°C"), "value"));
-        if (room.humidity) button.append(element("small", `${text.humidity}: ${this._value(room.humidity, "%")}`));
+        if (room.humidity) button.append(element("small", `${this._value(room.humidity, "%")} · ${text.humidity}`));
         if (room.dew_point) button.append(element("small", `${text.dewPoint}: ${this._value(room.dew_point, "°C")}`));
-        button.addEventListener("click", () => this._moreInfo(button.dataset.entity));
-        grid.append(button);
+        button.addEventListener("click", () => button.dataset.entity ? this._moreInfo(button.dataset.entity) : link.click());
+        tile.append(top, button);
+        grid.append(tile);
       }
       card.append(grid);
     }
     _warnings(card, text) {
-      card.append(element("h2", text.system));
       const warnings = monitorWarnings(this._config.monitors ?? [], this._hass.states, this._language);
-      if (!warnings.length) card.append(element("p", text.healthy));
-      const grid = element("div", void 0, "grid");
-      for (const warning of warnings) {
+      this._section(card, text.system, warnings.length ? warnings.length : "✓");
+      if (!warnings.length) {
+        const healthy = element("div", void 0, "healthy");
+        healthy.append(icon("system"), element("span", text.healthy));
+        card.append(healthy);
+      }
+      for (const warning of this._config.compact ? warnings.slice(0, 3) : warnings) {
         const button = element("button", void 0, "warning");
         button.type = "button";
         button.dataset.entity = warning.entity;
-        button.append(element("strong", warning.name), element("small", warning.detail));
+        const disc = element("span", void 0, "icon-disc");
+        disc.append(icon("system"));
+        const detail = element("span");
+        detail.append(element("strong", warning.name), element("small", warning.detail));
+        button.append(disc, detail);
         button.addEventListener("click", () => this._moreInfo(warning.entity));
-        grid.append(button);
+        card.append(button);
       }
       card.setAttribute("aria-live", "polite");
+      if (this._config.compact) this._link(card, "system", text.allDetails);
+    }
+    _name(id) {
+      return this._hass.states[id]?.attributes?.friendly_name ?? id.split(".").at(-1).replaceAll("_", " ");
+    }
+    _state(id, text) {
+      const state = this._hass.states[id];
+      if (isOffline(state)) return text.offline;
+      if (text.states[state.state]) return text.states[state.state];
+      return this._hass.formatEntityState?.(state) ?? `${state.state}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : ""}`;
+    }
+    _people(card, text) {
+      this._section(card, text.people);
+      for (const id of this._config.people ?? []) {
+        const row = element("div", void 0, "people");
+        const name = this._name(id);
+        const info = element("button");
+        info.type = "button";
+        info.dataset.entity = id;
+        info.append(element("strong", name));
+        info.addEventListener("click", () => this._moreInfo(id));
+        row.append(
+          element("span", name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase(), "avatar"),
+          info,
+          element("span", this._state(id, text), `person-state${this._hass.states[id]?.state === "home" ? " home" : ""}`)
+        );
+        card.append(row);
+      }
+    }
+    _devices(card, text) {
+      this._section(card, this._config.title ?? text.lights, (this._config.entities ?? []).length);
+      const grid = element("div", void 0, "grid");
+      for (const id of this._config.entities ?? []) {
+        const state = this._hass.states[id];
+        const on = state?.state === "on";
+        const tile = element("article", void 0, `device${on ? " is-on" : ""}`);
+        const top = element("div", void 0, "device-top");
+        const disc = element("span", void 0, "icon-disc");
+        disc.append(icon(id.startsWith("light.") ? "light" : "expert"));
+        top.append(disc);
+        if (/^(light|switch)\./.test(id)) {
+          const toggle = element("button", void 0, "switch");
+          toggle.type = "button";
+          toggle.disabled = isOffline(state);
+          toggle.setAttribute("role", "switch");
+          toggle.setAttribute("aria-checked", String(on));
+          toggle.setAttribute("aria-label", this._name(id));
+          toggle.dataset.entity = id;
+          toggle.addEventListener("click", async () => {
+            toggle.disabled = true;
+            try {
+              await this._hass.callService("homeassistant", "toggle", {}, { entity_id: id });
+            } catch {
+              const error = element("small", text.actionFailed);
+              error.setAttribute("role", "alert");
+              tile.append(error);
+            } finally {
+              toggle.disabled = isOffline(this._hass.states[id]);
+            }
+          });
+          top.append(toggle);
+        }
+        const info = element("button", void 0, "device-label");
+        info.type = "button";
+        info.dataset.entity = id;
+        info.append(element("strong", this._name(id)), element("small", this._state(id, text)));
+        info.addEventListener("click", () => this._moreInfo(id));
+        tile.append(top, info);
+        grid.append(tile);
+      }
       card.append(grid);
     }
+    _link(card, path, title) {
+      const link = element("a", void 0, "link");
+      navigateLink(link, path);
+      link.append(element("span", title), icon("arrow"));
+      card.append(link);
+    }
+    _cleaning(card, text) {
+      this._section(card, text.cleaning);
+      const config = this._config.cleaning;
+      const row = element("div", void 0, "robot");
+      const disc = element("span", void 0, "icon-disc");
+      disc.append(icon("cleaning"));
+      const detail = element("div");
+      detail.append(element("strong", this._name(config.entity)), element("small", this._state(config.entity, text)));
+      if (config.battery) detail.append(element("small", `${text.battery} · ${this._value(config.battery, "%")}`));
+      row.append(disc, detail);
+      card.append(row);
+      this._link(card, "cleaning", text.allDetails);
+    }
     _floorplan(card, text) {
-      card.append(element("h2", text.rooms));
+      this._section(card, text.rooms, text.floorplan);
       const rooms = this._config.rooms ?? [];
       const positions = rooms.map((room, index) => room.position ?? { x: index % 3 * 280, y: Math.floor(index / 3) * 180, width: 260, height: 160 });
       const width = Math.max(1, ...positions.map((position) => position.x + position.width));
       const height = Math.max(1, ...positions.map((position) => position.y + position.height));
-      const svg = svgElement("svg", { viewBox: `-4 -4 ${width + 8} ${height + 8}`, role: "group", "aria-label": text.rooms });
+      const svg = svgElement("svg", { viewBox: `-4 -4 ${width + 8} ${height + 8}`, role: "group", class: "floor-map", "aria-label": text.rooms });
       rooms.forEach((room, index) => {
         const position = positions[index];
-        const path = `room-${room.id}`;
-        const target = new URL(window.location.href);
-        const segments = target.pathname.split("/").filter(Boolean);
-        if (segments.length > 1) segments.pop();
-        target.pathname = `/${segments.join("/")}/${path}`;
-        target.hash = "";
-        const link = svgElement("a", { href: target.pathname, "data-room": room.id, "aria-label": localized(room.name, this._language) });
-        link.addEventListener("click", (event) => {
-          if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
-          event.preventDefault();
-          window.history.pushState(null, "", target.pathname);
-          window.dispatchEvent(new Event("location-changed"));
-        });
+        const link = svgElement("a", { "data-room": room.id, "aria-label": localized(room.name, this._language) });
+        navigateLink(link, `room-${room.id}`);
         const lit = (room.lights ?? []).some((id) => this._hass.states[id]?.state === "on");
         const offline = [room.temperature, room.humidity].filter(Boolean).some((id) => isOffline(this._hass.states[id]));
-        link.append(svgElement("rect", { ...position, rx: 5, class: `${lit ? "lit" : ""} ${offline ? "offline" : ""}` }));
+        link.append(svgElement("rect", { ...position, rx: 12, class: `${lit ? "lit" : ""} ${offline ? "offline" : ""}` }));
         link.append(svgElement("text", { x: position.x + 14, y: position.y + 28, class: "room-name" }, localized(room.name, this._language)));
         if (room.temperature) link.append(svgElement("text", { x: position.x + 14, y: position.y + 58, class: "room-value" }, this._value(room.temperature, "°C")));
         if (room.humidity) link.append(svgElement("text", { x: position.x + 14, y: position.y + 82, class: "room-value" }, this._value(room.humidity, "%")));
@@ -542,6 +916,7 @@
       return generateDashboard(config, hass);
     }
   };
+  if (!customElements.get("mufflonbau-shell")) customElements.define("mufflonbau-shell", MufflonbauShell);
   if (!customElements.get("mufflonbau-live")) customElements.define("mufflonbau-live", MufflonbauLiveCard);
   if (!customElements.get("ll-strategy-dashboard-mufflonbau")) customElements.define("ll-strategy-dashboard-mufflonbau", MufflonbauDashboardStrategy);
   window.customStrategies = window.customStrategies || [];

@@ -6,6 +6,11 @@ export const translations = {
     system: 'System check', expert: 'Expert', calendar: 'Calendar', lights: 'Lights',
     temperature: 'Temperature', humidity: 'Humidity', history: 'History',
     offline: 'Offline', battery: 'Battery', healthy: 'All monitored devices are healthy.',
+    systemShort: 'System', more: 'More', navigation: 'Navigation', live: 'Connected to your home', yourSpace: 'A little space. All yours.',
+    morning: 'Good morning.', afternoon: 'Good afternoon.', evening: 'Good evening.', people: 'Who’s home',
+    allDetails: 'View details', floorplan: 'Floorplan', noEvents: 'No upcoming events', actionFailed: 'Action failed. Please try again.',
+    cardLoadError: 'Card could not be loaded. Reload the dashboard.',
+    states: { on: 'On', off: 'Off', home: 'Home', not_home: 'Away', docked: 'At the dock', cleaning: 'Cleaning', returning: 'Returning home', paused: 'Paused', idle: 'Ready' },
     vacuum: 'Vacuum', mop: 'Mop', room: 'Room', dewPoint: 'Dew point',
   },
   de: {
@@ -15,6 +20,11 @@ export const translations = {
     system: 'Systemprüfung', expert: 'Experte', calendar: 'Kalender', lights: 'Licht',
     temperature: 'Temperatur', humidity: 'Luftfeuchtigkeit', history: 'Verlauf',
     offline: 'Offline', battery: 'Batterie', healthy: 'Alle überwachten Geräte sind in Ordnung.',
+    systemShort: 'System', more: 'Mehr', navigation: 'Navigation', live: 'Mit deinem Zuhause verbunden', yourSpace: 'Dein Zuhause. Dein Rückzugsort.',
+    morning: 'Guten Morgen.', afternoon: 'Guten Tag.', evening: 'Guten Abend.', people: 'Wer ist zuhause',
+    allDetails: 'Details ansehen', floorplan: 'Grundriss', noEvents: 'Keine anstehenden Termine', actionFailed: 'Aktion fehlgeschlagen. Bitte erneut versuchen.',
+    cardLoadError: 'Karte konnte nicht geladen werden. Bitte Dashboard neu laden.',
+    states: { on: 'An', off: 'Aus', home: 'Zuhause', not_home: 'Unterwegs', docked: 'An der Station', cleaning: 'Reinigung läuft', returning: 'Fährt zur Station', paused: 'Pausiert', idle: 'Bereit' },
     vacuum: 'Saugen', mop: 'Wischen', room: 'Raum', dewPoint: 'Taupunkt',
   },
 };

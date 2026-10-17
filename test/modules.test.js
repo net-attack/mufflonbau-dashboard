@@ -18,8 +18,8 @@ function cardsIn(value) {
 test('generates connected feature views with explicit types and localized room names', () => {
   const before = JSON.stringify(fixture);
   const result = generateDashboard(fixture, { states: {} });
-  assert.deepEqual(result.views.map(view => view.path), ['home', 'rooms', 'room-living', 'climate', 'cleaning', 'system', 'expert']);
-  assert.ok(result.views.every(view => view.type === 'masonry'));
+  assert.deepEqual(result.views.map(view => view.path), ['home', 'rooms', 'room-living', 'climate', 'cleaning', 'calendar', 'system', 'expert']);
+  assert.ok(result.views.every(view => view.type === 'panel'));
   assert.equal(result.views.find(view => view.path === 'room-living').title, 'Living room');
   const german = generateDashboard({ ...fixture, language: 'de' }, { states: {} });
   assert.equal(german.views.find(view => view.path === 'room-living').title, 'Wohnzimmer');

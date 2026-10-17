@@ -9,12 +9,15 @@ that need to change without regenerating the strategy.
 | `src/core/config.js` | Normalize optional fields, validate nested paths, collect referenced IDs |
 | `src/core/i18n.js` | English/German strings and profile/config language selection |
 | `src/core/state.js` | Pure numeric, availability, warning, and appearance rules |
-| `src/core/cards.js` | Small factories for native cards and explicit masonry views |
-| `src/modules/home.js` | Home summary, favorites, native weather/calendar/presence, navigation |
+| `src/core/cards.js` | Small factories for native cards and view definitions |
+| `src/modules/home.js` | Custom home composition: hero, presence, room cards, light switches, cleaning |
 | `src/modules/rooms.js` | Room overview/subviews, climate summary and history |
+| `src/modules/calendar.js` | Native weekly calendar in a dedicated view |
 | `src/modules/cleaning.js` | Native vacuum/map cards and explicit input_button actions |
 | `src/modules/system.js` | Live warnings, monitored entities, expert inventory |
-| `src/cards/live-card.js` | Header clock, room readings, schematic floorplan, warning display |
+| `src/cards/live-card.js` | Branded live cards, state displays, and light/switch controls |
+| `src/cards/shell.js` | Full-width panel, desktop/mobile navigation, and native card hosting |
+| `src/design/` | Shared color tokens, DOM/icon factories, and navigation helpers |
 | `src/strategy.js` | Compose enabled feature views from a single configuration |
 | `src/index.js` | Idempotent custom element and HA strategy registration |
 | `scripts/build.mjs` | Deterministic single-file HACS output |
@@ -22,8 +25,9 @@ that need to change without regenerating the strategy.
 ## Data flow
 
 The strategy normalizes the configuration, resolves the language, and supplies
-`{config, hass, language, text}` to feature modules. Modules return native HA card
-configurations. Every generated card and view has an explicit `type`.
+`{config, hass, language, text}` to feature modules. Modules return card configurations. The strategy wraps each view in one custom
+shell card and uses HA panel views, avoiding the native masonry column layout.
+Every generated card and view has an explicit `type`.
 No entity IDs, person names, battery limits, or room coordinates are embedded in
 source code. Installation data belongs in the strategy configuration.
 
@@ -33,6 +37,9 @@ card also receives `hass`; it rerenders when one of its referenced state objects
 the locale, or the theme changes. The header has a 30-second clock timer that is
 cleared when disconnected. Entity detail requests use the HA `hass-more-info`
 event; floorplan links use HA navigation and preserve normal modified link clicks.
+The shell hosts native detail cards via `window.loadCardHelpers()` and propagates
+`hass`. All cards inherit the same semantic color tokens and HA card variables.
+It does not modify global themes or reach into HA card shadow roots.
 Text and SVG nodes are built with DOM APIs, not interpolated HTML from entity
 attributes or configuration labels.
 
@@ -70,6 +77,8 @@ HACS receives one file and does not need to resolve source-module downloads.
 
 No backend integration, persisted credentials, helper creation, auto-discovery,
 or service execution during generation. Native cards provide device actions,
-availability, history, and state translations. The custom live card provides only
-presentation, navigation, and entity detail requests. The existing minimal
+availability, history, and state translations. The custom live card provides
+presentation, navigation, entity detail requests, and explicit light/switch
+toggles using HA services. Controls are disabled for missing/unavailable entities;
+action failures are displayed instead of assuming success. The existing minimal
 `entities` configuration remains supported.

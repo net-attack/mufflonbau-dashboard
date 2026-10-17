@@ -10,7 +10,7 @@ export function navigation(path, name, icon) {
   return { type: 'button', name, icon, tap_action: { action: 'navigate', navigation_path: path } };
 }
 export function view(path, title, icon, cards, extra = {}) {
-  return { type: 'masonry', path, title, icon, cards, ...extra };
+  return { type: 'panel', path, title, icon, cards, ...extra };
 }
 export function liveCard(mode, config, language) {
   return { type: 'custom:mufflonbau-live', mode, language, ...config };

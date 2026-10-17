@@ -7,8 +7,8 @@ and duplicated installation-specific entity lookups into the new source.
 
 | Previous behavior | Replacement |
 | --- | --- |
-| Header clock, date, weather, calendar summary | Live header and native weather/calendar cards |
-| Presence tiles | Native entity cards configured through `people` |
+| Header clock, date, weather, calendar summary | Designed hero with weather/event summary and a dedicated weekly calendar view |
+| Presence tiles | Custom presence cards configured through `people` |
 | Five room climate summaries | Shared room definitions and live climate cards |
 | Light groups and individual room devices | Room `lights` and `entities`, using native tiles |
 | SVG room click targets and live readings | Configurable schematic floorplan and room subviews |
@@ -20,7 +20,7 @@ and duplicated installation-specific entity lookups into the new source.
 | Climate placeholder | Per-room live values, native sensor details, and 24-hour history |
 | Expert placeholder | Deduplicated inventory of configured entity IDs |
 | Presence-based ambient/night palette | Configurable shared appearance rule |
-| Floating popup navigation | Native tabs and home navigation buttons |
+| Floating popup navigation | Desktop sidebar and compact mobile bottom navigation |
 | Kiosk header hiding | Optional pass-through to the separately installed Kiosk Mode plugin |
 
 The floorplan is a schematic built from room rectangles and live overlays. Room

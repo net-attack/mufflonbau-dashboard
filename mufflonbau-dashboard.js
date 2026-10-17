@@ -56,7 +56,7 @@ class MufflonbauDashboardStrategy extends HTMLElement {
     }
     return {
       title: config.title || "Mufflonbau",
-      views: [{ title: text.home, path: "home", icon: "mdi:home", cards }],
+      views: [{ type: "masonry", title: text.home, path: "home", icon: "mdi:home", cards }],
     };
   }
 }

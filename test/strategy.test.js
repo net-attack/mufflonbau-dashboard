@@ -15,6 +15,7 @@ test("generates an empty dashboard without installation-specific entities", asyn
   const result = await Strategy.generate({}, { states: {} });
   assert.equal(result.title, "Mufflonbau");
   assert.equal(result.views[0].path, "home");
+  assert.equal(result.views[0].type, "masonry");
   assert.match(result.views[0].cards[1].content, /No available/);
 });
 

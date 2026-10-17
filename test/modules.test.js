@@ -64,6 +64,13 @@ test('cleaning buttons target exactly the configured helper and do not invent ro
   assert.equal(result.views.find(item => item.path === 'calendar').cards[0].full_view, true);
   assert.equal(result.views.find(item => item.path === 'calendar').fullView, true);
 });
+test('CleanGenius keeps explicit per-room helpers and scripts without inferring Dreame room IDs', () => {
+  const room = { id: 'living', name: 'Living room', cleaning: { vacuum: 'input_button.vacuum_living', clean_genius: 'script.clean_genius_living' } };
+  const config = normalizeConfig({ rooms: [room] });
+  assert.deepEqual(config.rooms[0].cleaning, room.cleaning);
+  assert.ok(collectEntities(config).includes('script.clean_genius_living'));
+  assert.throws(() => normalizeConfig({ rooms: [{ ...room, cleaning: { clean_genius: 'select.robot_mode' } }] }), /input_button or script/);
+});
 test('expert entity collection is complete and deduplicated', () => {
   const config = normalizeConfig({ ...fixture, expert_entities: ['sensor.temperature', 'sensor.extra'] });
   const ids = collectEntities(config);

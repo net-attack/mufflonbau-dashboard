@@ -4,6 +4,7 @@ import { appearanceMode, isOffline, monitorWarnings, numericState, stateProblem 
 
 import { element, svgElement, icon, iconPath, navigateLink, roomIcon } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
+import { renderInteractiveFloorplan } from './floorplan.js';
 export class MufflonbauLiveCard extends HTMLElement {
   constructor() {
     super();
@@ -14,6 +15,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     this._config = config;
     this._watched = [...new Set([
       config.weather, ...(config.calendars ?? []), ...(config.entities ?? []), ...(config.people ?? []),
+      ...(config.objects ?? []).map(item => item.entity),
       ...Object.values(config.cleaning ?? {}), ...(config.monitors ?? []).map(item => item.entity),
       ...(config.rooms ?? []).flatMap(room => [room.temperature, room.humidity, room.dew_point, ...(room.lights ?? []), ...(room.objects ?? []).map(item => item.entity)]),
       'sun.sun',
@@ -56,6 +58,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     const text = translations[language];
     const focusedEntity = this.shadowRoot.activeElement?.dataset?.entity;
     const focusedRoom = this.shadowRoot.activeElement?.getAttribute('data-room');
+    const focusedMarker = this.shadowRoot.activeElement?.getAttribute('data-marker');
     const style = element('style', liveStyles);
     const card = element('ha-card');
     const mode = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
@@ -74,6 +77,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     this.shadowRoot.replaceChildren(style, card);
     if (focusedEntity) [...this.shadowRoot.querySelectorAll('button')].find(button => button.dataset.entity === focusedEntity)?.focus();
     if (focusedRoom) [...this.shadowRoot.querySelectorAll('a')].find(link => link.getAttribute('data-room') === focusedRoom)?.focus();
+    if (focusedMarker) [...this.shadowRoot.querySelectorAll('[data-marker]')].find(link => link.getAttribute('data-marker') === focusedMarker)?.focus();
   }
   _section(card, title, label) {
     const head = element('div', undefined, 'section-head');
@@ -327,18 +331,20 @@ export class MufflonbauLiveCard extends HTMLElement {
   }
   _floorplan(card, text) {
     this._section(card, text.rooms, text.floorplan);
+    if (this._config.drawing?.length || this._config.objects?.length) { renderInteractiveFloorplan(this, card, text); return; }
     const rooms = this._config.rooms ?? [];
     const positions = rooms.map((room, index) => room.position ?? { x: (index % 3) * 280, y: Math.floor(index / 3) * 180, width: 260, height: 160 });
     const polygons = positions.map(position => position.points ? [position.points] : position.parts ?? [[
       [position.x, position.y], [position.x + position.width, position.y],
       [position.x + position.width, position.y + position.height], [position.x, position.y + position.height],
     ]]);
-    const allPoints = polygons.flat(2);
+    const allPoints = [...polygons.flat(2), ...(this._config.walls ?? []).flat()];
     const minX = Math.min(0, ...allPoints.map(point => point[0]));
     const minY = Math.min(0, ...allPoints.map(point => point[1]));
     const width = Math.max(1, ...allPoints.map(point => point[0])) - minX;
     const height = Math.max(1, ...allPoints.map(point => point[1])) - minY;
-    const svg = svgElement('svg', { viewBox: `${minX - 3} ${minY - 3} ${width + 6} ${height + 6}`, role: 'group', class: 'floor-map', 'aria-label': text.rooms });
+    const svg = svgElement('svg', { viewBox: `${minX - 6} ${minY - 6} ${width + 12} ${height + 12}`, role: 'group', class: 'floor-map', 'aria-label': text.rooms });
+    svg.style.setProperty('--mb-map-ratio', (width + 12) / (height + 12));
     for (const wall of this._config.walls ?? []) {
       svg.append(svgElement('polyline', { points: wall.map(point => point.join(',')).join(' '), class: 'floor-wall' }));
     }
@@ -354,7 +360,7 @@ export class MufflonbauLiveCard extends HTMLElement {
       for (const polygon of polygons[index]) {
         link.append(svgElement('polygon', { points: polygon.map(point => point.join(',')).join(' '), class: `${lit ? 'lit' : ''} ${offline ? 'offline' : ''}` }));
       }
-      const textAnchor = polygons[index].length > 1 ? 'middle' : 'start';
+      const textAnchor = 'middle';
       link.append(svgElement('text', { x: center[0], y: center[1] - 5, class: 'room-name', 'text-anchor': textAnchor }, localized(room.name, this._language)));
       if (room.temperature) link.append(svgElement('text', { x: center[0], y: center[1] + 18, class: 'room-value', 'text-anchor': textAnchor }, this._value(room.temperature, '°C')));
       if (room.humidity) link.append(svgElement('text', { x: center[0], y: center[1] + 38, class: 'room-value', 'text-anchor': textAnchor }, this._value(room.humidity, '%')));

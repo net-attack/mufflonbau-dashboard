@@ -59,7 +59,7 @@ export const liveStyles = `
   .switch[aria-checked=true] { background:var(--mb-accent); } .switch[aria-checked=true]:after { transform:translateX(14px); }
   .robot { display:flex; align-items:center; gap:16px; padding:8px 0 18px; } .robot .icon-disc { width:62px; height:62px; border-radius:50%; } .robot strong { font-size:13px; line-height:1.5; }
   .link { display:flex; align-items:center; justify-content:space-between; padding-top:15px; border-top:1px solid var(--mb-line); font-size:12px; color:var(--mb-accent); text-decoration:none; }
-  .floor-map { display:block; width:min(100%,calc((100dvh - 250px) * .8275)); height:auto; max-height:calc(100dvh - 250px); margin:12px auto 0; } .floor-map text { fill:var(--mb-ink); pointer-events:none; font-size:15px; }
+  .floor-map { display:block; width:min(100%,calc((100dvh - 250px) * var(--mb-map-ratio,1))); height:auto; max-height:calc(100dvh - 250px); margin:12px auto 0; } .floor-map text { fill:var(--mb-ink); pointer-events:none; font-size:15px; }
   .floor-map polygon { stroke:var(--mb-line); stroke-width:4; stroke-linejoin:round; fill:var(--mb-soft); vector-effect:non-scaling-stroke; } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
   .floor-map a { cursor:pointer; } .floor-map a:focus-visible polygon { stroke:var(--mb-accent); stroke-width:7; }
   .floor-map .map-marker { fill:var(--mb-surface); stroke:var(--mb-line); stroke-width:2; vector-effect:non-scaling-stroke; transition:fill .15s,stroke .15s; }
@@ -67,6 +67,25 @@ export const liveStyles = `
   .floor-map .map-marker-icon { fill:none; stroke:var(--mb-accent); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
   .floor-map a[data-marker]:hover .map-marker,.floor-map a[data-marker]:focus-visible .map-marker { stroke:var(--mb-accent); stroke-width:3; }
   .floor-map .floor-wall { fill:none; stroke:var(--mb-ink); stroke-width:8; stroke-linecap:square; stroke-linejoin:miter; opacity:.65; vector-effect:non-scaling-stroke; pointer-events:none; }
+  .interactive-plan { --mb-map-floor:#f8f4e8; --mb-map-furniture:#c9d1be; --mb-map-cushion:#e5e8dc; --mb-map-wood:#d6c59d; --mb-map-water:#b7d3d5; --mb-map-light:#edcf83; --mb-map-radiator:#dfc19a; }
+  .interactive-plan.night { --mb-map-floor:#25352f; --mb-map-furniture:#516455; --mb-map-cushion:#738471; --mb-map-wood:#827454; --mb-map-water:#56828a; --mb-map-light:#bd9951; --mb-map-radiator:#967c59; }
+  .map-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .map-toolbar select { flex:1; min-width:100px; max-width:300px; min-height:44px; font:inherit; font-size:13px; border:1px solid var(--mb-line); border-radius:12px; padding:8px; background:var(--mb-surface); color:var(--mb-ink); }
+  .map-toolbar button,.map-device-detail button { min-width:44px; min-height:44px; padding:8px 12px; border:1px solid var(--mb-line); border-radius:12px; background:var(--mb-soft); }
+  .map-viewport { overflow:auto; max-height:max(200px,calc(100dvh - 290px)); overscroll-behavior:contain; }
+  .furnished-map { width:min(100%,calc(max(150px,100dvh - 330px) * var(--mb-map-ratio,1))); height:auto; max-height:max(150px,calc(100dvh - 330px)); min-height:0; margin:12px auto; aspect-ratio:var(--mb-map-ratio); }
+  .furnished-map polygon { fill:var(--mb-map-floor); stroke:var(--mb-accent); stroke-width:2; vector-effect:none; }
+  .furnished-map polygon.lit { fill:var(--mb-map-floor); }
+  .furnished-map .map-drawing { fill:none; stroke:var(--mb-accent); stroke-width:1.5; stroke-linejoin:round; }
+  .furnished-map .map-room-label rect { fill:var(--mb-map-floor); opacity:.94; }
+  .furnished-map .map-room-label .room-name { font-size:13px; font-weight:600; }
+  .furnished-map .map-room-label .room-value { font-size:12px; }
+  .furnished-map .map-marker { stroke-width:1.5; vector-effect:none; }
+  .map-device-detail { padding:12px; margin-top:12px; border:1px solid var(--mb-line); border-radius:12px; font-size:13px; }
+  .map-device-detail button { margin:10px 8px 0 0; }
+  .map-device-list { margin-top:12px; font-size:13px; }
+  .map-device-list summary { cursor:pointer; min-height:44px; padding:12px 0; }
+  .map-device-list > button { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:44px; padding:10px 4px; border-bottom:1px solid var(--mb-line); }
   .entity-id { font-family:ui-monospace,monospace; font-size:10px; overflow-wrap:anywhere; opacity:.8; }
   .room-board .value.status-value { display:flex; align-items:center; min-height:32px; font-size:12px; letter-spacing:0; line-height:1.6; }
   .room-board .value.status-value svg { width:27px; height:27px; color:#a75f49; }

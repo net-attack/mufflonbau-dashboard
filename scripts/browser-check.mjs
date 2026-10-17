@@ -4,6 +4,10 @@ import { createServer } from 'node:http';
 import { readFile, readdir, mkdir } from 'node:fs/promises';
 import { previewConfig, previewHass } from './preview-fixture.mjs';
 import { translations } from '../src/core/i18n.js';
+import { renderViews } from './render-views.mjs';
+import { checkCleaning } from './cleaning-check.mjs';
+import { checkFloorplan } from './floorplan-check.mjs';
+import { galaxyTabA11 } from './galaxy-tab-a11.mjs';
 import { load, YAML11_SCHEMA } from 'js-yaml';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 await mkdir(new URL('../test-results/', import.meta.url), { recursive: true });
@@ -41,7 +45,7 @@ try {
       { mode: 'header', title: 'Mufflonbau' },
       { mode: 'climate', rooms: [room] },
       { mode: 'warnings', monitors: [{ entity: 'sensor.battery', battery_below: 20 }] },
-      { mode: 'floorplan', rooms: [{ ...room, objects: [{ id: 'lamp', icon: 'light', name: { en: 'Floor lamp', de: 'Stehlampe' }, position: { x: 0.8, y: 0.75 }, entity: 'light.room', action: 'toggle' }] }] },
+      { mode: 'floorplan', walls: [[[260, 0], [360, 0], [360, 210]]], rooms: [{ ...room, objects: [{ id: 'lamp', icon: 'light', name: { en: 'Floor lamp', de: 'Stehlampe' }, position: { x: 0.8, y: 0.75 }, entity: 'light.room', action: 'toggle' }] }] },
     ];
     for (const config of configs) {
       const card = document.createElement('mufflonbau-live');
@@ -78,6 +82,13 @@ try {
   assert.deepEqual(await page.evaluate(() => window.floorplanCalls[0]), ['homeassistant', 'toggle', {}, { entity_id: 'light.room' }]);
   await page.locator('#floorplan a[data-room]').click();
   assert.match(page.url(), /\/dashboard-test\/room-living$/);
+  const mapGeometry = await page.locator('#floorplan .floor-map').evaluate(svg => {
+    const box = svg.viewBox.baseVal;
+    const label = svg.querySelector('.room-name').getBBox();
+    return { right: box.x + box.width, bottom: box.y + box.height, labelLeft: label.x, labelRight: label.x + label.width };
+  });
+  assert.ok(mapGeometry.right > 360 && mapGeometry.bottom > 210, 'Wall outlines outside rooms must stay within the SVG viewBox');
+  assert.ok(mapGeometry.labelLeft >= 0 && mapGeometry.labelRight <= 260, 'Room labels must remain inside their room');
   await page.evaluate(() => {
     window.sampleHass = { ...window.sampleHass, locale: { language: 'en' }, themes: { darkMode: true } };
     document.querySelectorAll('mufflonbau-live').forEach(card => { card.hass = window.sampleHass; });
@@ -122,6 +133,8 @@ try {
   });
   assert.equal(await diagnostics.getByRole('switch', { name: 'Panel', exact: true }).getAttribute('aria-checked'), 'true');
   assert.equal(await diagnostics.getByRole('switch', { name: 'Recovered', exact: true }).isEnabled(), true);
+  await checkCleaning(page, previewConfig, previewHass);
+  await checkFloorplan(page);
   // Render the actual YAML examples through the shipped shell. A minimal native
   // card double checks the helper boundary and inherited theme variables.
   await page.evaluate(() => {
@@ -189,16 +202,10 @@ try {
   assert.notEqual(portraitOverflow, 'hidden', 'Galaxy Tab portrait home view must allow scrolling');
   await page.screenshot({ path: 'test-results/dashboard-ambient-tablet-portrait.png', fullPage: true });
 
-  // The Galaxy Tab A11 panel is 1340x800. Android display scaling makes the
-  // browser's CSS viewport smaller, so exercise both orientations with touch,
-  // a coarse pointer, and a 1.5 device pixel ratio instead of checking the raw
-  // panel dimensions only.
+  // Additional smaller CSS viewport coverage, not a measured Android setting.
   galaxyContext = await browser.newContext({
+    ...galaxyTabA11,
     viewport: { width: 533, height: 893 },
-    screen: { width: 800, height: 1340 },
-    deviceScaleFactor: 1.5,
-    isMobile: true,
-    hasTouch: true,
   });
   const galaxyPage = await galaxyContext.newPage();
   galaxyPage.on('pageerror', error => errors.push(`Galaxy Tab A11: ${error.message}`));
@@ -275,6 +282,8 @@ try {
     assert.ok(layout.slots.every(slot => slot.width > 0 && slot.height > 0 && slot.left >= -1 && slot.right <= viewport.width + 1),
       `${viewport.name}: every dashboard card must have visible, non-overflowing geometry: ${JSON.stringify(layout.slots)}`);
     assert.deepEqual(layout.summaries.map(summary => summary.mode), ['room-summary', 'presence-summary', 'cleaning', 'warnings']);
+    if (viewport.name === 'portrait') assert.ok(layout.summaries.every(summary => Math.abs(summary.width - layout.summaries[0].width) <= 1),
+      `Portrait home buttons must all have the same full width: ${JSON.stringify(layout.summaries)}`);
     assert.ok(layout.summaries.every(summary => summary.width >= 44 && summary.height >= 44 && summary.left >= -1 && summary.right <= viewport.width + 1),
       `${viewport.name}: home summaries must remain visible and touchable: ${JSON.stringify(layout.summaries)}`);
     assert.ok(layout.summaries.every(summary => summary.cardHeight <= 80 && summary.headings === 0),
@@ -480,6 +489,7 @@ try {
   assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /Network devices · 1\/2/);
   assert.match(await page.locator('#dashboard mufflonbau-admin .panel').innerText(), /State unknown/);
   assert.ok(!await page.locator('#dashboard mufflonbau-admin .panel').innerText().then(value => value.includes('Offline')));
+  await renderViews(page, previewConfig, previewHass);
   assert.deepEqual(errors, []);
   console.log('Browser checks passed: rendering, live updates, rotating greetings, localization, warnings, navigation, mobile layout, safe labels, clock cleanup, actual YAML examples, complete dashboard layouts, palette contrast, theme consistency, device controls, action errors, admin drill-down, Recorder ranges/retry/gaps, and Galaxy Tab A11 touch, rotation, scrolling, navigation, and viewport geometry.');
 } catch (error) {

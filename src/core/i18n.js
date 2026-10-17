@@ -1,5 +1,6 @@
 export const translations = {
   en: {
+    allRooms: 'All rooms', zoomIn: 'Zoom in', zoomOut: 'Zoom out', resetMap: 'Reset zoom', mapDevices: 'Devices on the map', windowOpen: 'Window open', windowClosed: 'Window closed', turnOn: 'Turn on', turnOff: 'Turn off',
     admin: 'Admin · nerd panel',
     internet: 'Internet',
     network: 'Network',
@@ -27,9 +28,10 @@ export const translations = {
     allDetails: 'View details', floorplan: 'Floorplan', noEvents: 'No upcoming events', actionFailed: 'Action failed. Please try again.',
     cardLoadError: 'Card could not be loaded. Reload the dashboard.',
     states: { on: 'On', off: 'Off', home: 'Home', not_home: 'Away', docked: 'At the dock', cleaning: 'Cleaning', returning: 'Returning home', paused: 'Paused', idle: 'Ready' },
-    vacuum: 'Vacuum', mop: 'Mop', room: 'Room', dewPoint: 'Dew point',
+    vacuum: 'Vacuum', mop: 'Mop', cleanGenius: 'CleanGenius', cleaningMode: 'Cleaning mode', chooseCleaningRoom: 'Tap a room to start the selected mode.', notConfigured: 'Not configured', room: 'Room', dewPoint: 'Dew point',
   },
   de: {
+    allRooms: 'Alle Räume', zoomIn: 'Vergrößern', zoomOut: 'Verkleinern', resetMap: 'Zoom zurücksetzen', mapDevices: 'Geräte auf der Karte', windowOpen: 'Fenster offen', windowClosed: 'Fenster geschlossen', turnOn: 'Einschalten', turnOff: 'Ausschalten',
     admin: 'Admin · Nerd-Panel',
     internet: 'Internet',
     network: 'Netzwerk',
@@ -80,7 +82,7 @@ export const translations = {
     allDetails: 'Details ansehen', floorplan: 'Grundriss', noEvents: 'Keine anstehenden Termine', actionFailed: 'Aktion fehlgeschlagen. Bitte erneut versuchen.',
     cardLoadError: 'Karte konnte nicht geladen werden. Bitte Dashboard neu laden.',
     states: { on: 'An', off: 'Aus', home: 'Zuhause', not_home: 'Unterwegs', docked: 'An der Station', cleaning: 'Reinigung läuft', returning: 'Fährt zur Station', paused: 'Pausiert', idle: 'Bereit' },
-    vacuum: 'Saugen', mop: 'Wischen', room: 'Raum', dewPoint: 'Taupunkt',
+    vacuum: 'Saugen', mop: 'Wischen', cleanGenius: 'CleanGenius', cleaningMode: 'Reinigungsmodus', chooseCleaningRoom: 'Raum antippen startet den gewählten Modus.', notConfigured: 'Noch nicht eingerichtet', room: 'Raum', dewPoint: 'Taupunkt',
   },
 };
 

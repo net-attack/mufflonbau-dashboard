@@ -1,4 +1,5 @@
 import { normalizeAdmin } from './admin.js';
+import { validateDrawing } from './floorplan.js';
 function fail(path, message) {
   throw new Error(`Mufflonbau: ${path} ${message}`);
 }
@@ -32,6 +33,8 @@ export function normalizeConfig(config) {
   }
   if (result.weather !== undefined) entity(result.weather, 'weather');
   list(result.rooms, 'rooms');
+  if (config.floorplan_drawing !== undefined) validateDrawing(config.floorplan_drawing);
+  if (config.floorplan_bounds !== undefined && (!Array.isArray(config.floorplan_bounds) || config.floorplan_bounds.length !== 4 || config.floorplan_bounds.some(n => !Number.isFinite(n)) || config.floorplan_bounds[2] <= 0 || config.floorplan_bounds[3] <= 0)) fail('floorplan_bounds', 'must contain x, y, positive width and height.');
   if (config.floorplan_walls !== undefined) {
     list(config.floorplan_walls, 'floorplan_walls');
     config.floorplan_walls.forEach((wall, wallIndex) => {
@@ -50,6 +53,10 @@ export function normalizeConfig(config) {
     }
     ids.add(room.id);
     label(room.name, `${path}.name`);
+    if (room.label_position !== undefined) {
+      object(room.label_position, `${path}.label_position`);
+      for (const key of ['x', 'y']) if (!Number.isFinite(room.label_position[key]) || room.label_position[key] < 0 || room.label_position[key] > 1) fail(`${path}.label_position.${key}`, 'must be a fraction between 0 and 1.');
+    }
     if (room.note !== undefined) label(room.note, `${path}.note`);
     if (room.icon !== undefined && typeof room.icon !== 'string') fail(`${path}.icon`, 'must be a string.');
     const normalized = { ...room, lights: room.lights ?? [], entities: room.entities ?? [] };
@@ -82,9 +89,9 @@ export function normalizeConfig(config) {
     if (room.cleaning !== undefined) {
       object(room.cleaning, `${path}.cleaning`);
       for (const [key, id] of Object.entries(room.cleaning)) {
-        if (!['vacuum', 'mop'].includes(key)) fail(`${path}.cleaning`, 'only supports vacuum and mop.');
+        if (!['vacuum', 'mop', 'clean_genius'].includes(key)) fail(`${path}.cleaning`, 'only supports vacuum, mop, and clean_genius.');
         entity(id, `${path}.cleaning.${key}`);
-        if (!id.startsWith('input_button.')) fail(`${path}.cleaning.${key}`, 'must reference an input_button.');
+        if (!/^(input_button|script)\./.test(id)) fail(`${path}.cleaning.${key}`, 'must reference an input_button or script.');
       }
     }
     if (room.position !== undefined) {
@@ -119,6 +126,25 @@ export function normalizeConfig(config) {
       }
     }
     return normalized;
+  });
+  result.floorplan_objects = config.floorplan_objects ?? [];
+  list(result.floorplan_objects, 'floorplan_objects');
+  const markerIds = new Set();
+  result.floorplan_objects.forEach((item, index) => {
+    const path = `floorplan_objects[${index}]`;
+    object(item, path);
+    if (typeof item.id !== 'string' || !/^[a-z][a-z0-9_-]*$/.test(item.id) || markerIds.has(item.id)) fail(`${path}.id`, 'must be a unique lowercase slug.');
+    markerIds.add(item.id);
+    if (!ids.has(item.room)) fail(`${path}.room`, 'must reference a configured room.');
+    label(item.name, `${path}.name`);
+    if (!['light', 'climate', 'cleaning', 'office', 'home', 'rooms', 'drop'].includes(item.icon)) fail(`${path}.icon`, 'must be a supported device icon.');
+    object(item.position, `${path}.position`);
+    for (const key of ['x', 'y']) if (!Number.isFinite(item.position[key])) fail(`${path}.position.${key}`, 'must be a finite map coordinate.');
+    if (item.entity !== undefined) entity(item.entity, `${path}.entity`);
+    if (item.action !== undefined && !['toggle', 'more-info'].includes(item.action)) fail(`${path}.action`, 'must be toggle or more-info.');
+    if (item.action === 'toggle' && (!item.entity || !/^(light|switch)\./.test(item.entity))) fail(`${path}.action`, 'toggle requires a light or switch entity.');
+    if (item.kind !== undefined && !['window', 'temperature'].includes(item.kind)) fail(`${path}.kind`, 'must be window or temperature.');
+    if (item.kind === 'window' && item.entity && !item.entity.startsWith('binary_sensor.')) fail(`${path}.entity`, 'a window contact requires a binary_sensor.');
   });
   list(result.monitors, 'monitors');
   result.monitors.forEach((monitor, index) => {
@@ -163,6 +189,7 @@ export function collectEntities(config) {
     ...config.rooms.flatMap(room => [room.temperature, room.humidity, room.dew_point,
       ...room.lights, ...(room.member_lights ?? []), ...room.entities, ...Object.values(room.cleaning ?? {})]),
     ...config.rooms.flatMap(room => (room.objects ?? []).map(item => item.entity)),
+    ...(config.floorplan_objects ?? []).map(item => item.entity),
     ...Object.values(config.cleaning ?? {}), config.appearance?.night_person, config.appearance?.ambient_person,
   ].filter(Boolean))];
 }

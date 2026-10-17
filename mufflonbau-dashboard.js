@@ -144,6 +144,15 @@ ${trees}${houses}
   // src/core/i18n.js
   var translations = {
     en: {
+      allRooms: "All rooms",
+      zoomIn: "Zoom in",
+      zoomOut: "Zoom out",
+      resetMap: "Reset zoom",
+      mapDevices: "Devices on the map",
+      windowOpen: "Window open",
+      windowClosed: "Window closed",
+      turnOn: "Turn on",
+      turnOff: "Turn off",
       admin: "Admin · nerd panel",
       internet: "Internet",
       network: "Network",
@@ -213,10 +222,23 @@ ${trees}${houses}
       states: { on: "On", off: "Off", home: "Home", not_home: "Away", docked: "At the dock", cleaning: "Cleaning", returning: "Returning home", paused: "Paused", idle: "Ready" },
       vacuum: "Vacuum",
       mop: "Mop",
+      cleanGenius: "CleanGenius",
+      cleaningMode: "Cleaning mode",
+      chooseCleaningRoom: "Tap a room to start the selected mode.",
+      notConfigured: "Not configured",
       room: "Room",
       dewPoint: "Dew point"
     },
     de: {
+      allRooms: "Alle Räume",
+      zoomIn: "Vergrößern",
+      zoomOut: "Verkleinern",
+      resetMap: "Zoom zurücksetzen",
+      mapDevices: "Geräte auf der Karte",
+      windowOpen: "Fenster offen",
+      windowClosed: "Fenster geschlossen",
+      turnOn: "Einschalten",
+      turnOff: "Ausschalten",
       admin: "Admin · Nerd-Panel",
       internet: "Internet",
       network: "Netzwerk",
@@ -388,6 +410,10 @@ ${trees}${houses}
       states: { on: "An", off: "Aus", home: "Zuhause", not_home: "Unterwegs", docked: "An der Station", cleaning: "Reinigung läuft", returning: "Fährt zur Station", paused: "Pausiert", idle: "Bereit" },
       vacuum: "Saugen",
       mop: "Wischen",
+      cleanGenius: "CleanGenius",
+      cleaningMode: "Reinigungsmodus",
+      chooseCleaningRoom: "Raum antippen startet den gewählten Modus.",
+      notConfigured: "Noch nicht eingerichtet",
       room: "Raum",
       dewPoint: "Taupunkt"
     }
@@ -806,19 +832,19 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
   // src/cards/cleaning.js
   var styles3 = `
 :host{display:block;min-width:0;height:100%;color:var(--mb-ink);font-family:Inter,'Avenir Next',system-ui,sans-serif}*{box-sizing:border-box}
-.panel{height:100%;padding:18px 20px;background:var(--mb-surface);border:1px solid var(--mb-line);border-radius:24px;backdrop-filter:blur(18px);display:flex;flex-direction:column;gap:14px}
+.panel{min-height:100%;padding:18px 20px;background:var(--mb-surface);border:1px solid var(--mb-line);border-radius:24px;backdrop-filter:blur(18px);display:flex;flex-direction:column;gap:14px}
 header{display:flex;align-items:center;gap:12px;min-width:0}.robot-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:14px;background:var(--mb-soft);color:var(--mb-accent)}
 h2{font-size:18px;margin:0}header small,.meta{font-size:11px;color:var(--mb-muted);line-height:1.5}header .state{margin-left:auto;text-align:right;max-width:40%;overflow-wrap:anywhere}
-.actions{display:flex;gap:8px}.command{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 10px;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:14px;color:var(--mb-ink);font:inherit;font-size:12px;cursor:pointer}.command svg{width:18px;height:18px;color:var(--mb-accent)}
-.rooms{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-content:start;min-height:0}.room{min-height:52px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:13px;color:var(--mb-ink);font:inherit;cursor:pointer}.room svg{width:18px;height:18px;color:var(--mb-accent);flex:none}.room span{font-size:11px;line-height:1.3;overflow-wrap:anywhere}
+.actions,.modes{display:flex;gap:8px}.command{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 10px;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:14px;color:var(--mb-ink);font:inherit;font-size:12px;cursor:pointer}.command svg{width:18px;height:18px;color:var(--mb-accent)}
+.command[aria-pressed=true]{background:var(--mb-active);border-color:var(--mb-accent);color:var(--mb-accent)}.room-copy{min-width:0}.room-copy small{display:block;font-size:10px;color:var(--mb-muted);margin-top:3px}.rooms-label{margin:0}
+.rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;align-content:start;min-height:0}.room{min-height:52px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:13px;color:var(--mb-ink);font:inherit;cursor:pointer}.room svg{width:18px;height:18px;color:var(--mb-accent);flex:none}.room span{font-size:11px;line-height:1.3;overflow-wrap:anywhere}
 button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid var(--mb-accent);outline-offset:2px}
-dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb-line);border-radius:22px;background:var(--mb-surface);color:var(--mb-ink);box-shadow:0 24px 80px #0005}dialog::backdrop{background:#10182080;backdrop-filter:blur(5px)}dialog h3{margin:0 0 8px;font-size:18px}dialog p{margin:0 0 18px;color:var(--mb-muted);font-size:12px}.dialog-actions{display:grid;gap:8px}.dialog-close{width:100%;min-height:44px;margin-top:12px;background:transparent;border:1px solid var(--mb-line);border-radius:12px;color:var(--mb-muted);font:inherit;cursor:pointer}
 .feedback{min-height:16px;margin:0;color:var(--mb-muted);font-size:11px}.feedback[role=alert]{color:#a45440}
 @media(max-width:900px){.panel{padding:14px;gap:10px}.rooms{gap:6px}.room{min-height:48px;padding:7px}.room span{font-size:10px}}
-@media(max-width:560px){.rooms{grid-template-columns:repeat(2,minmax(0,1fr))}.actions .command{font-size:10px}}
+@media(max-width:560px){.rooms{grid-template-columns:repeat(2,minmax(0,1fr))}.actions .command,.modes .command{font-size:10px}}
 `;
   var commands = [["start_pause", "play", "startPause"], ["stop", "stop", "stop"], ["return_home", "home", "returnHome"]];
-  var roomCommands = [["vacuum", "cleaning", "vacuum"], ["mop", "drop", "mop"]];
+  var roomCommands = [["vacuum", "cleaning", "vacuum"], ["mop", "drop", "mop"], ["clean_genius", "sun", "cleanGenius"]];
   var MufflonbauCleaning = class extends HTMLElement {
     constructor() {
       super();
@@ -826,28 +852,38 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
     }
     setConfig(config) {
       this._config = config;
+      this._mode = void 0;
       this._render();
     }
     set hass(value) {
       const previous = this._hass;
       this._hass = value;
-      const ids = [this._config?.cleaning?.entity, this._config?.cleaning?.battery, this._config?.cleaning?.current_room].filter(Boolean);
+      const ids = [
+        this._config?.cleaning?.entity,
+        this._config?.cleaning?.battery,
+        this._config?.cleaning?.current_room,
+        ...(this._config?.rooms ?? []).flatMap((room) => Object.values(room.cleaning ?? {}))
+      ].filter(Boolean);
       if (!previous || ids.some((id) => previous.states[id] !== value.states[id]) || previous.states["sun.sun"] !== value.states["sun.sun"] || previous.themes !== value.themes) this._render();
     }
     getCardSize() {
       return 5;
     }
-    async _service(domain, service, entity2, button, feedback, text) {
-      button.disabled = true;
-      feedback.removeAttribute("role");
-      feedback.textContent = "";
+    async _service(domain, service, entity2, text) {
+      if (this._busy) return;
+      const active = this.shadowRoot.activeElement;
+      const focus = active?.dataset.room ? `[data-room="${active.dataset.room}"]` : active?.dataset.command ? `[data-command="${active.dataset.command}"]` : void 0;
+      this._busy = true;
+      this._error = "";
+      this._render();
       try {
         await this._hass.callService(domain, service, {}, { entity_id: entity2 });
       } catch {
-        feedback.setAttribute("role", "alert");
-        feedback.textContent = text.actionFailed;
+        this._error = text.actionFailed;
       } finally {
-        button.disabled = false;
+        this._busy = false;
+        this._render();
+        if (focus) this.shadowRoot.querySelector(focus)?.focus();
       }
     }
     _moreInfo(id) {
@@ -877,62 +913,64 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       if (cleaning.current_room) details.push(`${text.room}: ${this._display(cleaning.current_room)}`);
       meta.textContent = details.join("   ·   ");
       if (details.length) panel.append(meta);
-      const feedback = element("p", void 0, "feedback");
+      const feedback = element("p", this._error ?? "", "feedback");
+      feedback.setAttribute("role", this._error ? "alert" : "status");
       if (cleaning.entity) {
         const controls = element("div", void 0, "actions");
         for (const [service, symbol, label2] of commands) {
           const button = element("button", void 0, "command");
           button.type = "button";
-          button.disabled = isOffline(this._hass.states[cleaning.entity]);
+          button.dataset.command = service;
+          button.disabled = this._busy || isOffline(this._hass.states[cleaning.entity]);
           button.append(icon(symbol), element("span", text[label2]));
-          button.addEventListener("click", () => this._service("vacuum", service, cleaning.entity, button, feedback, text));
+          button.addEventListener("click", () => this._service("vacuum", service, cleaning.entity, text));
           controls.append(button);
         }
         panel.append(controls);
       }
       const actionRooms = rooms.filter((room) => Object.keys(room.cleaning ?? {}).length);
       if (actionRooms.length) {
-        panel.append(element("p", text.roomActions, "meta"));
+        this._mode ??= roomCommands.find(([kind]) => actionRooms.some((room) => room.cleaning?.[kind]))?.[0];
+        const modes = element("div", void 0, "modes");
+        modes.setAttribute("role", "group");
+        modes.setAttribute("aria-label", text.cleaningMode);
+        for (const [kind, symbol, label2] of roomCommands) {
+          const button = element("button", void 0, "command");
+          button.type = "button";
+          button.dataset.mode = kind;
+          button.setAttribute("aria-pressed", String(this._mode === kind));
+          button.disabled = this._busy || !actionRooms.some((room) => room.cleaning?.[kind]);
+          if (button.disabled && !this._busy) button.title = text.notConfigured;
+          button.append(icon(symbol), element("span", text[label2]));
+          button.addEventListener("click", () => {
+            this._mode = kind;
+            this._error = "";
+            this._render();
+            this.shadowRoot.querySelector(`[data-mode="${kind}"]`)?.focus();
+          });
+          modes.append(button);
+        }
+        panel.append(element("p", text.cleaningMode, "meta rooms-label"), modes, element("p", text.chooseCleaningRoom, "meta rooms-label"));
         const roomGrid = element("div", void 0, "rooms");
         for (const room of actionRooms) {
+          const entity2 = room.cleaning?.[this._mode];
           const button = element("button", void 0, "room");
           button.type = "button";
-          button.append(icon("rooms"), element("span", localized(room.name, language)));
-          button.addEventListener("click", () => this._openRoom(room, text, feedback));
+          button.dataset.room = room.id;
+          button.disabled = this._busy || !entity2 || isOffline(this._hass.states[entity2]);
+          const label2 = roomCommands.find(([kind]) => kind === this._mode)[2];
+          const name = localized(room.name, language);
+          button.setAttribute("aria-label", `${name} · ${text[label2]}`);
+          const copy = element("span", name, "room-copy");
+          copy.append(element("small", !entity2 ? text.notConfigured : stateProblem(this._hass.states[entity2], language) ?? text[label2]));
+          button.append(icon("rooms"), copy);
+          button.addEventListener("click", () => this._service(entity2.startsWith("script.") ? "script" : "input_button", entity2.startsWith("script.") ? "turn_on" : "press", entity2, text));
           roomGrid.append(button);
         }
         panel.append(roomGrid);
       }
       panel.append(feedback);
       this.shadowRoot.replaceChildren(element("style", styles3), panel);
-    }
-    _openRoom(room, text, feedback) {
-      const dialog = element("dialog");
-      const heading = element("h3", localized(room.name, this._config.language ?? "en"));
-      dialog.append(heading, element("p", text.roomActionPrompt));
-      const actions = element("div", void 0, "dialog-actions");
-      for (const [kind, symbol, label2] of roomCommands) {
-        const entity2 = room.cleaning?.[kind];
-        if (!entity2) continue;
-        const button = element("button", void 0, "command");
-        button.type = "button";
-        button.append(icon(symbol), element("span", text[label2]));
-        button.addEventListener("click", async () => {
-          await this._service("input_button", "press", entity2, button, feedback, text);
-          if (!feedback.hasAttribute("role")) dialog.close();
-        });
-        actions.append(button);
-      }
-      const close = element("button", text.close, "dialog-close");
-      close.type = "button";
-      close.addEventListener("click", () => dialog.close());
-      dialog.append(actions, close);
-      dialog.addEventListener("click", (event) => {
-        if (event.target === dialog) dialog.close();
-      });
-      this.shadowRoot.append(dialog);
-      dialog.addEventListener("close", () => dialog.remove(), { once: true });
-      dialog.showModal();
     }
     _name(id) {
       return id ? this._hass.states[id]?.attributes?.friendly_name ?? id.split(".").at(-1).replaceAll("_", " ") : translations[this._config.language ?? "en"].vacuum;
@@ -943,6 +981,37 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       return stateProblem(state, this._config.language ?? "en") ?? `${state.state}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : unit}`;
     }
   };
+
+  // src/core/floorplan.js
+  var drawingTags = /* @__PURE__ */ new Set(["g", "path", "rect", "circle", "ellipse", "line", "polyline", "text"]);
+  var drawingAttributes = /* @__PURE__ */ new Set(["d", "x", "y", "width", "height", "cx", "cy", "r", "rx", "ry", "x1", "x2", "y1", "y2", "points", "transform", "fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "opacity", "fill-opacity", "font-size", "text-anchor"]);
+  var drawingColors = { wall: "--mb-accent", floor: "--mb-map-floor", furniture: "--mb-map-furniture", cushion: "--mb-map-cushion", wood: "--mb-map-wood", water: "--mb-map-water", light: "--mb-map-light", radiator: "--mb-map-radiator" };
+  function validateDrawing(nodes, path = "floorplan_drawing", depth = 0, budget = { left: 4e3 }) {
+    const fail2 = (message) => {
+      throw new Error(`Mufflonbau: ${path} ${message}`);
+    };
+    if (!Array.isArray(nodes) || depth > 12) fail2("must be a drawing array with at most 12 nesting levels.");
+    for (const [index, node] of nodes.entries()) {
+      if (--budget.left < 0) fail2("exceeds 4000 drawing nodes.");
+      if (!node || !drawingTags.has(node.tag)) fail2(`[${index}].tag is not a supported drawing shape.`);
+      if (node.attrs !== void 0 && (!node.attrs || typeof node.attrs !== "object" || Array.isArray(node.attrs))) fail2(`[${index}].attrs must be an object.`);
+      for (const [key, value] of Object.entries(node.attrs ?? {})) {
+        if (!drawingAttributes.has(key) || !["number", "string"].includes(typeof value) || typeof value === "number" && !Number.isFinite(value)) fail2(`[${index}].attrs.${key} is not supported.`);
+        if (["fill", "stroke"].includes(key) && value !== "none" && !Object.hasOwn(drawingColors, value)) fail2(`[${index}].attrs.${key} must use a theme color or none.`);
+      }
+      if (node.text !== void 0 && (node.tag !== "text" || typeof node.text !== "string")) fail2(`[${index}].text must belong to a text shape.`);
+      if (node.children !== void 0) validateDrawing(node.children, `${path}[${index}].children`, depth + 1, budget);
+    }
+  }
+  function appendDrawing(parent, nodes, create) {
+    for (const shape of nodes ?? []) {
+      if (!drawingTags.has(shape.tag)) continue;
+      const attrs = Object.fromEntries(Object.entries(shape.attrs ?? {}).filter(([key, value]) => drawingAttributes.has(key) && (!["fill", "stroke"].includes(key) || value === "none" || Object.hasOwn(drawingColors, value))).map(([key, value]) => [key, ["fill", "stroke"].includes(key) && drawingColors[value] ? `var(${drawingColors[value]})` : value]));
+      const node = create(shape.tag, attrs, shape.text);
+      appendDrawing(node, shape.children, create);
+      parent.append(node);
+    }
+  }
 
   // src/core/config.js
   function fail(path, message) {
@@ -985,6 +1054,8 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
     }
     if (result.weather !== void 0) entity(result.weather, "weather");
     list(result.rooms, "rooms");
+    if (config.floorplan_drawing !== void 0) validateDrawing(config.floorplan_drawing);
+    if (config.floorplan_bounds !== void 0 && (!Array.isArray(config.floorplan_bounds) || config.floorplan_bounds.length !== 4 || config.floorplan_bounds.some((n) => !Number.isFinite(n)) || config.floorplan_bounds[2] <= 0 || config.floorplan_bounds[3] <= 0)) fail("floorplan_bounds", "must contain x, y, positive width and height.");
     if (config.floorplan_walls !== void 0) {
       list(config.floorplan_walls, "floorplan_walls");
       config.floorplan_walls.forEach((wall, wallIndex) => {
@@ -1003,6 +1074,10 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       }
       ids.add(room.id);
       label(room.name, `${path}.name`);
+      if (room.label_position !== void 0) {
+        object(room.label_position, `${path}.label_position`);
+        for (const key of ["x", "y"]) if (!Number.isFinite(room.label_position[key]) || room.label_position[key] < 0 || room.label_position[key] > 1) fail(`${path}.label_position.${key}`, "must be a fraction between 0 and 1.");
+      }
       if (room.note !== void 0) label(room.note, `${path}.note`);
       if (room.icon !== void 0 && typeof room.icon !== "string") fail(`${path}.icon`, "must be a string.");
       const normalized = { ...room, lights: room.lights ?? [], entities: room.entities ?? [] };
@@ -1035,9 +1110,9 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       if (room.cleaning !== void 0) {
         object(room.cleaning, `${path}.cleaning`);
         for (const [key, id] of Object.entries(room.cleaning)) {
-          if (!["vacuum", "mop"].includes(key)) fail(`${path}.cleaning`, "only supports vacuum and mop.");
+          if (!["vacuum", "mop", "clean_genius"].includes(key)) fail(`${path}.cleaning`, "only supports vacuum, mop, and clean_genius.");
           entity(id, `${path}.cleaning.${key}`);
-          if (!id.startsWith("input_button.")) fail(`${path}.cleaning.${key}`, "must reference an input_button.");
+          if (!/^(input_button|script)\./.test(id)) fail(`${path}.cleaning.${key}`, "must reference an input_button or script.");
         }
       }
       if (room.position !== void 0) {
@@ -1070,6 +1145,25 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
         }
       }
       return normalized;
+    });
+    result.floorplan_objects = config.floorplan_objects ?? [];
+    list(result.floorplan_objects, "floorplan_objects");
+    const markerIds = /* @__PURE__ */ new Set();
+    result.floorplan_objects.forEach((item, index) => {
+      const path = `floorplan_objects[${index}]`;
+      object(item, path);
+      if (typeof item.id !== "string" || !/^[a-z][a-z0-9_-]*$/.test(item.id) || markerIds.has(item.id)) fail(`${path}.id`, "must be a unique lowercase slug.");
+      markerIds.add(item.id);
+      if (!ids.has(item.room)) fail(`${path}.room`, "must reference a configured room.");
+      label(item.name, `${path}.name`);
+      if (!["light", "climate", "cleaning", "office", "home", "rooms", "drop"].includes(item.icon)) fail(`${path}.icon`, "must be a supported device icon.");
+      object(item.position, `${path}.position`);
+      for (const key of ["x", "y"]) if (!Number.isFinite(item.position[key])) fail(`${path}.position.${key}`, "must be a finite map coordinate.");
+      if (item.entity !== void 0) entity(item.entity, `${path}.entity`);
+      if (item.action !== void 0 && !["toggle", "more-info"].includes(item.action)) fail(`${path}.action`, "must be toggle or more-info.");
+      if (item.action === "toggle" && (!item.entity || !/^(light|switch)\./.test(item.entity))) fail(`${path}.action`, "toggle requires a light or switch entity.");
+      if (item.kind !== void 0 && !["window", "temperature"].includes(item.kind)) fail(`${path}.kind`, "must be window or temperature.");
+      if (item.kind === "window" && item.entity && !item.entity.startsWith("binary_sensor.")) fail(`${path}.entity`, "a window contact requires a binary_sensor.");
     });
     list(result.monitors, "monitors");
     result.monitors.forEach((monitor, index) => {
@@ -1125,6 +1219,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
         ...Object.values(room.cleaning ?? {})
       ]),
       ...config.rooms.flatMap((room) => (room.objects ?? []).map((item) => item.entity)),
+      ...(config.floorplan_objects ?? []).map((item) => item.entity),
       ...Object.values(config.cleaning ?? {}),
       config.appearance?.night_person,
       config.appearance?.ambient_person
@@ -1153,11 +1248,13 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   function roomViews(context) {
     const { config, text, language } = context;
     if (!config.rooms.length) return [];
+    const plan = { rooms: config.rooms, walls: config.floorplan_walls, drawing: config.floorplan_drawing, bounds: config.floorplan_bounds, objects: config.floorplan_objects, appearance: config.appearance };
     const overview = view("rooms", text.rooms, "mdi:floor-plan", [
-      liveCard("floorplan", { rooms: config.rooms, walls: config.floorplan_walls, appearance: config.appearance }, language),
+      liveCard("floorplan", plan, language),
       liveCard("climate", { rooms: config.rooms, appearance: config.appearance }, language)
     ]);
     return [overview, ...config.rooms.map((room) => view(`room-${room.id}`, localized(room.name, language), room.icon ?? "mdi:door", [
+      ...config.floorplan_drawing?.length ? [liveCard("floorplan", { ...plan, focus_room: room.id }, language)] : [],
       liveCard("climate", { rooms: [room], appearance: config.appearance }, language),
       ...entityCards(room.lights),
       ...entityCards(room.entities),
@@ -1314,7 +1411,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   :host([data-view=calendar][data-full-view=true]) .content { flex:1; min-height:0; }
   :host([data-view=calendar][data-full-view=true]) .slot.calendar { grid-column:1/-1; min-height:0; height:100%; }
   :host([data-view=calendar][data-full-view=true]) .slot.calendar > * { height:100%; }
-  :host([data-view=cleaning]),:host([data-view=calendar][data-full-view=true]) { overflow:hidden; }
+  :host([data-view=calendar][data-full-view=true]) { overflow:hidden; }
   @media(min-width:701px) {
     :host([data-view=home]) { height:100dvh; min-height:0; overflow:hidden; }
     :host([data-view=home]) .shell,:host([data-view=home]) main { height:100%; min-height:0; }
@@ -1349,16 +1446,18 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
     :host([data-view=home]) .slot.mode-cleaning { height:auto; min-height:0; max-height:none; }
     :host([data-view=home]) .slot > * { height:auto; }
   }
-  :host([data-view=cleaning]) .shell { height:calc(100dvh - 56px); min-height:0; }
-  :host([data-view=cleaning]) main { height:100%; min-height:0; overflow:hidden; padding:18px clamp(18px,3vw,46px) 82px; display:flex; flex-direction:column; }
+  :host([data-view=cleaning]) { min-height:100dvh; }
+  :host([data-view=cleaning]) .shell { min-height:100dvh; }
+  :host([data-view=cleaning]) main { min-height:100dvh; padding:18px clamp(18px,3vw,46px) 128px; display:flex; flex-direction:column; }
   :host([data-view=cleaning]) .topline { flex:none; margin-bottom:8px; }
   :host([data-view=cleaning]) .heading { flex:none; font-size:28px; margin:0 0 10px; }
-  :host([data-view=cleaning]) .content { flex:1; min-height:0; align-content:center; gap:14px; }
-  :host([data-view=cleaning]) .slot.cleaning,:host([data-view=cleaning]) .slot.cleaning-map { max-height:100%; }
+  :host([data-view=cleaning]) .content { min-height:0; align-content:start; gap:14px; }
+  :host([data-view=cleaning]) .slot.cleaning { height:auto; min-height:0; }
   @media(min-width:1700px) { .shell { grid-template-columns:240px minmax(0,1fr); } }
   @media(max-width:1100px) { .shell { grid-template-columns:170px minmax(0,1fr); } aside { padding:28px 12px; } .brand { font-size:16px; } .slot.rooms,.slot.devices { grid-column:span 12; } .slot.compact { grid-column:span 6; } }
   @media(max-width:700px) { .shell { display:flex; flex-direction:column; } aside { padding:16px; border:0; gap:18px; display:contents; } .brand,.footnote { display:none; } main { padding:22px 16px 92px; } .topline { margin-bottom:22px; letter-spacing:1px; } .heading { font-size:28px; } nav { position:fixed; inset:auto 12px 12px; z-index:10; flex-direction:row; overflow:visible; gap:2px; padding:7px; border:1px solid var(--mb-line); background:var(--mb-surface); border-radius:22px; box-shadow:0 8px 28px #00000012; } a { flex:1; min-width:58px; gap:5px; flex-direction:column; padding:10px 5px; font-size:9px; white-space:nowrap; } .secondary { display:none; } .more-menu { display:block; flex:1; min-width:58px; } summary { display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 5px; font-size:9px; color:var(--mb-muted); cursor:pointer; list-style:none; } summary::-webkit-details-marker { display:none; } .more-links { position:absolute; bottom:calc(100% + 12px); right:0; min-width:180px; padding:8px; background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:18px; box-shadow:0 8px 24px #0002; } .more-links a { flex-direction:row; font-size:12px; padding:14px; } nav svg { width:19px; height:19px; } .content { gap:16px; } .slot,.slot.compact { grid-column:1/-1; } .status { font-size:9px; } :host([data-view=cleaning]) main { padding:12px 10px 76px; } :host([data-view=cleaning]) .topline { margin-bottom:6px; } :host([data-view=cleaning]) .heading { font-size:22px; } }
-  @media(max-width:700px) { :host([data-view=home]) .slot.cleaning { height:auto; min-height:0; } }
+  @media(max-width:700px) { :host([data-view=home]) .slot.cleaning { grid-column:1/-1; height:auto; min-height:0; } }
+  @media(max-width:700px) { :host([data-view=cleaning]) .slot.cleaning,:host([data-view=cleaning]) .slot.cleaning-map { grid-column:1/-1; } }
   :host([data-theme=atmospheric]) .shell,:host([data-theme=storybook]) .shell { grid-template-columns:minmax(0,1fr); }
   :host([data-theme=atmospheric]) aside,:host([data-theme=storybook]) aside { display:contents; }
   :host([data-theme=atmospheric]) .brand,:host([data-theme=atmospheric]) .footnote,:host([data-theme=storybook]) .brand,:host([data-theme=storybook]) .footnote { display:none; }
@@ -1377,6 +1476,11 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   }
   @media(max-width:700px) { :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { inset:auto 12px 12px; transform:none; } }
   @media(max-width:1100px) { :host([data-view=calendar][data-full-view=true]) main { padding-left:18px; padding-right:18px; } }
+  @media(orientation:portrait) and (max-width:1100px) {
+    :host([data-view=home]) .content { grid-template-columns:minmax(0,1fr); grid-template-rows:none; }
+    :host([data-view=home]) .content > .slot { grid-column:1/-1; grid-row:auto; }
+    :host([data-view=cleaning]) .content > .slot { grid-column:1/-1; }
+  }
   @media(prefers-reduced-motion:no-preference) { a { transition:background .15s,color .15s; } }
 `;
 
@@ -1550,7 +1654,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   .switch[aria-checked=true] { background:var(--mb-accent); } .switch[aria-checked=true]:after { transform:translateX(14px); }
   .robot { display:flex; align-items:center; gap:16px; padding:8px 0 18px; } .robot .icon-disc { width:62px; height:62px; border-radius:50%; } .robot strong { font-size:13px; line-height:1.5; }
   .link { display:flex; align-items:center; justify-content:space-between; padding-top:15px; border-top:1px solid var(--mb-line); font-size:12px; color:var(--mb-accent); text-decoration:none; }
-  .floor-map { display:block; width:min(100%,calc((100dvh - 250px) * .8275)); height:auto; max-height:calc(100dvh - 250px); margin:12px auto 0; } .floor-map text { fill:var(--mb-ink); pointer-events:none; font-size:15px; }
+  .floor-map { display:block; width:min(100%,calc((100dvh - 250px) * var(--mb-map-ratio,1))); height:auto; max-height:calc(100dvh - 250px); margin:12px auto 0; } .floor-map text { fill:var(--mb-ink); pointer-events:none; font-size:15px; }
   .floor-map polygon { stroke:var(--mb-line); stroke-width:4; stroke-linejoin:round; fill:var(--mb-soft); vector-effect:non-scaling-stroke; } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
   .floor-map a { cursor:pointer; } .floor-map a:focus-visible polygon { stroke:var(--mb-accent); stroke-width:7; }
   .floor-map .map-marker { fill:var(--mb-surface); stroke:var(--mb-line); stroke-width:2; vector-effect:non-scaling-stroke; transition:fill .15s,stroke .15s; }
@@ -1558,6 +1662,25 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   .floor-map .map-marker-icon { fill:none; stroke:var(--mb-accent); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
   .floor-map a[data-marker]:hover .map-marker,.floor-map a[data-marker]:focus-visible .map-marker { stroke:var(--mb-accent); stroke-width:3; }
   .floor-map .floor-wall { fill:none; stroke:var(--mb-ink); stroke-width:8; stroke-linecap:square; stroke-linejoin:miter; opacity:.65; vector-effect:non-scaling-stroke; pointer-events:none; }
+  .interactive-plan { --mb-map-floor:#f8f4e8; --mb-map-furniture:#c9d1be; --mb-map-cushion:#e5e8dc; --mb-map-wood:#d6c59d; --mb-map-water:#b7d3d5; --mb-map-light:#edcf83; --mb-map-radiator:#dfc19a; }
+  .interactive-plan.night { --mb-map-floor:#25352f; --mb-map-furniture:#516455; --mb-map-cushion:#738471; --mb-map-wood:#827454; --mb-map-water:#56828a; --mb-map-light:#bd9951; --mb-map-radiator:#967c59; }
+  .map-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .map-toolbar select { flex:1; min-width:100px; max-width:300px; min-height:44px; font:inherit; font-size:13px; border:1px solid var(--mb-line); border-radius:12px; padding:8px; background:var(--mb-surface); color:var(--mb-ink); }
+  .map-toolbar button,.map-device-detail button { min-width:44px; min-height:44px; padding:8px 12px; border:1px solid var(--mb-line); border-radius:12px; background:var(--mb-soft); }
+  .map-viewport { overflow:auto; max-height:max(200px,calc(100dvh - 290px)); overscroll-behavior:contain; }
+  .furnished-map { width:min(100%,calc(max(150px,100dvh - 330px) * var(--mb-map-ratio,1))); height:auto; max-height:max(150px,calc(100dvh - 330px)); min-height:0; margin:12px auto; aspect-ratio:var(--mb-map-ratio); }
+  .furnished-map polygon { fill:var(--mb-map-floor); stroke:var(--mb-accent); stroke-width:2; vector-effect:none; }
+  .furnished-map polygon.lit { fill:var(--mb-map-floor); }
+  .furnished-map .map-drawing { fill:none; stroke:var(--mb-accent); stroke-width:1.5; stroke-linejoin:round; }
+  .furnished-map .map-room-label rect { fill:var(--mb-map-floor); opacity:.94; }
+  .furnished-map .map-room-label .room-name { font-size:13px; font-weight:600; }
+  .furnished-map .map-room-label .room-value { font-size:12px; }
+  .furnished-map .map-marker { stroke-width:1.5; vector-effect:none; }
+  .map-device-detail { padding:12px; margin-top:12px; border:1px solid var(--mb-line); border-radius:12px; font-size:13px; }
+  .map-device-detail button { margin:10px 8px 0 0; }
+  .map-device-list { margin-top:12px; font-size:13px; }
+  .map-device-list summary { cursor:pointer; min-height:44px; padding:12px 0; }
+  .map-device-list > button { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:44px; padding:10px 4px; border-bottom:1px solid var(--mb-line); }
   .entity-id { font-family:ui-monospace,monospace; font-size:10px; overflow-wrap:anywhere; opacity:.8; }
   .room-board .value.status-value { display:flex; align-items:center; min-height:32px; font-size:12px; letter-spacing:0; line-height:1.6; }
   .room-board .value.status-value svg { width:27px; height:27px; color:#a75f49; }
@@ -1603,6 +1726,193 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
   @media(prefers-reduced-motion:reduce) { .switch:after { transition:none; } }
 `;
 
+  // src/cards/floorplan.js
+  function renderInteractiveFloorplan(host, card, text) {
+    card.classList.add("interactive-plan");
+    const config = host._config;
+    const rooms = config.rooms ?? [];
+    host._mapRoom ??= config.focus_room ?? "";
+    const bounds = new Map(rooms.map((room, index) => {
+      const p = room.position ?? { x: index * 280, y: 0, width: 260, height: 160 };
+      const shapes = p.points ? [p.points] : p.parts ?? [[[p.x, p.y], [p.x + p.width, p.y], [p.x + p.width, p.y + p.height], [p.x, p.y + p.height]]];
+      const points2 = shapes.flat();
+      return [room.id, { shapes, x: Math.min(...points2.map((p2) => p2[0])), y: Math.min(...points2.map((p2) => p2[1])), right: Math.max(...points2.map((p2) => p2[0])), bottom: Math.max(...points2.map((p2) => p2[1])) }];
+    }));
+    const devices = [...config.objects ?? [], ...rooms.flatMap((room) => (room.objects ?? []).map((item) => {
+      const b2 = bounds.get(room.id);
+      return { ...item, id: `${room.id}-${item.id ?? item.entity ?? item.icon}`, room: room.id, position: { x: b2.x + (b2.right - b2.x) * item.position.x, y: b2.y + (b2.bottom - b2.y) * item.position.y } };
+    }))];
+    const selectedRoom = rooms.find((room) => room.id === host._mapRoom);
+    const b = selectedRoom && bounds.get(selectedRoom.id);
+    const points = [...bounds.values()].flatMap((b2) => [[b2.x, b2.y], [b2.right, b2.bottom]]);
+    for (const device of devices) points.push([device.position.x - 24, device.position.y - 24], [device.position.x + 24, device.position.y + 24]);
+    for (const wall of config.walls ?? []) points.push(...wall);
+    if (config.bounds) {
+      const [x, y, w, h] = config.bounds;
+      points.push([x, y], [x + w, y + h]);
+    }
+    const minX = Math.min(0, ...points.map((p) => p[0]));
+    const minY = Math.min(0, ...points.map((p) => p[1]));
+    const view2 = b ? [b.x - 32, b.y - 32, b.right - b.x + 64, b.bottom - b.y + 64] : [minX - 8, minY - 8, Math.max(1, ...points.map((p) => p[0])) - minX + 16, Math.max(1, ...points.map((p) => p[1])) - minY + 16];
+    if (b) for (const d of devices.filter((d2) => d2.room === selectedRoom.id)) {
+      const right = Math.max(view2[0] + view2[2], d.position.x + 28);
+      const bottom = Math.max(view2[1] + view2[3], d.position.y + 28);
+      view2[0] = Math.min(view2[0], d.position.x - 28);
+      view2[1] = Math.min(view2[1], d.position.y - 28);
+      view2[2] = right - view2[0];
+      view2[3] = bottom - view2[1];
+    }
+    const toolbar = element("div", void 0, "map-toolbar");
+    const select = element("select");
+    select.setAttribute("aria-label", text.rooms);
+    const all = element("option", text.allRooms);
+    all.value = "";
+    select.append(all);
+    for (const room of rooms) {
+      const option = element("option", localized(room.name, host._language));
+      option.value = room.id;
+      select.append(option);
+    }
+    select.value = selectedRoom?.id ?? "";
+    select.addEventListener("change", () => {
+      host._mapRoom = select.value;
+      host._mapZoom = 1;
+      host._mapDevice = void 0;
+      host._render();
+      host.shadowRoot.querySelector(".map-toolbar select")?.focus();
+    });
+    toolbar.append(select);
+    for (const [label2, title, change] of [["−", text.zoomOut, -0.5], ["+", text.zoomIn, 0.5], ["↺", text.resetMap, 0]]) {
+      const button = element("button", label2);
+      button.setAttribute("aria-label", title);
+      button.addEventListener("click", () => {
+        host._mapZoom = change ? Math.max(1, Math.min(4, (host._mapZoom ?? 1) + change)) : 1;
+        host._render();
+        host.shadowRoot.querySelector(`.map-toolbar button[aria-label="${title}"]`)?.focus();
+      });
+      toolbar.append(button);
+    }
+    card.append(toolbar);
+    const viewport = element("div", void 0, "map-viewport");
+    const svg = svgElement("svg", { viewBox: view2.join(" "), role: "group", class: "floor-map furnished-map", "aria-label": text.floorplan });
+    svg.style.setProperty("--mb-map-ratio", view2[2] / view2[3]);
+    if ((host._mapZoom ?? 1) > 1) {
+      svg.style.width = `${host._mapZoom * 100}%`;
+      svg.style.maxHeight = "none";
+    }
+    for (const room of rooms) {
+      const link = svgElement("a", { "data-room": room.id, "aria-label": localized(room.name, host._language) });
+      navigateLink(link, `room-${room.id}`);
+      const lit = (room.lights ?? []).some((id) => host._hass.states[id]?.state === "on");
+      const offline = [room.temperature, room.humidity].filter(Boolean).some((id) => isOffline(host._hass.states[id]));
+      for (const polygon of bounds.get(room.id).shapes) link.append(svgElement("polygon", { points: polygon.map((p) => p.join(",")).join(" "), class: `${lit ? "lit" : ""} ${offline ? "offline" : ""}` }));
+      svg.append(link);
+    }
+    for (const wall of config.walls ?? []) svg.append(svgElement("polyline", { points: wall.map((p) => p.join(",")).join(" "), class: "floor-wall" }));
+    const drawing = svgElement("g", { class: "map-drawing", "pointer-events": "none", "aria-hidden": "true" });
+    appendDrawing(drawing, config.drawing, svgElement);
+    svg.append(drawing);
+    for (const room of rooms) {
+      const b2 = bounds.get(room.id);
+      const pos = room.label_position ?? { x: 0.5, y: 0.5 };
+      const x = b2.x + (b2.right - b2.x) * pos.x;
+      const y = b2.y + (b2.bottom - b2.y) * pos.y;
+      const link = svgElement("a", { "data-room": room.id, "aria-label": localized(room.name, host._language) });
+      navigateLink(link, `room-${room.id}`);
+      const label2 = svgElement("g", { class: "map-room-label" });
+      const labelWidth = Math.min(164, b2.right - b2.x - 10);
+      label2.append(svgElement("rect", { x: x - labelWidth / 2, y: y - 19, width: labelWidth, height: 44, rx: 8 }));
+      label2.append(svgElement("text", { x, y: y - 2, "text-anchor": "middle", class: "room-name" }, localized(room.name, host._language)));
+      const reading = (id, unit) => id && numericState(host._hass.states[id]) !== null ? host._value(id, unit) : `— ${unit}`;
+      label2.append(svgElement("text", { x, y: y + 16, "text-anchor": "middle", class: "room-value" }, `${reading(room.temperature, "°C")} · ${reading(room.humidity, "%")}`));
+      label2.append(svgElement("title", {}, [room.temperature, room.humidity].filter(Boolean).map((id) => `${host._name(id)}: ${host._state(id, text)}`).join(" · ") || text.noReadings));
+      link.append(label2);
+      svg.append(link);
+    }
+    const status = (device) => {
+      if (!device.entity) return text.notConfigured;
+      const state = host._hass.states[device.entity];
+      if (isOffline(state)) return host._state(device.entity, text);
+      if (device.kind === "window") return state.state === "on" ? text.windowOpen : state.state === "off" ? text.windowClosed : text.unknown;
+      return device.kind === "temperature" && numericState(state) !== null ? host._value(device.entity, "°C") : host._state(device.entity, text);
+    };
+    const choose = (device) => {
+      host._mapDevice = device.id;
+      host._render();
+      host.shadowRoot.querySelector(".map-device-detail button")?.focus();
+    };
+    for (const device of devices.filter((d) => !selectedRoom || d.room === selectedRoom.id)) {
+      const { x, y } = device.position;
+      const state = device.entity && host._hass.states[device.entity];
+      const label2 = `${localized(device.name, host._language)} · ${status(device)}`;
+      const marker = svgElement("a", { href: "#", role: "button", tabindex: 0, "data-marker": device.id, "aria-label": label2 });
+      marker.append(svgElement("circle", { cx: x, cy: y, r: 14, class: `map-marker${state?.state === "on" ? " active" : ""}${!device.entity || isOffline(state) ? " unavailable" : ""}` }));
+      marker.append(svgElement("path", { d: iconPath(device.icon), transform: `translate(${x - 8} ${y - 8}) scale(.67)`, class: "map-marker-icon" }));
+      marker.append(svgElement("title", {}, label2));
+      marker.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        choose(device);
+      });
+      marker.addEventListener("keydown", (event) => {
+        if (event.key === " ") {
+          event.preventDefault();
+          choose(device);
+        }
+      });
+      svg.append(marker);
+    }
+    viewport.append(svg);
+    card.append(viewport);
+    const chosen = devices.find((d) => d.id === host._mapDevice);
+    if (chosen) {
+      const panel = element("div", void 0, "map-device-detail");
+      panel.setAttribute("role", "status");
+      panel.append(element("strong", localized(chosen.name, host._language)), element("small", status(chosen)));
+      if (chosen.entity) {
+        const available = !isOffline(host._hass.states[chosen.entity]);
+        const action = element("button", chosen.action === "toggle" ? host._hass.states[chosen.entity]?.state === "on" ? text.turnOff : text.turnOn : text.allDetails);
+        action.disabled = chosen.action === "toggle" && !available;
+        action.addEventListener("click", async () => {
+          if (chosen.action !== "toggle") {
+            host._moreInfo(chosen.entity);
+            return;
+          }
+          action.disabled = true;
+          try {
+            await host._hass.callService("homeassistant", "toggle", {}, { entity_id: chosen.entity });
+          } catch {
+            panel.append(element("small", text.actionFailed));
+          } finally {
+            action.disabled = !available;
+          }
+        });
+        panel.append(action);
+      }
+      const close = element("button", text.close);
+      close.addEventListener("click", () => {
+        host._mapDevice = void 0;
+        host._render();
+        [...host.shadowRoot.querySelectorAll("[data-marker]")].find((node) => node.dataset.marker === chosen.id)?.focus();
+      });
+      panel.append(close);
+      card.append(panel);
+    }
+    const list2 = element("details", void 0, "map-device-list");
+    if (host._mapListOpen) list2.open = true;
+    list2.addEventListener("toggle", () => {
+      host._mapListOpen = list2.open;
+    });
+    list2.append(element("summary", text.mapDevices));
+    for (const device of devices.filter((d) => !selectedRoom || d.room === selectedRoom.id)) {
+      const button = element("button");
+      button.append(element("span", localized(device.name, host._language)), element("small", status(device)));
+      button.addEventListener("click", () => choose(device));
+      list2.append(button);
+    }
+    card.append(list2);
+  }
+
   // src/cards/live-card.js
   var MufflonbauLiveCard = class extends HTMLElement {
     constructor() {
@@ -1617,6 +1927,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
         ...config.calendars ?? [],
         ...config.entities ?? [],
         ...config.people ?? [],
+        ...(config.objects ?? []).map((item) => item.entity),
         ...Object.values(config.cleaning ?? {}),
         ...(config.monitors ?? []).map((item) => item.entity),
         ...(config.rooms ?? []).flatMap((room) => [room.temperature, room.humidity, room.dew_point, ...room.lights ?? [], ...(room.objects ?? []).map((item) => item.entity)]),
@@ -1670,6 +1981,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       const text = translations[language];
       const focusedEntity = this.shadowRoot.activeElement?.dataset?.entity;
       const focusedRoom = this.shadowRoot.activeElement?.getAttribute("data-room");
+      const focusedMarker = this.shadowRoot.activeElement?.getAttribute("data-marker");
       const style = element("style", liveStyles);
       const card = element("ha-card");
       const mode = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
@@ -1688,6 +2000,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
       this.shadowRoot.replaceChildren(style, card);
       if (focusedEntity) [...this.shadowRoot.querySelectorAll("button")].find((button) => button.dataset.entity === focusedEntity)?.focus();
       if (focusedRoom) [...this.shadowRoot.querySelectorAll("a")].find((link) => link.getAttribute("data-room") === focusedRoom)?.focus();
+      if (focusedMarker) [...this.shadowRoot.querySelectorAll("[data-marker]")].find((link) => link.getAttribute("data-marker") === focusedMarker)?.focus();
     }
     _section(card, title, label2) {
       const head = element("div", void 0, "section-head");
@@ -2049,6 +2362,10 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
     }
     _floorplan(card, text) {
       this._section(card, text.rooms, text.floorplan);
+      if (this._config.drawing?.length || this._config.objects?.length) {
+        renderInteractiveFloorplan(this, card, text);
+        return;
+      }
       const rooms = this._config.rooms ?? [];
       const positions = rooms.map((room, index) => room.position ?? { x: index % 3 * 280, y: Math.floor(index / 3) * 180, width: 260, height: 160 });
       const polygons = positions.map((position) => position.points ? [position.points] : position.parts ?? [[
@@ -2057,12 +2374,13 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
         [position.x + position.width, position.y + position.height],
         [position.x, position.y + position.height]
       ]]);
-      const allPoints = polygons.flat(2);
+      const allPoints = [...polygons.flat(2), ...(this._config.walls ?? []).flat()];
       const minX = Math.min(0, ...allPoints.map((point) => point[0]));
       const minY = Math.min(0, ...allPoints.map((point) => point[1]));
       const width = Math.max(1, ...allPoints.map((point) => point[0])) - minX;
       const height = Math.max(1, ...allPoints.map((point) => point[1])) - minY;
-      const svg = svgElement("svg", { viewBox: `${minX - 3} ${minY - 3} ${width + 6} ${height + 6}`, role: "group", class: "floor-map", "aria-label": text.rooms });
+      const svg = svgElement("svg", { viewBox: `${minX - 6} ${minY - 6} ${width + 12} ${height + 12}`, role: "group", class: "floor-map", "aria-label": text.rooms });
+      svg.style.setProperty("--mb-map-ratio", (width + 12) / (height + 12));
       for (const wall of this._config.walls ?? []) {
         svg.append(svgElement("polyline", { points: wall.map((point) => point.join(",")).join(" "), class: "floor-wall" }));
       }
@@ -2078,7 +2396,7 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
         for (const polygon of polygons[index]) {
           link.append(svgElement("polygon", { points: polygon.map((point) => point.join(",")).join(" "), class: `${lit ? "lit" : ""} ${offline ? "offline" : ""}` }));
         }
-        const textAnchor = polygons[index].length > 1 ? "middle" : "start";
+        const textAnchor = "middle";
         link.append(svgElement("text", { x: center[0], y: center[1] - 5, class: "room-name", "text-anchor": textAnchor }, localized(room.name, this._language)));
         if (room.temperature) link.append(svgElement("text", { x: center[0], y: center[1] + 18, class: "room-value", "text-anchor": textAnchor }, this._value(room.temperature, "°C")));
         if (room.humidity) link.append(svgElement("text", { x: center[0], y: center[1] + 38, class: "room-value", "text-anchor": textAnchor }, this._value(room.humidity, "%")));

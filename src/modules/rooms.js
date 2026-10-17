@@ -3,11 +3,13 @@ import { entityCards, entityList, liveCard, view } from '../core/cards.js';
 export function roomViews(context) {
   const { config, text, language } = context;
   if (!config.rooms.length) return [];
+  const plan = { rooms: config.rooms, walls: config.floorplan_walls, drawing: config.floorplan_drawing, bounds: config.floorplan_bounds, objects: config.floorplan_objects, appearance: config.appearance };
   const overview = view('rooms', text.rooms, 'mdi:floor-plan', [
-    liveCard('floorplan', { rooms: config.rooms, walls: config.floorplan_walls, appearance: config.appearance }, language),
+    liveCard('floorplan', plan, language),
     liveCard('climate', { rooms: config.rooms, appearance: config.appearance }, language),
   ]);
   return [overview, ...config.rooms.map(room => view(`room-${room.id}`, localized(room.name, language), room.icon ?? 'mdi:door', [
+    ...(config.floorplan_drawing?.length ? [liveCard('floorplan', { ...plan, focus_room: room.id }, language)] : []),
     liveCard('climate', { rooms: [room], appearance: config.appearance }, language),
     ...entityCards(room.lights), ...entityCards(room.entities),
     ...(room.note ? [{ type: 'markdown', content: localized(room.note, language) }] : []),

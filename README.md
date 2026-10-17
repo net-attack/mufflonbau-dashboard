@@ -104,6 +104,10 @@ Each room has a unique stable `id` (lowercase slug) and a `name` (string or
 `{en: ..., de: ...}`). Optional fields: `icon`, `temperature`, `humidity`,
 `dew_point`, `lights` (IDs), `entities` (IDs), and `note` (string or translated label).
 `position: {x: 0, "y": 0, width: 300, height: 180}` places the room in the schematic floorplan.
+For non-rectangular rooms, use `position.points: [[0, 0], [300, 0], [300, 180], [0, 180]]`
+or `position.parts` for multiple polygons. `floorplan_walls` contains polylines in
+the same coordinate system. Wall extents are included in the view, including
+outlines such as balconies. Installation-specific geometry stays in the ignored local YAML.
 Always quote the `"y"` key in YAML: HA's YAML 1.1 editor otherwise reads it as
 boolean `true`. Previously saved configurations with that converted key are
 recovered automatically.
@@ -111,8 +115,21 @@ Without a position it gets an automatic grid position. Use consistent coordinate
 units when combining manual positions. Room details are HA subviews linked from
 the floorplan and room overview.
 
-A room's `cleaning` object maps `vacuum` and/or `mop` to **existing input_button
-helpers**. Pressing a button runs `input_button.press` on that exact entity.
+A room's `cleaning` object maps `vacuum`, `mop`, and optionally `clean_genius` to
+**existing input_button helpers or scripts**. Choose Saugen, Wischen, or CleanGenius
+above the room list, then tap a room to start that action directly, without a dialog.
+Input buttons call `input_button.press`; scripts call `script.turn_on` on the exact
+configured entity. Unconfigured modes and unavailable helpers stay disabled.
+The CleanGenius helper/script must set the device's CleanGenius mode and start the
+intended room; the dashboard does not infer Dreame segment IDs or select options.
+
+```yaml
+cleaning: # inside a room definition
+  vacuum: input_button.vacuum_living
+  mop: input_button.mop_living
+  clean_genius: script.clean_genius_living
+```
+
 No automations or helpers are created. The native vacuum tile adds start/pause,
 stop, and return-home controls where supported by the vacuum.
 
@@ -149,6 +166,31 @@ the profile language. Custom titles and entity names stay as configured. Optiona
 modules. The local `old/` input and `examples/*.local.yaml` are ignored by Git so
 installation-specific entity IDs and floorplans stay local. When present,
 `examples/mufflonbau.local.yaml` can be pasted directly into the strategy editor.
+
+### Interactive room map
+
+Optional `floorplan_drawing` describes furniture, windows and wall openings using
+safe vector shapes (`g`, `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`,
+`text`). Each shape has `tag`, optional `attrs`, `children`, and text shapes may
+have `text`. Use theme colors `wall`, `floor`, `furniture`, `cushion`, `wood`,
+`water`, `light`, `radiator`, or `none` for `fill` and `stroke`. HTML, scripts,
+images and external SVG resources are not supported. Personal drawings belong
+in the ignored local YAML, not in the shared JavaScript bundle.
+
+`floorplan_bounds: [x, y, width, height]` includes exterior areas such as a balcony.
+`floorplan_objects` places devices at absolute map coordinates, including negative
+coordinates outside the apartment. Each object needs a unique `id`, configured
+`room`, `name`, supported `icon`, and `position: {x: 10, "y": 20}`. Optional
+`entity` and `action: toggle` / `more-info` connect verified HA entities.
+`kind: window` displays a binary contact as open/closed; `kind: temperature`
+displays a temperature reading. Unassigned devices remain explicitly unconfigured;
+the dashboard never guesses their entity IDs or sensor values.
+
+The map includes room selection, zoom, per-room temperature/humidity labels,
+device details, and a touch-friendly device list. Room links open a focused map
+and existing room controls. `room.label_position: {x: 0.5, "y": 0.5}` moves the
+climate label within the room bounds to avoid furniture. Missing readings show
+an em dash, never a fabricated zero. Existing simple floorplans remain supported.
 
 The dashboard needs no Button Card, Bubble Card, or Card Mod resources.
 Kiosk Mode requires the separately installed Kiosk Mode plugin. By default this
@@ -210,8 +252,9 @@ from Git and are not uploaded to GitHub.
 Browser checks cover live state updates, English/German text, battery warnings,
 entity detail events, floorplan links, mobile overflow, safe labels, clock cleanup,
 rendering of the actual YAML examples, consistent surface colors, complete
-desktop/mobile layouts for all six theme/mode combinations, light toggles, and action failures. A dedicated Galaxy Tab A11 profile exercises the official
-1340 x 800 display in both orientations at 150% Android display scaling, including
+desktop/mobile layouts for all six theme/mode combinations, light toggles, and action failures. Galaxy Tab A11 coverage exercises
+1340 × 800 / 800 × 1340 at DPR 1 and an additional 893 × 533 / 533 × 893 profile at DPR 1.5.
+The actual tablet's browser viewport and DPR have not been measured. Checks include
 touch input, horizontal overflow, scrolling, card geometry, navigation placement,
 44 x 44 CSS pixel touch targets, and unobstructed access to the last card. Every
 theme/mode combination also checks palette propagation and WCAG 4.5:1 contrast
@@ -219,6 +262,11 @@ for its primary text roles. GitHub Actions runs on every push and
 pull request, installs Chromium and its system dependencies, and retains browser
 screenshots as artifacts for seven days. Screenshots are written to the ignored
 `test-results/` directory. `npm run test:browser` runs just the browser checks.
+Every generated view, including every room, is rendered in both orientations and
+Ambient/Night for both Galaxy profiles. Open `test-results/views/index.html` for
+the filterable gallery; `manifest.json` lists all captures. Geometry checks catch
+horizontal overflow, empty cards, obscured content, and cleaning-panel overflow.
+The portrait home view also checks that all four summary buttons have equal width.
 
 The browser harness uses simulated HA states, not a full Home Assistant server.
 Native card behavior, HACS installation, and real cleaning actions still require

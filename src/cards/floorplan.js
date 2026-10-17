@@ -63,13 +63,14 @@ export function renderInteractiveFloorplan(host, card, text) {
     const b = bounds.get(room.id); const pos = room.label_position ?? {x:.5,y:.5};
     const x = b.x+(b.right-b.x)*pos.x; const y = b.y+(b.bottom-b.y)*pos.y;
     const link = svgElement('a',{'data-room':room.id,'aria-label':localized(room.name,host._language)}); navigateLink(link,`room-${room.id}`);
-    const label = svgElement('g',{class:'map-room-label'});
+    const label = svgElement('g',{class:'map-room-label','data-room-label':room.id});
     const labelWidth = Math.min(164,b.right-b.x-10);
-    label.append(svgElement('rect',{x:x-labelWidth/2,y:y-19,width:labelWidth,height:44,rx:8}));
-    label.append(svgElement('text',{x,y:y-2,'text-anchor':'middle',class:'room-name'},localized(room.name,host._language)));
     const reading = (id,unit) => id && numericState(host._hass.states[id]) !== null ? host._value(id,unit) : `— ${unit}`;
-    label.append(svgElement('text',{x,y:y+16,'text-anchor':'middle',class:'room-value'},`${reading(room.temperature,'°C')} · ${reading(room.humidity,'%')}`));
-    label.append(svgElement('title',{},[room.temperature,room.humidity].filter(Boolean).map(id => `${host._name(id)}: ${host._state(id,text)}`).join(' · ') || text.noReadings));
+    const readings = [[room.temperature,'°C'],[room.humidity,'%']].filter(([id])=>id).map(([id,unit])=>reading(id,unit));
+    label.append(svgElement('rect',{x:x-labelWidth/2,y:y-(readings.length?19:13),width:labelWidth,height:readings.length?44:26,rx:8}));
+    label.append(svgElement('text',{x,y:y+(readings.length?-2:4),'text-anchor':'middle',class:'room-name'},localized(room.name,host._language)));
+    if (readings.length) label.append(svgElement('text',{x,y:y+16,'text-anchor':'middle',class:'room-value'},readings.join(' · ')));
+    label.append(svgElement('title',{},[room.temperature,room.humidity].filter(Boolean).map(id => `${host._name(id)}: ${host._state(id,text)}`).join(' · ') || localized(room.name,host._language)));
     link.append(label); svg.append(link);
   }
   const status = device => {

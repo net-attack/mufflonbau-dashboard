@@ -1829,13 +1829,14 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       const y = b2.y + (b2.bottom - b2.y) * pos.y;
       const link = svgElement("a", { "data-room": room.id, "aria-label": localized(room.name, host._language) });
       navigateLink(link, `room-${room.id}`);
-      const label2 = svgElement("g", { class: "map-room-label" });
+      const label2 = svgElement("g", { class: "map-room-label", "data-room-label": room.id });
       const labelWidth = Math.min(164, b2.right - b2.x - 10);
-      label2.append(svgElement("rect", { x: x - labelWidth / 2, y: y - 19, width: labelWidth, height: 44, rx: 8 }));
-      label2.append(svgElement("text", { x, y: y - 2, "text-anchor": "middle", class: "room-name" }, localized(room.name, host._language)));
       const reading = (id, unit) => id && numericState(host._hass.states[id]) !== null ? host._value(id, unit) : `— ${unit}`;
-      label2.append(svgElement("text", { x, y: y + 16, "text-anchor": "middle", class: "room-value" }, `${reading(room.temperature, "°C")} · ${reading(room.humidity, "%")}`));
-      label2.append(svgElement("title", {}, [room.temperature, room.humidity].filter(Boolean).map((id) => `${host._name(id)}: ${host._state(id, text)}`).join(" · ") || text.noReadings));
+      const readings = [[room.temperature, "°C"], [room.humidity, "%"]].filter(([id]) => id).map(([id, unit]) => reading(id, unit));
+      label2.append(svgElement("rect", { x: x - labelWidth / 2, y: y - (readings.length ? 19 : 13), width: labelWidth, height: readings.length ? 44 : 26, rx: 8 }));
+      label2.append(svgElement("text", { x, y: y + (readings.length ? -2 : 4), "text-anchor": "middle", class: "room-name" }, localized(room.name, host._language)));
+      if (readings.length) label2.append(svgElement("text", { x, y: y + 16, "text-anchor": "middle", class: "room-value" }, readings.join(" · ")));
+      label2.append(svgElement("title", {}, [room.temperature, room.humidity].filter(Boolean).map((id) => `${host._name(id)}: ${host._state(id, text)}`).join(" · ") || localized(room.name, host._language)));
       link.append(label2);
       svg.append(link);
     }

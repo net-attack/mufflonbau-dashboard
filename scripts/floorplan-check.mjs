@@ -15,6 +15,21 @@ export async function checkFloorplan(page) {
   const card=page.locator('#interactive-test');
   assert.equal(await card.locator('.map-room-label').count(),6);
   assert.match(await card.locator('.room-value').first().textContent(),/21,1 °C · 61,1 %/);
+  // A room without sensors is intentional, not a pair of broken readings.
+  await page.evaluate(()=>{
+    window.mapConfig={...window.mapConfig,rooms:window.mapConfig.rooms.map(room=>room.id==='hall'?{...room,temperature:undefined,humidity:undefined}:room)};
+    document.querySelector('#interactive-test').setConfig(window.mapConfig);
+  });
+  assert.equal(await card.locator('[data-room-label=hall] .room-value').count(),0);
+  assert.equal(await card.locator('[data-room-label=hall] .room-name').textContent(),'Flur');
+  for (const only of ['temperature','humidity']) {
+    await page.evaluate(only=>{
+      const config={...window.mapConfig,rooms:window.mapConfig.rooms.map(room=>room.id==='living'?{...room,[only==='temperature'?'humidity':'temperature']:undefined}:room)};
+      document.querySelector('#interactive-test').setConfig(config);
+    },only);
+    assert.equal(await card.locator('[data-room-label=living] .room-value').textContent(),only==='temperature'?'21,1 °C':'61,1 %');
+  }
+  await page.evaluate(()=>document.querySelector('#interactive-test').setConfig(window.mapConfig));
   await card.locator('[data-marker=living-lamp]').click();
   assert.equal(await page.evaluate(()=>window.mapCalls.length),0,'Selecting a marker must not toggle a light');
   await card.locator('.map-device-detail button').filter({hasText:'Ausschalten'}).click();

@@ -216,7 +216,9 @@ gesture controls; ordinary mouse-wheel scrolling still reaches the page.
 Tap empty space outside the floorplan to return Home. Rooms, Presence, Climate,
 Cleaning and System check also provide a Home link or background shortcut;
 dragging the map and selecting a device never activate the background shortcut.
-Climate readings share a compact grid of square room tiles, with history below.
+Climate shows one room per row, with temperature and humidity in separate columns
+and a dew point column when configured. Tap a reading for its entity details or
+the room name to open the room; history stays below the table.
 Presence uses the page width for person cards; System check shows monitored,
 healthy and warning counts above its warning grid.
 

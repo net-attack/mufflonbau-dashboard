@@ -18,7 +18,7 @@ export function climateViews({ config, text, language }) {
   const rooms = config.rooms.filter(room => room.temperature || room.humidity || room.dew_point);
   if (!rooms.length) return [];
   return [view('climate', text.climate, 'mdi:home-thermometer-outline', [
-    liveCard('climate', { rooms, square_tiles: true, appearance: config.appearance }, language),
+    liveCard('climate', { rooms, layout: 'table', appearance: config.appearance }, language),
     ...rooms.map(room => {
       const ids = [room.temperature, room.humidity, room.dew_point].filter(Boolean);
       return { type: 'history-graph', title: `${localized(room.name, language)} · ${text.history}`, hours_to_show: 24, entities: ids };

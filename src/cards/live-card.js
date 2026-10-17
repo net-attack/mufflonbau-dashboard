@@ -172,8 +172,8 @@ export class MufflonbauLiveCard extends HTMLElement {
     }
   }
   _climate(card, text) {
+    if (this._config.layout === 'table') return this._climateTable(card, text);
     card.classList.add('room-board');
-    if (this._config.square_tiles) card.classList.add('square-tiles');
     this._section(card, text.rooms, String((this._config.rooms ?? []).length).padStart(2, '0'));
     const grid = element('div', undefined, 'grid');
     for (const room of this._config.rooms ?? []) {
@@ -223,6 +223,52 @@ export class MufflonbauLiveCard extends HTMLElement {
       tile.append(top, button, art); grid.append(tile);
     }
     card.append(grid);
+  }
+  _climateTable(card, text) {
+    card.classList.add('climate-board');
+    const rooms = this._config.rooms ?? [];
+    this._section(card, text.climate, String(rooms.length).padStart(2, '0'));
+    const columns = [
+      { key: 'temperature', label: text.temperature, unit: '°C' },
+      { key: 'humidity', label: text.humidity, unit: '%' },
+      ...(rooms.some(room => room.dew_point) ? [{ key: 'dew_point', label: text.dewPoint, unit: '°C' }] : []),
+    ];
+    const table = element('table', undefined, 'climate-table');
+    if (columns.length === 3) table.classList.add('has-dew-point');
+    table.lang = this._language;
+    table.setAttribute('aria-label', text.indoorClimate);
+    const head = element('thead');
+    const header = element('tr');
+    for (const label of [text.room, ...columns.map(column => column.label)]) {
+      const cell = element('th', label); cell.scope = 'col'; header.append(cell);
+    }
+    head.append(header);
+    const body = element('tbody');
+    for (const room of rooms) {
+      const name = localized(room.name, this._language);
+      const row = element('tr');
+      const heading = element('th'); heading.scope = 'row';
+      const link = element('a', name, 'climate-room'); link.dataset.room = room.id;
+      navigateLink(link, `room-${room.id}`); heading.append(link); row.append(heading);
+      for (const column of columns) {
+        const cell = element('td');
+        const id = room[column.key];
+        if (id) {
+          const reading = element('button', undefined, 'climate-reading'); reading.type = 'button'; reading.dataset.entity = id;
+          const value = this._value(id, column.unit);
+          reading.setAttribute('aria-label', `${name} · ${column.label}: ${value}`);
+          reading.title = value;
+          if (numericState(this._hass.states[id]) === null) reading.append(this._statusIcon(value));
+          else reading.textContent = value;
+          reading.addEventListener('click', () => this._moreInfo(id)); cell.append(reading);
+        } else {
+          const missing = element('span', '—', 'climate-empty'); missing.setAttribute('aria-label', text.notConfigured); cell.append(missing);
+        }
+        row.append(cell);
+      }
+      body.append(row);
+    }
+    table.append(head, body); card.append(table);
   }
   _summaryLink(card, path, iconName, title, detail, meta) {
     const link = element('a', undefined, 'summary-link'); navigateLink(link, path);

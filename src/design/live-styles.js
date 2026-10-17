@@ -142,9 +142,21 @@ export const liveStyles = `
   .map-only .map-device-list { position:absolute; bottom:10px; left:12px; z-index:2; margin:0; padding:0 12px; width:min(340px,calc(100% - 24px)); max-height:45%; overflow:auto; border:1px solid var(--mb-line); border-radius:12px; background:var(--mb-surface); }
   .map-only .map-device-detail { position:absolute; bottom:10px; right:12px; z-index:3; width:min(340px,calc(100% - 24px)); max-height:45%; overflow:auto; background:var(--mb-surface); }
   .map-only.has-device-detail .map-device-list { display:none; }
-  .room-board.square-tiles .grid { grid-template-columns:repeat(auto-fill,minmax(160px,200px)); align-items:start; }
-  .room-board.square-tiles .room-tile { aspect-ratio:1; min-height:0; padding:16px; }
-  .room-board.square-tiles .room-art { bottom:12px; left:16px; }
+  ha-card.climate-board { padding:0; background:transparent; border:0; }
+  .climate-board .section-head { margin-bottom:10px; }
+  .climate-table { width:100%; table-layout:fixed; border-collapse:separate; border-spacing:0 8px; }
+  .climate-table th,.climate-table td { padding:0; text-align:start; }
+  .climate-table thead th { padding:6px 16px; color:var(--mb-muted); font-size:13px; font-weight:550; overflow-wrap:anywhere; hyphens:auto; }
+  .climate-table th:first-child { width:34%; }
+  .climate-table tbody th,.climate-table td { background:var(--mb-surface); border-block:1px solid var(--mb-line); }
+  .climate-table tbody th { border-left:1px solid var(--mb-line); border-radius:16px 0 0 16px; }
+  .climate-table td:last-child { border-right:1px solid var(--mb-line); border-radius:0 16px 16px 0; }
+  .climate-room,.climate-reading,.climate-empty { display:flex; align-items:center; width:100%; min-height:68px; padding:12px 16px; }
+  .climate-room { font-size:16px; font-weight:600; color:var(--mb-ink); text-decoration:none; overflow-wrap:anywhere; }
+  .climate-reading { font-size:clamp(17px,2.6vw,28px); font-variant-numeric:tabular-nums; white-space:nowrap; border-radius:12px; }
+  .climate-room:hover,.climate-reading:hover { background:var(--mb-soft); }
+  .climate-reading svg { width:24px; height:24px; color:var(--mb-muted); }
+  .climate-empty { color:var(--mb-muted); }
   .people-board,.system-board { min-height:var(--mb-detail-height,0); }
   .people-board { display:flex; flex-direction:column; }
   .people-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); gap:18px; flex:1; }
@@ -159,13 +171,11 @@ export const liveStyles = `
   .warnings-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr)); gap:12px; }
   .system-board .warning { padding:18px; border:1px solid var(--mb-line); border-radius:16px; background:var(--mb-soft); }
   .system-board .healthy { min-height:140px; justify-content:center; text-align:center; font-size:18px; }
-  .room-board.square-tiles .room-art svg { width:48px; height:48px; }
-  .room-board.square-tiles .room-top { margin-bottom:8px; }
-  .room-board.square-tiles[data-theme=calm] .value { font-size:26px; margin-top:6px; }
   @media(max-width:600px) {
-    .room-board.square-tiles .grid { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:412px; }
-    .room-board.square-tiles .room-tile { padding:12px; }
-    .room-board.square-tiles .room-art { display:none; }
+    .climate-table thead th { padding:6px 8px; font-size:11px; }
+    .climate-room,.climate-reading,.climate-empty { min-height:60px; padding:10px 8px; }
+    .climate-room { font-size:13px; }
+    .has-dew-point .climate-reading { font-size:15px; padding-inline:6px; }
     .map-only .map-toolbar { gap:4px; }
     .map-only .map-toolbar select { min-width:75px; }
     .map-back { padding:8px; font-size:11px; }

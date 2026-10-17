@@ -357,7 +357,7 @@ try {
   await page.setViewportSize({ width: 1340, height: 800 });
   await page.evaluate(() => {
     const shell = document.querySelector('#dashboard');
-    shell.setConfig(window.previewDashboard.views.find(view => view.path === 'climate').cards[0]);
+    shell.setConfig(window.previewDashboard.views.find(view => view.path === 'room-living').cards[0]);
     shell.hass = window.previewHass;
   });
   const toggle = page.locator('#dashboard button[role=switch]').first();

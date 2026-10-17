@@ -22,7 +22,10 @@ export async function checkDetailViews(sourcePage) {
         const view = window.detailDashboard.views.find(view => view.path === path);
         if (view) { shell.setConfig(view.cards[0]); shell.hass = window.detailHass; scrollTo(0, 0); }
       });
-      document.addEventListener('hass-more-info', () => window.detailMoreInfo = (window.detailMoreInfo ?? 0) + 1);
+      document.addEventListener('hass-more-info', event => {
+        window.detailMoreInfo = (window.detailMoreInfo ?? 0) + 1;
+        window.detailEntity = event.detail.entityId;
+      });
     }, { config: previewConfig, hass: previewHass });
     const shell = page.locator('#detail-dashboard');
     const show = async path => {
@@ -77,10 +80,55 @@ export async function checkDetailViews(sourcePage) {
       await frame.tap({ position: { x: bounds.width - 3, y: bounds.height / 2 } });
       assert.match(page.url(), /\/home$/, 'Tapping empty map space must return home');
       await show('climate');
-      const tiles = await shell.locator('.square-tiles .room-tile').evaluateAll(tiles => tiles.map(tile => { const r = tile.getBoundingClientRect(); return { width: r.width, height: r.height }; }));
-      assert.equal(tiles.length, 6);
-      assert.ok(tiles.every(tile => Math.abs(tile.width - tile.height) < 2 && tile.width <= 212), `Climate tiles must stay compact and square: ${JSON.stringify(tiles)}`);
+      const table = shell.locator('.climate-table');
+      assert.equal(await table.locator('tbody tr').count(), 6);
+      assert.deepEqual(await table.locator('thead th').allTextContents(), ['Raum', 'Temperatur', 'Luftfeuchtigkeit']);
+      const rows = await table.locator('tbody tr').evaluateAll(rows => rows.map(row => [...row.children].map(cell => {
+        const r = cell.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height, overflow: cell.scrollWidth > cell.clientWidth + 1 };
+      })));
+      assert.ok(rows.every(row => row.length === 3 && row.every(cell => cell.y === row[0].y && !cell.overflow) && row[2].x > row[1].x), `Each room needs one row with aligned, separate readings: ${JSON.stringify(rows)}`);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Climate must fit the screen width');
+      const temperature = table.locator('tbody tr').first().locator('button').nth(0);
+      const humidity = table.locator('tbody tr').first().locator('button').nth(1);
+      await temperature.tap();
+      assert.equal(await page.evaluate(() => window.detailEntity), await temperature.getAttribute('data-entity'));
+      await humidity.tap();
+      assert.equal(await page.evaluate(() => window.detailEntity), await humidity.getAttribute('data-entity'));
+      assert.match(page.url(), /\/climate$/, 'Reading clicks must stay in Climate');
+      await table.locator('a[data-room=living]').tap();
+      assert.match(page.url(), /\/room-living$/);
     }
+    await show('climate');
+    await page.evaluate(() => {
+      const card = document.querySelector('#detail-dashboard')._children[0];
+      const rooms = [
+        { id: 'living', name: 'Wohnzimmer', temperature: 'sensor.probe_temperature', humidity: 'sensor.probe_humidity' },
+        { id: 'kitchen', name: 'Küche', humidity: 'sensor.kitchen_humidity', dew_point: 'sensor.kitchen_dew_point' },
+      ];
+      card.setConfig({ ...card._config, rooms });
+      card.hass = { ...window.detailHass, states: {
+        'sensor.probe_temperature': { state: 'unavailable' },
+        'sensor.probe_humidity': { state: '0', attributes: { unit_of_measurement: '%' } },
+        'sensor.kitchen_humidity': { state: '45', attributes: { unit_of_measurement: '%' } },
+      } };
+    });
+    assert.deepEqual(await shell.locator('.climate-table thead th').allTextContents(), ['Raum', 'Temperatur', 'Luftfeuchtigkeit', 'Taupunkt']);
+    assert.match(await shell.locator('button[data-entity="sensor.probe_temperature"]').getAttribute('aria-label'), /nicht verfügbar/);
+    assert.equal(await shell.locator('button[data-entity="sensor.probe_humidity"]').innerText(), '0 %');
+    assert.equal(await shell.locator('.climate-empty').count(), 2, 'Unconfigured readings must show a dash without an action');
+    assert.match(await shell.locator('button[data-entity="sensor.kitchen_dew_point"]').getAttribute('aria-label'), /nicht gefunden/);
+    await shell.locator('button[data-entity="sensor.probe_temperature"]').tap();
+    assert.equal(await page.evaluate(() => window.detailEntity), 'sensor.probe_temperature');
+    await page.evaluate(() => {
+      const card = document.querySelector('#detail-dashboard')._children[0];
+      card.hass = { ...card._hass, states: { ...card._hass.states,
+        'sensor.probe_temperature': { state: '21.5', attributes: { unit_of_measurement: '°C' } },
+        'sensor.kitchen_dew_point': { state: '11.3', attributes: { unit_of_measurement: '°C' } },
+      } };
+    });
+    assert.equal(await shell.locator('button[data-entity="sensor.probe_temperature"]').innerText(), '21,5 °C');
+    assert.ok(await shell.locator('.climate-table td').evaluateAll(cells => cells.every(cell => cell.scrollWidth <= cell.clientWidth + 1)), 'Four columns must also fit on a phone with live numeric readings');
+    await page.evaluate(() => window.detailMoreInfo = 0);
     for (const path of ['presence', 'system', 'climate', 'cleaning']) {
       await show(path);
       await shell.locator('main').click({ position: { x: 2, y: 100 } });
@@ -142,6 +190,6 @@ export async function checkDetailViews(sourcePage) {
     await pinch(shell.locator('.camera-viewport'));
     assert.ok(await shell.locator('.camera-content').evaluate(node => new DOMMatrix(getComputedStyle(node).transform).a > 2), 'The cleaning camera must also support pinch zoom');
     assert.deepEqual(errors, []);
-    console.log('Detail views: full-screen map, real touch pinch, pan, live zoom persistence, background return, camera zoom and square climate tiles passed.');
+    console.log('Detail views: full-screen map, real touch pinch, pan, live zoom persistence, background return, camera zoom and climate table passed.');
   } finally { await context.close(); }
 }

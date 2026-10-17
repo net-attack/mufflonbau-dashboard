@@ -2,6 +2,7 @@ import { element, icon } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
 import { appearanceMode, isCleaningActionUnavailable, isOffline, stateProblem } from '../core/state.js';
 import { localized, translations } from '../core/i18n.js';
+import { cleaningActivity } from '../core/cleaning.js';
 
 const styles = `
 :host{display:block;min-width:0;height:100%;color:var(--mb-ink);font-family:Inter,'Avenir Next',system-ui,sans-serif}*{box-sizing:border-box}
@@ -11,6 +12,7 @@ h2{font-size:18px;margin:0}header small,.meta{font-size:11px;color:var(--mb-mute
 .actions,.modes{display:flex;gap:8px}.command{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 10px;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:14px;color:var(--mb-ink);font:inherit;font-size:12px;cursor:pointer}.command svg{width:18px;height:18px;color:var(--mb-accent)}
 .command[aria-pressed=true]{background:var(--mb-active);border-color:var(--mb-accent);color:var(--mb-accent)}.room-copy{min-width:0}.room-copy small{display:block;font-size:10px;color:var(--mb-muted);margin-top:3px}.rooms-label{margin:0}
 .mode-note{font-size:11px;color:var(--mb-muted);margin:0;line-height:1.5}.room-copy .entity-id{font-family:ui-monospace,monospace;font-size:9px;overflow-wrap:anywhere}
+.running-mode{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--mb-active);border:1px solid var(--mb-line);border-radius:14px}.running-mode svg{flex:none;color:var(--mb-accent)}.running-mode small{display:block;color:var(--mb-muted);font-size:11px;line-height:1.5}.running-mode strong{display:block;font-size:18px;margin:2px 0}
 .rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;align-content:start;min-height:0}.room{min-height:52px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:13px;color:var(--mb-ink);font:inherit;cursor:pointer}.room svg{width:18px;height:18px;color:var(--mb-accent);flex:none}.room span{font-size:11px;line-height:1.3;overflow-wrap:anywhere}
 button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid var(--mb-accent);outline-offset:2px}
 .feedback{min-height:16px;margin:0;color:var(--mb-muted);font-size:11px}.feedback[role=alert]{color:#a45440}
@@ -56,6 +58,13 @@ export class MufflonbauCleaning extends HTMLElement {
       header.append(status);
     }
     panel.append(header);
+    const activity = cleaningActivity(this._hass.states[cleaning.entity], language);
+    if (activity) {
+      const running = element('div', undefined, 'running-mode'); running.setAttribute('role', 'status');
+      const copy = element('div'); copy.append(element('small', text.currentCleaning), element('strong', activity.label));
+      if (activity.detail) copy.append(element('small', activity.detail));
+      running.append(icon('cleaning'), copy); panel.append(running);
+    }
     const meta = element('div', undefined, 'meta');
     const details = [];
     if (cleaning.battery) details.push(`${text.battery}: ${this._display(cleaning.battery, '%')}`);

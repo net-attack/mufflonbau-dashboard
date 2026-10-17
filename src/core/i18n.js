@@ -1,5 +1,6 @@
 export const translations = {
   en: {
+    deviceUnavailable: 'Unreachable', currentCleaning: 'Current cleaning', cleaningTypeUnknown: 'Cleaning type not reported', vacuumAndMop: 'Vacuum and mop', mopAfterVacuum: 'Vacuum, then mop',
     monitored: 'Monitored devices', healthyDevices: 'Healthy', stateSince: 'State since', missingCleaningHelper: 'No room action configured',
     wallSwitchUnavailable: 'Unreachable · wall switch may be off', checkWallSwitch: 'Turn on the wall switch to control this light.',
     allRooms: 'All rooms', zoomIn: 'Zoom in', zoomOut: 'Zoom out', resetMap: 'Reset zoom', mapDevices: 'Devices on the map', windowOpen: 'Window open', windowClosed: 'Window closed', turnOn: 'Turn on', turnOff: 'Turn off',
@@ -33,6 +34,7 @@ export const translations = {
     vacuum: 'Vacuum', mop: 'Mop', cleanGenius: 'CleanGenius', cleaningMode: 'Cleaning mode', chooseCleaningRoom: 'Tap a room to start the selected mode.', notConfigured: 'Not configured', room: 'Room', dewPoint: 'Dew point',
   },
   de: {
+    deviceUnavailable: 'Nicht erreichbar', currentCleaning: 'Aktuelle Reinigung', cleaningTypeUnknown: 'Reinigungsart nicht gemeldet', vacuumAndMop: 'Saugen und Wischen', mopAfterVacuum: 'Erst saugen, dann wischen',
     monitored: 'Überwachte Geräte', healthyDevices: 'In Ordnung', stateSince: 'Status seit', missingCleaningHelper: 'Keine Raumaktion eingerichtet',
     wallSwitchUnavailable: 'Nicht erreichbar · Wandschalter möglicherweise aus', checkWallSwitch: 'Zum Steuern zuerst den Wandschalter einschalten.',
     allRooms: 'Alle Räume', zoomIn: 'Vergrößern', zoomOut: 'Verkleinern', resetMap: 'Zoom zurücksetzen', mapDevices: 'Geräte auf der Karte', windowOpen: 'Fenster offen', windowClosed: 'Fenster geschlossen', turnOn: 'Einschalten', turnOff: 'Ausschalten',

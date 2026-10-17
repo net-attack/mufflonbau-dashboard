@@ -1,0 +1,23 @@
+import { translations } from './i18n.js';
+import { isOffline } from './state.js';
+
+const key = value => typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]+/g, '_') : value;
+const cleaningLabels = {
+  sweeping: 'vacuum', vacuum: 'vacuum', vacuuming: 'vacuum',
+  mopping: 'mop', mop: 'mop',
+  sweeping_and_mopping: 'vacuumAndMop', vacuum_and_mop: 'vacuumAndMop',
+  mopping_after_sweeping: 'mopAfterVacuum', mop_after_vacuum: 'mopAfterVacuum',
+};
+
+export function cleaningActivity(state, language) {
+  if (isOffline(state) || !['cleaning', 'paused'].includes(state.state)) return null;
+  const text = translations[language];
+  const attrs = state.attributes ?? {};
+  const genius = key(attrs.cleangenius);
+  if ([true, 'on', 'routine_cleaning', 'deep_cleaning'].includes(genius)) {
+    const sequence = cleaningLabels[key(attrs.cleangenius_mode)];
+    return { label: text.cleanGenius, detail: sequence ? text[sequence] : null };
+  }
+  const mode = cleaningLabels[key(attrs.cleaning_mode)];
+  return { label: mode ? text[mode] : text.cleaningTypeUnknown, detail: null };
+}

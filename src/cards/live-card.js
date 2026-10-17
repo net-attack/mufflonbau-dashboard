@@ -1,10 +1,11 @@
 import { liveStyles } from '../design/live-styles.js';
 import { localized, resolveLanguage, translations } from '../core/i18n.js';
-import { appearanceMode, isOffline, monitorWarnings, numericState, stateProblem } from '../core/state.js';
+import { appearanceMode, isOffline, monitorGroups, monitorWarnings, numericState, stateProblem } from '../core/state.js';
 
 import { element, svgElement, icon, iconPath, navigateLink, roomIcon } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
 import { renderInteractiveFloorplan } from './floorplan.js';
+import { cleaningActivity } from '../core/cleaning.js';
 export class MufflonbauLiveCard extends HTMLElement {
   constructor() {
     super();
@@ -27,7 +28,9 @@ export class MufflonbauLiveCard extends HTMLElement {
     const previous = this._hass;
     this._hass = hass;
     if (!previous || previous.locale !== hass.locale || previous.language !== hass.language ||
-      previous.themes !== hass.themes || this._watched?.some(id => previous.states[id] !== hass.states[id])) this._render();
+      previous.themes !== hass.themes ||
+      (this._config?.mode === 'warnings' && (previous.entities !== hass.entities || previous.devices !== hass.devices)) ||
+      this._watched?.some(id => previous.states[id] !== hass.states[id])) this._render();
   }
   getCardSize() { return this._config?.mode === 'floorplan' ? 7 : 3; }
   connectedCallback() { this._startClock(); this._render(); }
@@ -243,7 +246,7 @@ export class MufflonbauLiveCard extends HTMLElement {
       `Ø ${average(temperatures)} °C · Ø ${average(humidities)} %`, `${lightsOn} ${text.lightsOn}`);
   }
   _warnings(card, text) {
-    const warnings = monitorWarnings(this._config.monitors ?? [], this._hass.states, this._language);
+    const warnings = monitorWarnings(this._config.monitors ?? [], this._hass.states, this._language, this._hass);
     card.setAttribute('aria-live', 'polite');
     if (this._config.compact) {
       card.classList.add('dashboard-summary');
@@ -254,7 +257,7 @@ export class MufflonbauLiveCard extends HTMLElement {
     card.classList.add('system-board');
     this._section(card, text.system, warnings.length ? warnings.length : '✓');
     const summary = element('div', undefined, 'system-summary');
-    const total = (this._config.monitors ?? []).length;
+    const total = monitorGroups(this._config.monitors ?? [], this._hass).length;
     for (const [value, label] of [[total, text.monitored], [total - warnings.length, text.healthyDevices], [warnings.length, text.warnings]]) {
       const stat = element('div', undefined, 'system-stat'); stat.append(element('strong', String(value)), element('span', label)); summary.append(stat);
     }
@@ -267,7 +270,7 @@ export class MufflonbauLiveCard extends HTMLElement {
       const button = element('button', undefined, 'warning'); button.type = 'button'; button.dataset.entity = warning.entity;
       const disc = element('span', undefined, 'icon-disc'); disc.append(icon('system'));
       const detail = element('span'); detail.append(element('strong', warning.name), element('small', warning.detail));
-      if (warning.name !== warning.entity) detail.append(element('small', warning.entity, 'entity-id'));
+      if (!warning.device_id && warning.name !== warning.entity) detail.append(element('small', warning.entity, 'entity-id'));
       button.append(disc, detail); button.addEventListener('click', () => this._moreInfo(warning.entity)); grid.append(button);
     }
     card.append(grid);
@@ -337,7 +340,9 @@ export class MufflonbauLiveCard extends HTMLElement {
     if (this._config.compact) {
       card.classList.add('dashboard-summary');
       const config = this._config.cleaning;
-      this._summaryLink(card, 'cleaning', 'cleaning', text.cleaning, this._state(config.entity, text),
+      const activity = cleaningActivity(this._hass.states[config.entity], this._language);
+      const status = [this._state(config.entity, text), activity?.label].filter(Boolean).join(' · ');
+      this._summaryLink(card, 'cleaning', 'cleaning', text.cleaning, status,
         config.battery ? `${text.battery} ${this._value(config.battery, '%')}` : undefined);
       return;
     }

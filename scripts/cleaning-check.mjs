@@ -13,6 +13,29 @@ export async function checkCleaning(page, config, hass) {
     card.setConfig(window.cleaningConfig); card.hass = window.cleaningHass; document.querySelector('main').append(card);
   }, { config, hass });
   const panel = page.locator('#cleaning-controls');
+  await page.evaluate(() => {
+    const summary = document.createElement('mufflonbau-live'); summary.id = 'cleaning-summary';
+    summary.setConfig({ mode: 'cleaning', compact: true, cleaning: window.cleaningConfig.cleaning, language: 'de' });
+    document.querySelector('main').append(summary);
+  });
+  for (const [attributes, expected] of [
+    [{ cleaning_mode: 'Sweeping' }, 'Saugen'],
+    [{ cleaning_mode: 'Mopping' }, 'Wischen'],
+    [{ cleaning_mode: 'Sweeping', cleangenius: 'Routine cleaning', cleangenius_mode: 'Mop after vacuum' }, 'CleanGenius'],
+    [{}, 'Reinigungsart nicht gemeldet'],
+  ]) {
+    await page.evaluate(attributes => {
+      const card = document.querySelector('#cleaning-controls');
+      const live = { ...window.cleaningHass, states: { ...window.cleaningHass.states, 'vacuum.robot': { state: 'cleaning', attributes } } };
+      card.hass = live; document.querySelector('#cleaning-summary').hass = live;
+    }, attributes);
+    assert.equal(await panel.locator('.running-mode strong').innerText(), expected);
+    assert.match(await page.locator('#cleaning-summary .summary-detail').innerText(), new RegExp(expected));
+    await panel.locator('[data-mode=mop]').click();
+    assert.equal(await panel.locator('.running-mode strong').innerText(), expected, 'Selecting a future room action must not change the reported running mode');
+  }
+  await page.evaluate(() => { document.querySelector('#cleaning-controls').hass = window.cleaningHass; document.querySelector('#cleaning-summary').remove(); });
+  assert.equal(await panel.locator('.running-mode').count(), 0, 'Docked robots must not show a running cleaning type');
   for (const [mode, domain, service] of [['vacuum', 'input_button', 'press'], ['mop', 'input_button', 'press'], ['clean_genius', 'script', 'turn_on']]) {
     const count = await page.evaluate(() => window.cleaningCalls.length);
     await panel.locator(`[data-mode="${mode}"]`).click();

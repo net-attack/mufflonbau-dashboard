@@ -93,6 +93,49 @@ export async function checkDetailViews(sourcePage) {
     await shell.locator('.people').first().click();
     assert.match(page.url(), /\/presence$/);
     assert.equal(await page.evaluate(() => window.detailMoreInfo), 1, 'Person cards must still open entity details');
+    await show('system');
+    await page.evaluate(() => {
+      const card = document.querySelector('#detail-dashboard')._children[0];
+      const monitors = ['sensor.probe_temperature', 'sensor.probe_humidity', 'sensor.probe_battery', 'sensor.other_battery'].map(entity => ({ entity }));
+      card.setConfig({ ...card._config, monitors });
+      window.monitorHass = { ...window.detailHass, entities: {}, devices: {}, states: {
+        'sensor.probe_temperature': { state: 'unavailable' },
+        'sensor.probe_humidity': { state: 'unavailable' },
+        'sensor.probe_battery': { state: 'unavailable' },
+        'sensor.other_battery': { state: '80', attributes: { device_class: 'battery' } },
+      } };
+      card.hass = window.monitorHass;
+    });
+    assert.equal(await shell.locator('.warning').count(), 3);
+    await page.evaluate(() => {
+      window.monitorHass = { ...window.monitorHass,
+        entities: Object.fromEntries(Object.keys(window.monitorHass.states).map(entity => [entity, { device_id: entity === 'sensor.other_battery' ? 'other' : 'probe' }])),
+        devices: { probe: { name_by_user: 'Raumfühler', name: 'Sensor' }, other: { name: 'Anderes Gerät' } },
+      };
+      document.querySelector('#detail-dashboard')._children[0].hass = window.monitorHass;
+    });
+    assert.equal(await shell.locator('.warning').count(), 1, 'Late registry data must collapse readings without requiring state changes');
+    assert.match(await shell.locator('.warning').innerText(), /Raumfühler\s+Nicht erreichbar/);
+    assert.equal(await shell.locator('.warning .entity-id').count(), 0);
+    assert.deepEqual(await shell.locator('.system-stat strong').allTextContents(), ['2', '1', '1']);
+    await shell.locator('.warning').click();
+    assert.match(page.url(), /\/system$/);
+    assert.equal(await page.evaluate(() => window.detailMoreInfo), 2);
+    await page.evaluate(() => {
+      const card = document.querySelector('#detail-dashboard')._children[0]; card.setConfig({ ...card._config, compact: true });
+    });
+    assert.match(await shell.locator('.summary-detail').innerText(), /1 Warnung.*Raumfühler/s);
+    await page.evaluate(() => {
+      const card = document.querySelector('#detail-dashboard')._children[0]; card.setConfig({ ...card._config, compact: false });
+      window.monitorHass = { ...window.monitorHass, states: {
+        ...window.monitorHass.states,
+        'sensor.probe_temperature': { state: '22', attributes: { unit_of_measurement: '°C' } },
+        'sensor.probe_humidity': { state: '45', attributes: { unit_of_measurement: '%' } },
+        'sensor.probe_battery': { state: '70', attributes: { device_class: 'battery' } },
+      } }; card.hass = window.monitorHass;
+    });
+    assert.equal(await shell.locator('.warning').count(), 0);
+    assert.deepEqual(await shell.locator('.system-stat strong').allTextContents(), ['2', '2', '0']);
     await show('cleaning');
     await shell.locator('.camera-toolbar button[aria-label=Vergrößern]').click();
     assert.match(await shell.locator('.camera-content').getAttribute('style'), /scale\(1\.5\)/);

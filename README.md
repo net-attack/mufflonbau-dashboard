@@ -133,6 +133,11 @@ cleaning: # inside a room definition
 No automations or helpers are created. The native vacuum tile adds start/pause,
 stop, and return-home controls where supported by the vacuum.
 
+While cleaning or paused, the cleaning page and Home summary show the robot's
+reported cleaning type (vacuum, mop, combined cleaning or CleanGenius). Changing
+the room-action selector does not change this live display. If the integration
+does not report a cleaning type, the dashboard says so rather than inferring it.
+
 Monitors flag missing, `unknown`, and `unavailable` entities. With `battery_below`,
 invalid numeric readings also count as unavailable; values strictly below the
 threshold generate a battery warning. Values equal to the threshold are healthy.
@@ -140,6 +145,13 @@ Warnings update with HA states without regenerating the dashboard. Battery
 sensors are checked at a 20% threshold by default; set `battery_below` to
 override it. Healthy readings stay hidden. Tap a warning or a climate tile to
 open HA's entity details.
+
+System checks group monitored readings by Home Assistant device. If a device's
+monitored readings are all unavailable, it produces one “Unreachable” warning
+instead of separate temperature, humidity and battery errors. The overview counts
+devices too. Individual battery or measurement problems remain visible when the
+device still reports other readings. Without registry information, entities stay
+separate until Home Assistant supplies their device assignments.
 
 The admin view automatically discovers common Speedtest/WAN sensors, router
 network sensors, router-backed device trackers, and Home Assistant/Raspberry Pi

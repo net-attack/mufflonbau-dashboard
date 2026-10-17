@@ -9,7 +9,7 @@
   }
   function svgElement(tag, attributes = {}, text) {
     const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
-    for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+    for (const [key2, value] of Object.entries(attributes)) node.setAttribute(key2, value);
     if (text !== void 0) node.textContent = text;
     return node;
   }
@@ -118,7 +118,7 @@ ${trees}${houses}
   function themeProperties(mode, theme = "storybook") {
     const palette = (themes[theme] ?? themes.storybook)[mode] ?? themes.storybook.ambient;
     return {
-      ...Object.fromEntries(Object.entries(palette).map(([key, value]) => [`--mb-${key}`, value])),
+      ...Object.fromEntries(Object.entries(palette).map(([key2, value]) => [`--mb-${key2}`, value])),
       "--primary-background-color": palette.canvas,
       "--secondary-background-color": palette.soft,
       "--card-background-color": palette.surface,
@@ -138,12 +138,17 @@ ${trees}${houses}
   }
   function applyTheme(node, mode, theme) {
     node.setAttribute("data-theme", theme ?? "storybook");
-    for (const [key, value] of Object.entries(themeProperties(mode, theme))) node.style.setProperty(key, value);
+    for (const [key2, value] of Object.entries(themeProperties(mode, theme))) node.style.setProperty(key2, value);
   }
 
   // src/core/i18n.js
   var translations = {
     en: {
+      deviceUnavailable: "Unreachable",
+      currentCleaning: "Current cleaning",
+      cleaningTypeUnknown: "Cleaning type not reported",
+      vacuumAndMop: "Vacuum and mop",
+      mopAfterVacuum: "Vacuum, then mop",
       monitored: "Monitored devices",
       healthyDevices: "Healthy",
       stateSince: "State since",
@@ -236,6 +241,11 @@ ${trees}${houses}
       dewPoint: "Dew point"
     },
     de: {
+      deviceUnavailable: "Nicht erreichbar",
+      currentCleaning: "Aktuelle Reinigung",
+      cleaningTypeUnknown: "Reinigungsart nicht gemeldet",
+      vacuumAndMop: "Saugen und Wischen",
+      mopAfterVacuum: "Erst saugen, dann wischen",
       monitored: "Überwachte Geräte",
       healthyDevices: "In Ordnung",
       stateSince: "Status seit",
@@ -468,9 +478,20 @@ ${trees}${houses}
     const value = Number(state.state);
     return Number.isFinite(value) ? value : null;
   }
-  function monitorWarnings(monitors, states, language) {
+  function monitorGroups(monitors, { entities = {} } = {}) {
+    const groups = /* @__PURE__ */ new Map();
+    for (const monitor of monitors) {
+      const deviceId = entities[monitor.entity]?.device_id;
+      const key2 = deviceId ? `device:${deviceId}` : `entity:${monitor.entity}`;
+      if (!groups.has(key2)) groups.set(key2, { deviceId, monitors: [] });
+      const group = groups.get(key2);
+      if (!group.monitors.some((item) => item.entity === monitor.entity)) group.monitors.push(monitor);
+    }
+    return [...groups.values()];
+  }
+  function monitorWarnings(monitors, states, language, registries = {}) {
     const text = translations[language];
-    return monitors.flatMap((monitor) => {
+    const entityWarning = (monitor) => {
       const state = states[monitor.entity];
       const name = localized(monitor.name, language) || state?.attributes?.friendly_name || monitor.entity;
       if (isOffline(state)) return [{ entity: monitor.entity, name, detail: stateProblem(state, language) }];
@@ -483,6 +504,19 @@ ${trees}${houses}
         return [{ entity: monitor.entity, name, detail: value > 100 ? text.invalidValue : `${text.battery}: ${value}%` }];
       }
       return [];
+    };
+    return monitorGroups(monitors, registries).flatMap((group) => {
+      const warnings = group.monitors.flatMap(entityWarning);
+      if (!warnings.length || !group.deviceId) return warnings;
+      const device = registries.devices?.[group.deviceId];
+      const unreachable = group.monitors.every((monitor) => isOffline(states[monitor.entity]));
+      const representative = warnings.find((warning) => isOffline(states[warning.entity])) ?? warnings[0];
+      return [{
+        entity: representative.entity,
+        name: device?.name_by_user || device?.name || representative.name,
+        detail: unreachable ? text.deviceUnavailable : [...new Set(warnings.map((warning) => warning.detail))].join(" · "),
+        device_id: group.deviceId
+      }];
     });
   }
   function appearanceMode(appearance = {}, states = {}, darkMode = false) {
@@ -500,7 +534,7 @@ ${trees}${houses}
     host: /raspberry|raspi|\brpi\b|home.?assistant|processor|cpu|memory|ram|disk|swap|uptime/i
   };
   function discoverAdminSources(admin, states) {
-    const result = Object.fromEntries([...adminGroups, "clients"].map((key) => [key, [...admin[key] ?? []]]));
+    const result = Object.fromEntries([...adminGroups, "clients"].map((key2) => [key2, [...admin[key2] ?? []]]));
     for (const [id, state] of Object.entries(states ?? {})) {
       const domain = id.split(".")[0];
       const name = `${id} ${state?.attributes?.friendly_name ?? ""} ${state?.attributes?.device_class ?? ""} ${state?.attributes?.integration ?? ""}`;
@@ -513,20 +547,20 @@ ${trees}${houses}
         if (sourcePatterns[group].test(name)) result[group].push(id);
       }
     }
-    for (const key of Object.keys(result)) result[key] = [...new Set(result[key])];
+    for (const key2 of Object.keys(result)) result[key2] = [...new Set(result[key2])];
     return result;
   }
   function normalizeAdmin(value, validateEntity) {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Mufflonbau: admin must be an object.");
     const result = {};
-    for (const key of [...adminGroups, "clients"]) {
-      const ids = value[key] ?? [];
-      if (!Array.isArray(ids)) throw new Error(`Mufflonbau: admin.${key} must be an array of entity IDs.`);
+    for (const key2 of [...adminGroups, "clients"]) {
+      const ids = value[key2] ?? [];
+      if (!Array.isArray(ids)) throw new Error(`Mufflonbau: admin.${key2} must be an array of entity IDs.`);
       ids.forEach((id, index) => {
-        validateEntity(id, `admin.${key}[${index}]`);
-        if (key === "clients" && !id.startsWith("device_tracker.")) throw new Error(`Mufflonbau: admin.clients[${index}] must reference a device_tracker.`);
+        validateEntity(id, `admin.${key2}[${index}]`);
+        if (key2 === "clients" && !id.startsWith("device_tracker.")) throw new Error(`Mufflonbau: admin.clients[${index}] must reference a device_tracker.`);
       });
-      result[key] = [...new Set(ids)];
+      result[key2] = [...new Set(ids)];
     }
     return result;
   }
@@ -548,9 +582,9 @@ ${trees}${houses}
       if (numericState(state) === null && state?.attributes?.unit_of_measurement === void 0) continue;
       const unit = state.attributes?.unit_of_measurement ?? "";
       const kind = state.attributes?.device_class ?? "";
-      const key = `${kind}\0${unit}`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(id);
+      const key2 = `${kind}\0${unit}`;
+      if (!groups.has(key2)) groups.set(key2, []);
+      groups.get(key2).push(id);
     }
     return [...groups.values()];
   }
@@ -832,9 +866,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
               svg.append(dot);
             }
             const label2 = element("span");
-            const key = element("span", void 0, "key");
-            key.style.background = color;
-            label2.append(key, document.createTextNode(this._hass.states[item.id]?.attributes?.friendly_name ?? item.id));
+            const key2 = element("span", void 0, "key");
+            key2.style.background = color;
+            label2.append(key2, document.createTextNode(this._hass.states[item.id]?.attributes?.friendly_name ?? item.id));
             legend.append(label2);
           }
           const times = element("div", void 0, "times");
@@ -847,6 +881,32 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
     }
   };
 
+  // src/core/cleaning.js
+  var key = (value) => typeof value === "string" ? value.trim().toLowerCase().replace(/[\s-]+/g, "_") : value;
+  var cleaningLabels = {
+    sweeping: "vacuum",
+    vacuum: "vacuum",
+    vacuuming: "vacuum",
+    mopping: "mop",
+    mop: "mop",
+    sweeping_and_mopping: "vacuumAndMop",
+    vacuum_and_mop: "vacuumAndMop",
+    mopping_after_sweeping: "mopAfterVacuum",
+    mop_after_vacuum: "mopAfterVacuum"
+  };
+  function cleaningActivity(state, language) {
+    if (isOffline(state) || !["cleaning", "paused"].includes(state.state)) return null;
+    const text = translations[language];
+    const attrs = state.attributes ?? {};
+    const genius = key(attrs.cleangenius);
+    if ([true, "on", "routine_cleaning", "deep_cleaning"].includes(genius)) {
+      const sequence = cleaningLabels[key(attrs.cleangenius_mode)];
+      return { label: text.cleanGenius, detail: sequence ? text[sequence] : null };
+    }
+    const mode = cleaningLabels[key(attrs.cleaning_mode)];
+    return { label: mode ? text[mode] : text.cleaningTypeUnknown, detail: null };
+  }
+
   // src/cards/cleaning.js
   var styles3 = `
 :host{display:block;min-width:0;height:100%;color:var(--mb-ink);font-family:Inter,'Avenir Next',system-ui,sans-serif}*{box-sizing:border-box}
@@ -856,6 +916,7 @@ h2{font-size:18px;margin:0}header small,.meta{font-size:11px;color:var(--mb-mute
 .actions,.modes{display:flex;gap:8px}.command{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 10px;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:14px;color:var(--mb-ink);font:inherit;font-size:12px;cursor:pointer}.command svg{width:18px;height:18px;color:var(--mb-accent)}
 .command[aria-pressed=true]{background:var(--mb-active);border-color:var(--mb-accent);color:var(--mb-accent)}.room-copy{min-width:0}.room-copy small{display:block;font-size:10px;color:var(--mb-muted);margin-top:3px}.rooms-label{margin:0}
 .mode-note{font-size:11px;color:var(--mb-muted);margin:0;line-height:1.5}.room-copy .entity-id{font-family:ui-monospace,monospace;font-size:9px;overflow-wrap:anywhere}
+.running-mode{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--mb-active);border:1px solid var(--mb-line);border-radius:14px}.running-mode svg{flex:none;color:var(--mb-accent)}.running-mode small{display:block;color:var(--mb-muted);font-size:11px;line-height:1.5}.running-mode strong{display:block;font-size:18px;margin:2px 0}
 .rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;align-content:start;min-height:0}.room{min-height:52px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:13px;color:var(--mb-ink);font:inherit;cursor:pointer}.room svg{width:18px;height:18px;color:var(--mb-accent);flex:none}.room span{font-size:11px;line-height:1.3;overflow-wrap:anywhere}
 button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid var(--mb-accent);outline-offset:2px}
 .feedback{min-height:16px;margin:0;color:var(--mb-muted);font-size:11px}.feedback[role=alert]{color:#a45440}
@@ -926,6 +987,16 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         header.append(status);
       }
       panel.append(header);
+      const activity = cleaningActivity(this._hass.states[cleaning.entity], language);
+      if (activity) {
+        const running = element("div", void 0, "running-mode");
+        running.setAttribute("role", "status");
+        const copy = element("div");
+        copy.append(element("small", text.currentCleaning), element("strong", activity.label));
+        if (activity.detail) copy.append(element("small", activity.detail));
+        running.append(icon("cleaning"), copy);
+        panel.append(running);
+      }
       const meta = element("div", void 0, "meta");
       const details = [];
       if (cleaning.battery) details.push(`${text.battery}: ${this._display(cleaning.battery, "%")}`);
@@ -1021,9 +1092,9 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       if (--budget.left < 0) fail2("exceeds 4000 drawing nodes.");
       if (!node || !drawingTags.has(node.tag)) fail2(`[${index}].tag is not a supported drawing shape.`);
       if (node.attrs !== void 0 && (!node.attrs || typeof node.attrs !== "object" || Array.isArray(node.attrs))) fail2(`[${index}].attrs must be an object.`);
-      for (const [key, value] of Object.entries(node.attrs ?? {})) {
-        if (!drawingAttributes.has(key) || !["number", "string"].includes(typeof value) || typeof value === "number" && !Number.isFinite(value)) fail2(`[${index}].attrs.${key} is not supported.`);
-        if (["fill", "stroke"].includes(key) && value !== "none" && !Object.hasOwn(drawingColors, value)) fail2(`[${index}].attrs.${key} must use a theme color or none.`);
+      for (const [key2, value] of Object.entries(node.attrs ?? {})) {
+        if (!drawingAttributes.has(key2) || !["number", "string"].includes(typeof value) || typeof value === "number" && !Number.isFinite(value)) fail2(`[${index}].attrs.${key2} is not supported.`);
+        if (["fill", "stroke"].includes(key2) && value !== "none" && !Object.hasOwn(drawingColors, value)) fail2(`[${index}].attrs.${key2} must use a theme color or none.`);
       }
       if (node.text !== void 0 && (node.tag !== "text" || typeof node.text !== "string")) fail2(`[${index}].text must belong to a text shape.`);
       if (node.children !== void 0) validateDrawing(node.children, `${path}[${index}].children`, depth + 1, budget);
@@ -1032,7 +1103,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
   function appendDrawing(parent, nodes, create) {
     for (const shape of nodes ?? []) {
       if (!drawingTags.has(shape.tag)) continue;
-      const attrs = Object.fromEntries(Object.entries(shape.attrs ?? {}).filter(([key, value]) => drawingAttributes.has(key) && (!["fill", "stroke"].includes(key) || value === "none" || Object.hasOwn(drawingColors, value))).map(([key, value]) => [key, ["fill", "stroke"].includes(key) && drawingColors[value] ? `var(${drawingColors[value]})` : value]));
+      const attrs = Object.fromEntries(Object.entries(shape.attrs ?? {}).filter(([key2, value]) => drawingAttributes.has(key2) && (!["fill", "stroke"].includes(key2) || value === "none" || Object.hasOwn(drawingColors, value))).map(([key2, value]) => [key2, ["fill", "stroke"].includes(key2) && drawingColors[value] ? `var(${drawingColors[value]})` : value]));
       const node = create(shape.tag, attrs, shape.text);
       appendDrawing(node, shape.children, create);
       parent.append(node);
@@ -1071,12 +1142,12 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       expert_entities: config.expert_entities ?? [],
       appearance: { theme: "storybook", ...config.appearance ?? {} }
     };
-    for (const key of ["entities", "people", "calendars", "expert_entities"]) {
-      list(result[key], key);
-      if (key === "entities" && result[key].some((id) => typeof id !== "string")) {
-        fail(key, "must be an array of entity IDs.");
+    for (const key2 of ["entities", "people", "calendars", "expert_entities"]) {
+      list(result[key2], key2);
+      if (key2 === "entities" && result[key2].some((id) => typeof id !== "string")) {
+        fail(key2, "must be an array of entity IDs.");
       }
-      result[key].forEach((id, index) => entity(id, `${key}[${index}]`));
+      result[key2].forEach((id, index) => entity(id, `${key2}[${index}]`));
     }
     if (result.weather !== void 0) entity(result.weather, "weather");
     list(result.rooms, "rooms");
@@ -1102,17 +1173,17 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       label(room.name, `${path}.name`);
       if (room.label_position !== void 0) {
         object(room.label_position, `${path}.label_position`);
-        for (const key of ["x", "y"]) if (!Number.isFinite(room.label_position[key]) || room.label_position[key] < 0 || room.label_position[key] > 1) fail(`${path}.label_position.${key}`, "must be a fraction between 0 and 1.");
+        for (const key2 of ["x", "y"]) if (!Number.isFinite(room.label_position[key2]) || room.label_position[key2] < 0 || room.label_position[key2] > 1) fail(`${path}.label_position.${key2}`, "must be a fraction between 0 and 1.");
       }
       if (room.note !== void 0) label(room.note, `${path}.note`);
       if (room.icon !== void 0 && typeof room.icon !== "string") fail(`${path}.icon`, "must be a string.");
       const normalized = { ...room, lights: room.lights ?? [], entities: room.entities ?? [] };
-      for (const key of ["temperature", "humidity", "dew_point"]) {
-        if (room[key] !== void 0) entity(room[key], `${path}.${key}`);
+      for (const key2 of ["temperature", "humidity", "dew_point"]) {
+        if (room[key2] !== void 0) entity(room[key2], `${path}.${key2}`);
       }
-      for (const key of ["lights", "entities"]) {
-        list(normalized[key], `${path}.${key}`);
-        normalized[key].forEach((id) => entity(id, `${path}.${key}`));
+      for (const key2 of ["lights", "entities"]) {
+        list(normalized[key2], `${path}.${key2}`);
+        normalized[key2].forEach((id) => entity(id, `${path}.${key2}`));
       }
       normalized.objects = room.objects ?? [];
       list(normalized.objects, `${path}.objects`);
@@ -1124,9 +1195,9 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         }
         label(item.name, `${itemPath}.name`);
         object(item.position, `${itemPath}.position`);
-        for (const key of ["x", "y"]) {
-          if (!Number.isFinite(item.position[key]) || item.position[key] < 0 || item.position[key] > 1) {
-            fail(`${itemPath}.position.${key}`, "must be a fraction between 0 and 1.");
+        for (const key2 of ["x", "y"]) {
+          if (!Number.isFinite(item.position[key2]) || item.position[key2] < 0 || item.position[key2] > 1) {
+            fail(`${itemPath}.position.${key2}`, "must be a fraction between 0 and 1.");
           }
         }
         if (item.entity !== void 0) entity(item.entity, `${itemPath}.entity`);
@@ -1136,10 +1207,10 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       });
       if (room.cleaning !== void 0) {
         object(room.cleaning, `${path}.cleaning`);
-        for (const [key, id] of Object.entries(room.cleaning)) {
-          if (!["vacuum", "mop", "clean_genius"].includes(key)) fail(`${path}.cleaning`, "only supports vacuum, mop, and clean_genius.");
-          entity(id, `${path}.cleaning.${key}`);
-          if (!/^(input_button|script)\./.test(id)) fail(`${path}.cleaning.${key}`, "must reference an input_button or script.");
+        for (const [key2, id] of Object.entries(room.cleaning)) {
+          if (!["vacuum", "mop", "clean_genius"].includes(key2)) fail(`${path}.cleaning`, "only supports vacuum, mop, and clean_genius.");
+          entity(id, `${path}.cleaning.${key2}`);
+          if (!/^(input_button|script)\./.test(id)) fail(`${path}.cleaning.${key2}`, "must reference an input_button or script.");
         }
       }
       if (room.position !== void 0) {
@@ -1164,10 +1235,10 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         }
         const { true: legacyY, ...position } = room.position;
         normalized.position = { ...position, y: position.y ?? legacyY };
-        for (const key of ["x", "y", "width", "height"]) {
-          const number = normalized.position[key];
-          if (!Number.isFinite(number) || number < 0 || ["width", "height"].includes(key) && number === 0) {
-            fail(`${path}.position.${key}`, "must be a valid non-negative coordinate or positive size.");
+        for (const key2 of ["x", "y", "width", "height"]) {
+          const number = normalized.position[key2];
+          if (!Number.isFinite(number) || number < 0 || ["width", "height"].includes(key2) && number === 0) {
+            fail(`${path}.position.${key2}`, "must be a valid non-negative coordinate or positive size.");
           }
         }
       }
@@ -1185,7 +1256,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       label(item.name, `${path}.name`);
       if (!["light", "climate", "cleaning", "office", "home", "rooms", "drop"].includes(item.icon)) fail(`${path}.icon`, "must be a supported device icon.");
       object(item.position, `${path}.position`);
-      for (const key of ["x", "y"]) if (!Number.isFinite(item.position[key])) fail(`${path}.position.${key}`, "must be a finite map coordinate.");
+      for (const key2 of ["x", "y"]) if (!Number.isFinite(item.position[key2])) fail(`${path}.position.${key2}`, "must be a finite map coordinate.");
       if (item.entity !== void 0) entity(item.entity, `${path}.entity`);
       if (item.wall_switch !== void 0 && (typeof item.wall_switch !== "boolean" || item.wall_switch && !item.entity?.startsWith("light."))) fail(`${path}.wall_switch`, "must be boolean and requires a light entity when enabled.");
       if (item.action !== void 0 && !["toggle", "more-info"].includes(item.action)) fail(`${path}.action`, "must be toggle or more-info.");
@@ -1204,14 +1275,14 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     });
     if (result.cleaning !== void 0) {
       object(result.cleaning, "cleaning");
-      for (const key of ["entity", "battery", "current_room", "map"]) {
-        if (result.cleaning[key] !== void 0) entity(result.cleaning[key], `cleaning.${key}`);
+      for (const key2 of ["entity", "battery", "current_room", "map"]) {
+        if (result.cleaning[key2] !== void 0) entity(result.cleaning[key2], `cleaning.${key2}`);
       }
     }
     if (result.kiosk_mode !== void 0) {
       object(result.kiosk_mode, "kiosk_mode");
-      for (const [key, value] of Object.entries(result.kiosk_mode)) {
-        if (!["kiosk", "hide_header", "hide_sidebar"].includes(key) || typeof value !== "boolean") {
+      for (const [key2, value] of Object.entries(result.kiosk_mode)) {
+        if (!["kiosk", "hide_header", "hide_sidebar"].includes(key2) || typeof value !== "boolean") {
           fail("kiosk_mode", "supports boolean kiosk, hide_header, and hide_sidebar options.");
         }
       }
@@ -1221,8 +1292,8 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       object(result.appearance, "appearance");
       if (!["calm", "atmospheric", "storybook"].includes(result.appearance.theme)) fail("appearance.theme", "must be calm, atmospheric, or storybook.");
       if (!["auto", "ambient", "night"].includes(result.appearance.mode ?? "auto")) fail("appearance.mode", "must be auto, ambient, or night.");
-      for (const key of ["night_person", "ambient_person"]) {
-        if (result.appearance[key] !== void 0) entity(result.appearance[key], `appearance.${key}`);
+      for (const key2 of ["night_person", "ambient_person"]) {
+        if (result.appearance[key2] !== void 0) entity(result.appearance[key2], `appearance.${key2}`);
       }
     }
     result.admin = normalizeAdmin(result.admin ?? {}, entity);
@@ -2182,7 +2253,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     set hass(hass) {
       const previous = this._hass;
       this._hass = hass;
-      if (!previous || previous.locale !== hass.locale || previous.language !== hass.language || previous.themes !== hass.themes || this._watched?.some((id) => previous.states[id] !== hass.states[id])) this._render();
+      if (!previous || previous.locale !== hass.locale || previous.language !== hass.language || previous.themes !== hass.themes || this._config?.mode === "warnings" && (previous.entities !== hass.entities || previous.devices !== hass.devices) || this._watched?.some((id) => previous.states[id] !== hass.states[id])) this._render();
     }
     getCardSize() {
       return this._config?.mode === "floorplan" ? 7 : 3;
@@ -2257,9 +2328,9 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       const period = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
       const options = Array.isArray(text.greetings) ? text.greetings : text.greetings?.[period] ?? [text[period]];
       const day = new Intl.DateTimeFormat("en-CA", { dateStyle: "short", timeZone: timezone }).format(now);
-      const key = `${this._language}:${day}:${period}`;
-      if (this._greetingCache?.key !== key) {
-        this._greetingCache = { key, value: options[Math.floor(Math.random() * options.length)] };
+      const key2 = `${this._language}:${day}:${period}`;
+      if (this._greetingCache?.key !== key2) {
+        this._greetingCache = { key: key2, value: options[Math.floor(Math.random() * options.length)] };
       }
       return this._greetingCache.value;
     }
@@ -2456,7 +2527,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       );
     }
     _warnings(card, text) {
-      const warnings = monitorWarnings(this._config.monitors ?? [], this._hass.states, this._language);
+      const warnings = monitorWarnings(this._config.monitors ?? [], this._hass.states, this._language, this._hass);
       card.setAttribute("aria-live", "polite");
       if (this._config.compact) {
         card.classList.add("dashboard-summary");
@@ -2472,7 +2543,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       card.classList.add("system-board");
       this._section(card, text.system, warnings.length ? warnings.length : "✓");
       const summary = element("div", void 0, "system-summary");
-      const total = (this._config.monitors ?? []).length;
+      const total = monitorGroups(this._config.monitors ?? [], this._hass).length;
       for (const [value, label2] of [[total, text.monitored], [total - warnings.length, text.healthyDevices], [warnings.length, text.warnings]]) {
         const stat = element("div", void 0, "system-stat");
         stat.append(element("strong", String(value)), element("span", label2));
@@ -2493,7 +2564,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         disc.append(icon("system"));
         const detail = element("span");
         detail.append(element("strong", warning.name), element("small", warning.detail));
-        if (warning.name !== warning.entity) detail.append(element("small", warning.entity, "entity-id"));
+        if (!warning.device_id && warning.name !== warning.entity) detail.append(element("small", warning.entity, "entity-id"));
         button.append(disc, detail);
         button.addEventListener("click", () => this._moreInfo(warning.entity));
         grid.append(button);
@@ -2599,12 +2670,14 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       if (this._config.compact) {
         card.classList.add("dashboard-summary");
         const config2 = this._config.cleaning;
+        const activity = cleaningActivity(this._hass.states[config2.entity], this._language);
+        const status = [this._state(config2.entity, text), activity?.label].filter(Boolean).join(" · ");
         this._summaryLink(
           card,
           "cleaning",
           "cleaning",
           text.cleaning,
-          this._state(config2.entity, text),
+          status,
           config2.battery ? `${text.battery} ${this._value(config2.battery, "%")}` : void 0
         );
         return;

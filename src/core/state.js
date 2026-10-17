@@ -26,9 +26,20 @@ export function numericState(state) {
   const value = Number(state.state);
   return Number.isFinite(value) ? value : null;
 }
-export function monitorWarnings(monitors, states, language) {
+export function monitorGroups(monitors, { entities = {} } = {}) {
+  const groups = new Map();
+  for (const monitor of monitors) {
+    const deviceId = entities[monitor.entity]?.device_id;
+    const key = deviceId ? `device:${deviceId}` : `entity:${monitor.entity}`;
+    if (!groups.has(key)) groups.set(key, { deviceId, monitors: [] });
+    const group = groups.get(key);
+    if (!group.monitors.some(item => item.entity === monitor.entity)) group.monitors.push(monitor);
+  }
+  return [...groups.values()];
+}
+export function monitorWarnings(monitors, states, language, registries = {}) {
   const text = translations[language];
-  return monitors.flatMap(monitor => {
+  const entityWarning = monitor => {
     const state = states[monitor.entity];
     const name = localized(monitor.name, language) || state?.attributes?.friendly_name || monitor.entity;
     if (isOffline(state)) return [{ entity: monitor.entity, name, detail: stateProblem(state, language) }];
@@ -42,6 +53,19 @@ export function monitorWarnings(monitors, states, language) {
       return [{ entity: monitor.entity, name, detail: value > 100 ? text.invalidValue : `${text.battery}: ${value}%` }];
     }
     return [];
+  };
+  return monitorGroups(monitors, registries).flatMap(group => {
+    const warnings = group.monitors.flatMap(entityWarning);
+    if (!warnings.length || !group.deviceId) return warnings;
+    const device = registries.devices?.[group.deviceId];
+    const unreachable = group.monitors.every(monitor => isOffline(states[monitor.entity]));
+    const representative = warnings.find(warning => isOffline(states[warning.entity])) ?? warnings[0];
+    return [{
+      entity: representative.entity,
+      name: device?.name_by_user || device?.name || representative.name,
+      detail: unreachable ? text.deviceUnavailable : [...new Set(warnings.map(warning => warning.detail))].join(' · '),
+      device_id: group.deviceId,
+    }];
   });
 }
 export function appearanceMode(appearance = {}, states = {}, darkMode = false) {

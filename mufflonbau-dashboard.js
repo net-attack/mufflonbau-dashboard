@@ -2051,6 +2051,28 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
     }
   };
 
+  // src/core/laundry.js
+  var laundryText = {
+    de: { title: "Wäschekammer", idle: "Bereit", starting: "Start wird erkannt", running: "Läuft", finishing: "Programmende wird geprüft", finished: "Fertig · Wäsche wartet", missing: "Erkennung noch nicht eingerichtet", unavailable: "Messung nicht verfügbar", unknown: "Status unbekannt", power: "Leistung", last: "Zuletzt fertig", acknowledge: "Wäsche erledigt", close: "Schließen", error: "Bestätigung fehlgeschlagen", inferred: "Programmstatus aus dem Stromverbrauch geschätzt. Keine Restzeit verfügbar." },
+    en: { title: "Laundry room", idle: "Ready", starting: "Detecting start", running: "Running", finishing: "Checking programme end", finished: "Finished · laundry waiting", missing: "Detection not set up yet", unavailable: "Reading unavailable", unknown: "Unknown status", power: "Power", last: "Last finished", acknowledge: "Laundry collected", close: "Close", error: "Acknowledgement failed", inferred: "Programme status estimated from power consumption. Remaining time unavailable." }
+  };
+  function laundryEntities(items = []) {
+    return items.flatMap((item) => [item.power, item.status, item.last_finished, item.plug]).filter(Boolean);
+  }
+  function laundryStatus(item, states, language = "en") {
+    const text = laundryText[language];
+    const phase = states[item.status]?.state;
+    const reading3 = numericState(states[item.power]);
+    const power = reading3 !== null && reading3 >= 0 && states[item.power]?.attributes?.unit_of_measurement === "W" ? reading3 : null;
+    let status = ["idle", "starting", "running", "finishing", "finished"].includes(phase) ? phase : "unknown";
+    if (phase === "starting_after_finished") status = "finished";
+    if (!["finished", "starting_after_finished"].includes(phase)) {
+      if (!states[item.status]) status = "missing";
+      else if (power === null || item.plug && states[item.plug]?.state !== "on") status = "unavailable";
+    }
+    return { name: localized(item.name, language), status, label: text[status], power };
+  }
+
   // src/core/floorplan.js
   var drawingTags = /* @__PURE__ */ new Set(["g", "path", "rect", "circle", "ellipse", "line", "polyline", "text"]);
   var drawingAttributes = /* @__PURE__ */ new Set(["d", "x", "y", "width", "height", "cx", "cy", "r", "rx", "ry", "x1", "x2", "y1", "y2", "points", "transform", "fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "opacity", "fill-opacity", "font-size", "text-anchor"]);
@@ -2230,6 +2252,22 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
       if (!result.shopping.entity.startsWith("todo.")) fail("shopping.entity", "must reference a todo entity.");
       if (result.shopping.name !== void 0 && (typeof result.shopping.name !== "string" || !result.shopping.name.trim())) fail("shopping.name", "must be a nonempty string.");
     }
+    result.laundry = config.laundry ?? [];
+    list(result.laundry, "laundry");
+    const applianceIds = /* @__PURE__ */ new Set();
+    result.laundry.forEach((item, index) => {
+      const path = `laundry[${index}]`;
+      object(item, path);
+      if (typeof item.id !== "string" || !/^[a-z][a-z0-9_-]*$/.test(item.id) || applianceIds.has(item.id)) fail(`${path}.id`, "must be a unique lowercase slug.");
+      applianceIds.add(item.id);
+      label(item.name, `${path}.name`);
+      for (const key2 of ["power", "status"]) entity(item[key2], `${path}.${key2}`);
+      if (!item.power.startsWith("sensor.")) fail(`${path}.power`, "must reference a power sensor in W.");
+      if (!item.status.startsWith("input_select.")) fail(`${path}.status`, "must reference the laundry phase input_select helper.");
+      for (const key2 of ["last_finished", "plug"]) if (item[key2] !== void 0) entity(item[key2], `${path}.${key2}`);
+      if (item.last_finished && !item.last_finished.startsWith("input_datetime.")) fail(`${path}.last_finished`, "must reference an input_datetime helper.");
+      if (item.plug && !item.plug.startsWith("switch.")) fail(`${path}.plug`, "must reference the monitored plug switch.");
+    });
     list(result.rooms, "rooms");
     if (config.floorplan_drawing !== void 0) validateDrawing(config.floorplan_drawing);
     if (config.floorplan_bounds !== void 0 && (!Array.isArray(config.floorplan_bounds) || config.floorplan_bounds.length !== 4 || config.floorplan_bounds.some((n) => !Number.isFinite(n)) || config.floorplan_bounds[2] <= 0 || config.floorplan_bounds[3] <= 0)) fail("floorplan_bounds", "must contain x, y, positive width and height.");
@@ -2422,6 +2460,7 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
       ...config.rooms.flatMap((room) => (room.objects ?? []).map((item) => item.entity)),
       ...(config.floorplan_objects ?? []).map((item) => item.entity),
       ...cleaningEntities(config.cleaning),
+      ...laundryEntities(config.laundry),
       config.appearance?.night_person,
       config.appearance?.ambient_person
     ].filter(Boolean))];
@@ -2528,10 +2567,11 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
     if (config.ventilation) cards.push(liveCard("ventilation", { ...shared, compact: true, ventilation: config.ventilation, rooms: config.rooms }, language));
     if (config.people.length) cards.push(liveCard("presence-summary", { ...shared, compact: true, people: config.people }, language));
     if (config.cleaning?.entity) cards.push(liveCard("cleaning", { ...shared, compact: true, cleaning: config.cleaning }, language));
+    if (config.laundry.length) cards.push({ type: "custom:mufflonbau-laundry", ...shared, laundry: config.laundry, language });
     if (config.monitors.length) cards.push(liveCard("warnings", { ...shared, monitors: config.monitors, compact: true }, language));
     if (config.shopping) cards.push({ type: "custom:mufflonbau-shopping", ...shared, shopping: config.shopping, language });
     if (config.entities.length) cards.push(liveCard("devices", { ...shared, entities: config.entities, title: text.overview }, language));
-    if (!config.rooms.length && !config.people.length && !config.entities.length && !otherViews.some((item) => !item.path.startsWith("admin"))) {
+    if (!config.rooms.length && !config.people.length && !config.entities.length && !config.laundry.length && !otherViews.some((item) => !item.path.startsWith("admin"))) {
       cards.push(liveCard("message", { ...shared, content: text.empty }, language));
     }
     return view("home", text.home, "mdi:home", cards);
@@ -2610,9 +2650,9 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
 
   // src/design/shell-styles.js
   var shellStyles = `
-  :host([data-view=home][data-has-shopping]) { height:auto !important; min-height:100dvh; overflow:visible !important; }
-  :host([data-view=home][data-has-shopping]) .shell,:host([data-view=home][data-has-shopping]) main { height:auto !important; min-height:100dvh; }
-  .slot.shopping-summary { grid-column:1/-1; grid-row:4; }
+  :host([data-view=home][data-has-shopping]),:host([data-view=home][data-has-laundry]) { height:auto !important; min-height:100dvh; overflow:visible !important; }
+  :host([data-view=home][data-has-shopping]) .shell,:host([data-view=home][data-has-shopping]) main,:host([data-view=home][data-has-laundry]) .shell,:host([data-view=home][data-has-laundry]) main { height:auto !important; min-height:100dvh; }
+  .slot.shopping-summary { grid-column:1/-1; grid-row:auto; }
   :host([data-view=shopping]) .slot { grid-column:1/-1; }
   :host { display:block; min-width:0; min-height:calc(100dvh - 56px); background:var(--mb-canvas); background-image:var(--mb-wallpaper); background-size:cover; background-position:center bottom; background-attachment:fixed; color:var(--mb-ink); font-family:Inter,'Avenir Next',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
   * { box-sizing:border-box; } .shell { display:grid; grid-template-columns:210px minmax(0,1fr); min-height:inherit; }
@@ -2659,7 +2699,7 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
     :host([data-view=home]) .slot.mode-presence-summary { grid-column:span 5; grid-row:2; }
     :host([data-view=home]) .slot.mode-cleaning { grid-column:span 7; grid-row:3; height:auto; min-height:0; max-height:none; }
     :host([data-view=home]) .slot.mode-warnings { grid-column:span 5; grid-row:3; }
-    :host([data-view=home]) .slot.mode-ventilation { grid-column:1/-1; grid-row:4; }
+    :host([data-view=home]) .slot.mode-ventilation,:host([data-view=home]) .slot.laundry { grid-column:span 6; grid-row:auto; }
     :host([data-view=home][data-ventilation=true]) { height:auto; min-height:100dvh; overflow:visible; }
     :host([data-view=home][data-ventilation=true]) .shell,:host([data-view=home][data-ventilation=true]) main { height:auto; min-height:100dvh; }
     :host([data-view=home]) .slot.mode-devices { grid-column:1/-1; grid-row:3; }
@@ -2896,6 +2936,7 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
       const shell = element("div", void 0, "shell");
       this.dataset.view = this._config.path;
       this.toggleAttribute("data-has-shopping", Boolean(this._config.shopping_enabled));
+      this.toggleAttribute("data-has-laundry", this._config.cards.some((card) => card.type === "custom:mufflonbau-laundry"));
       if (this._config.path === "home" && this._config.cards.some((card) => card.mode === "ventilation")) this.dataset.ventilation = "true";
       else delete this.dataset.ventilation;
       if (this._config.path === "cleaning" && this._config.cleaning_theme === "flusenfels") this.dataset.cleaningTheme = "flusenfels";
@@ -2946,8 +2987,8 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
       this.shadowRoot.replaceChildren(element("style", `${shellStyles}
 ${flusenfelsShellStyles}`), shell);
       this._navObserver = new ResizeObserver(() => {
-        const styles7 = getComputedStyle(nav);
-        const space = styles7.position === "fixed" ? nav.getBoundingClientRect().height + parseFloat(styles7.bottom || 0) + 12 : 16;
+        const styles8 = getComputedStyle(nav);
+        const space = styles8.position === "fixed" ? nav.getBoundingClientRect().height + parseFloat(styles8.bottom || 0) + 12 : 16;
         this.style.setProperty("--mb-nav-space", `${space}px`);
       });
       this._navObserver.observe(nav);
@@ -2968,7 +3009,7 @@ ${flusenfelsShellStyles}`), shell);
         const layout = { ventilation: config.compact ? "compact" : "wide", header: "wide", climate: "rooms", "room-summary": "compact", people: "compact", "presence-summary": "compact", devices: "devices", cleaning: "cleaning", warnings: "compact", floorplan: "wide", message: "wide" }[config.mode];
         if (layout) slot.classList.add(layout);
         let card;
-        if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history", "custom:mufflonbau-cleaning", "custom:mufflonbau-presence", "custom:mufflonbau-shopping", "custom:mufflonbau-maintenance"].includes(config.type)) {
+        if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history", "custom:mufflonbau-cleaning", "custom:mufflonbau-presence", "custom:mufflonbau-shopping", "custom:mufflonbau-maintenance", "custom:mufflonbau-laundry"].includes(config.type)) {
           card = document.createElement(config.type.slice(7));
           card.setConfig(config);
           if (config.type === "custom:mufflonbau-admin") slot.classList.add("wide");
@@ -2976,6 +3017,7 @@ ${flusenfelsShellStyles}`), shell);
           if (config.type === "custom:mufflonbau-cleaning") slot.classList.add("cleaning");
           if (config.type === "custom:mufflonbau-shopping") slot.classList.add("shopping-summary");
           if (config.type === "custom:mufflonbau-maintenance") slot.classList.add("wide");
+          if (config.type === "custom:mufflonbau-laundry") slot.classList.add("compact", "laundry");
         } else if (helpers) card = helpers.createCardElement(config);
         else card = element("p", translations[this._config.language ?? "en"].cardLoadError);
         if (this._hass) card.hass = this._hass;
@@ -4131,6 +4173,112 @@ ${ventilationStyles}`);
     }
   };
 
+  // src/cards/laundry.js
+  var styles7 = `
+:host{display:block;min-width:0;color:var(--mb-ink);font-family:Inter,'Avenir Next',system-ui,sans-serif}*{box-sizing:border-box}
+.panel{display:block;padding:14px 18px;background:var(--mb-surface);border:1px solid var(--mb-line);border-radius:24px}
+button{font:inherit;color:inherit;cursor:pointer}button:focus-visible{outline:2px solid var(--mb-accent);outline-offset:3px}
+.open{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;border:0;padding:0;background:none;text-align:left}.open>svg{flex:none;color:var(--mb-accent)}.copy{flex:1;min-width:0}.copy strong,.copy small{display:block}.copy small{font-size:12px;color:var(--mb-muted);line-height:1.6;overflow-wrap:anywhere}.ready{border-color:var(--mb-accent);background:var(--mb-active)}
+dialog{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:20px;border:1px solid var(--mb-line);border-radius:24px;background:var(--mb-surface);color:var(--mb-ink);overflow:auto}dialog::backdrop{background:#101c2b88}header{display:flex;align-items:center;gap:12px}h2{font-size:21px;margin:0;flex:1}h3{margin:0;font-size:18px}.close,.ack{min-height:44px;border:1px solid var(--mb-line);border-radius:14px;background:var(--mb-soft);padding:10px 14px}.item{border-top:1px solid var(--mb-line);margin-top:16px;padding-top:16px}.state{font-size:17px;color:var(--mb-accent);margin:8px 0}.meta,.note{font-size:14px;color:var(--mb-muted);line-height:1.6}.ack{background:var(--mb-active);margin-top:10px}.error{color:#ac493b}button:disabled{opacity:.5;cursor:default}
+`;
+  var MufflonbauLaundry = class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+    }
+    setConfig(config) {
+      this._config = config;
+      this._watched = laundryEntities(config.laundry);
+      this._render();
+    }
+    set hass(value) {
+      const previous = this._hass;
+      this._hass = value;
+      if (!previous || previous.locale !== value.locale || previous.language !== value.language || previous.themes !== value.themes || previous.states["sun.sun"] !== value.states["sun.sun"] || this._watched?.some((id) => previous.states[id] !== value.states[id])) this._render();
+    }
+    getCardSize() {
+      return 1;
+    }
+    disconnectedCallback() {
+      this.shadowRoot.querySelector("dialog")?.close();
+    }
+    _render() {
+      if (!this._hass || !this._config) return;
+      const wasOpen = this.shadowRoot.querySelector("dialog")?.open;
+      const focused = this.shadowRoot.activeElement?.dataset?.action;
+      const language = resolveLanguage(this._config, this._hass), text = laundryText[language];
+      const mode = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
+      applyTheme(this, mode, this._config.appearance?.theme);
+      const items = this._config.laundry ?? [];
+      const results = items.map((item) => laundryStatus(item, this._hass.states, language));
+      const panel = element("ha-card", void 0, `panel${results.some((item) => item.status === "finished") ? " ready" : ""}`);
+      const open = element("button", void 0, "open");
+      open.type = "button";
+      open.dataset.action = "open";
+      open.setAttribute("aria-haspopup", "dialog");
+      const copy2 = element("span", void 0, "copy");
+      copy2.append(element("strong", text.title), element("small", results.map((item) => `${item.name}: ${item.label}`).join(" · ")));
+      open.append(icon("drop"), copy2, icon("arrow"));
+      panel.append(open);
+      const dialog = element("dialog");
+      dialog.setAttribute("aria-label", text.title);
+      const header = element("header");
+      const close = element("button", text.close, "close");
+      close.type = "button";
+      close.dataset.action = "close";
+      close.addEventListener("click", () => {
+        dialog.close();
+        open.focus();
+      });
+      header.append(icon("drop"), element("h2", text.title), close);
+      dialog.append(header);
+      dialog.append(element("p", text.inferred, "note"));
+      items.forEach((item, index) => {
+        const result = results[index];
+        const section = element("section", void 0, "item");
+        section.dataset.appliance = item.id;
+        section.append(element("h3", result.name), element("p", result.label, "state"));
+        const reading3 = result.power === null ? "—" : `${new Intl.NumberFormat(language, { maximumFractionDigits: 1 }).format(result.power)} W`;
+        section.append(element("div", `${text.power}: ${reading3}`, "meta"));
+        const date = new Date(this._hass.states[item.last_finished]?.state);
+        if (Number.isFinite(date.getTime()) && date.getFullYear() > 2e3) section.append(element("div", `${text.last}: ${new Intl.DateTimeFormat(language, { dateStyle: "short", timeStyle: "short", timeZone: this._hass.config?.time_zone }).format(date)}`, "meta"));
+        if (result.status === "finished") {
+          const ack = element("button", text.acknowledge, "ack");
+          ack.type = "button";
+          ack.dataset.action = `ack-${item.id}`;
+          ack.disabled = this._busy === item.id;
+          ack.addEventListener("click", async () => {
+            this._busy = item.id;
+            ack.disabled = true;
+            try {
+              await this._hass.callService("input_select", "select_option", { option: "idle" }, { entity_id: item.status });
+            } catch {
+              const error = element("p", text.error, "error");
+              error.setAttribute("role", "alert");
+              section.append(error);
+            } finally {
+              this._busy = void 0;
+              ack.disabled = false;
+            }
+          });
+          section.append(ack);
+        }
+        dialog.append(section);
+      });
+      open.addEventListener("click", () => dialog.showModal());
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) {
+          const box = dialog.getBoundingClientRect();
+          if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
+        }
+      });
+      dialog.addEventListener("close", () => open.focus());
+      this.shadowRoot.replaceChildren(element("style", styles7), panel, dialog);
+      if (wasOpen) dialog.showModal();
+      if (focused) [...this.shadowRoot.querySelectorAll("[data-action]")].find((item) => item.dataset.action === focused)?.focus();
+    }
+  };
+
   // src/index.js
   var MufflonbauDashboardStrategy = class extends HTMLElement {
     static getCreateSuggestions() {
@@ -4148,6 +4296,7 @@ ${ventilationStyles}`);
   if (!customElements.get("mufflonbau-maintenance")) customElements.define("mufflonbau-maintenance", MufflonbauMaintenance);
   if (!customElements.get("mufflonbau-shell")) customElements.define("mufflonbau-shell", MufflonbauShell);
   if (!customElements.get("mufflonbau-live")) customElements.define("mufflonbau-live", MufflonbauLiveCard);
+  if (!customElements.get("mufflonbau-laundry")) customElements.define("mufflonbau-laundry", MufflonbauLaundry);
   if (!customElements.get("ll-strategy-dashboard-mufflonbau")) customElements.define("ll-strategy-dashboard-mufflonbau", MufflonbauDashboardStrategy);
   window.customStrategies = window.customStrategies || [];
   if (!window.customStrategies.some((strategy) => strategy.type === "mufflonbau")) {

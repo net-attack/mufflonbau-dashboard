@@ -5,6 +5,11 @@ HACS as one JavaScript resource. It includes room navigation and a live schemati
 floorplan, lights, climate readings and history, presence, calendar, weather,
 robot cleaning controls, and battery/offline monitoring.
 
+Version **v0.2.0** includes the optional ventilation traffic light with redundant
+outdoor sources, Saugfried's maintenance workshop, laundry completion status and
+the iCloud-backed shopping list with quick entry. Enable them together in the
+existing dashboard strategy; no separate feature builds or dashboards are needed.
+
 ## Installation
 
 Requirements: Home Assistant 2026.5 or newer and HACS. Real-instance verification
@@ -107,6 +112,7 @@ sections are optional; omitted sections generate no corresponding view.
 | `rooms` | Room definitions, detailed below |
 | `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, `map` (camera) IDs and `maintenance` sensor mappings |
 | `ventilation` | Optional ventilation traffic light using explicit outdoor temperature/humidity pairs with automatic failover and existing room readings; [configuration](docs/VENTILATION.de.md) |
+| `laundry` | Optional appliances with power sensor and restored programme-phase helper; [setup and completion notifications](docs/LAUNDRY.de.md) |
 | `monitors` | Objects containing `entity`, optional `name`, and optional `battery_below` threshold |
 | `admin` | Optional arrays of entity IDs in `internet`, `network`, `host`, and router-backed `clients` |
 | `kiosk_mode` | Kiosk Mode settings; defaults to `kiosk: true`, `hide_header: true` |

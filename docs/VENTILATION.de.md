@@ -7,8 +7,9 @@ wie die vorhandenen Seiten. Die Navigationsleiste bekommt keinen weiteren Eintra
 Es werden keine Fenster, Heizungen oder Entfeuchter geschaltet und keine Helfer,
 Automationen oder zusätzlichen Integrationen benötigt.
 
-In HACS unter **Neu herunterladen → Andere Version** die Testversion
-`v0.2.0-ventilation.2` auswählen und anschließend das Dashboard neu laden. In der
+In HACS auf **`v0.2.0`** oder neuer aktualisieren und anschließend das Dashboard
+neu laden. Lüftung, Wäscheinfo, Einkaufsliste und Wartungsstube sind in derselben
+Version enthalten. In der
 **Strategiekonfiguration** diese Sektion ergänzen; vorhandene Räume behalten:
 
 ```yaml

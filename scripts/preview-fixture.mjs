@@ -23,6 +23,14 @@ export const previewConfig = {
   ],
   people: ['person.alex', 'person.sam'], weather: 'weather.home', calendars: ['calendar.family'],
   shopping: { entity: 'todo.family_shopping', name: 'Einkaufsliste' },
+  ventilation: { outdoor_sources: [
+    { name: 'Westseite', temperature: 'sensor.outdoor', humidity: 'sensor.outdoor_humidity' },
+    { name: 'Ostseite', temperature: 'sensor.outdoor_east', humidity: 'sensor.outdoor_east_humidity' },
+  ] },
+  laundry: [
+    { id: 'washer', name: 'Waschmaschine', power: 'sensor.washer_power', status: 'input_select.washer_phase', last_finished: 'input_datetime.washer_finished' },
+    { id: 'dryer', name: 'Trockner', power: 'sensor.dryer_power', status: 'input_select.dryer_phase', last_finished: 'input_datetime.dryer_finished' },
+  ],
   cleaning: { entity: 'vacuum.robot', battery: 'sensor.robot_battery', map: 'camera.robot_map', maintenance: [
     { name: 'Filter', percent: 'sensor.robot_filter_left', remaining: 'sensor.robot_filter_time' },
     { name: { en: 'Main brush', de: 'Hauptbürste' }, percent: 'sensor.robot_brush_left', remaining: 'sensor.robot_brush_time' },
@@ -36,11 +44,19 @@ export const previewHass = {
   states: {
     'todo.family_shopping': { state: '3', attributes: { friendly_name: 'Einkaufsliste', supported_features: 119 } },
     'binary_sensor.window': { state: 'off', attributes: { device_class: 'window' } },
-    'sensor.outdoor': { state: '12.4', attributes: { unit_of_measurement: '°C' } },
+    'sensor.outdoor': { state: '12.4', attributes: { unit_of_measurement: '°C' }, last_updated: new Date().toISOString() },
+    'sensor.outdoor_humidity': { state: '70', attributes: { unit_of_measurement: '%' }, last_updated: new Date().toISOString() },
+    'sensor.outdoor_east': { state: 'unavailable', attributes: { unit_of_measurement: '°C' } },
+    'sensor.outdoor_east_humidity': { state: 'unavailable', attributes: { unit_of_measurement: '%' } },
+    'sensor.washer_power': { state: '0', attributes: { unit_of_measurement: 'W' } },
+    'sensor.dryer_power': { state: '850', attributes: { unit_of_measurement: 'W' } },
+    'input_select.washer_phase': { state: 'finished', attributes: {} },
+    'input_select.dryer_phase': { state: 'running', attributes: {} },
+    'input_datetime.washer_finished': { state: '2026-10-17 17:30:00', attributes: {} },
     'sun.sun': { state: 'above_horizon', attributes: { elevation: 24 } },
     ...Object.fromEntries(rooms.flatMap((room, index) => [
-      [room.temperature, { state: [21.1, 22.8, 22.5, 19.6, 21.4, 20.2][index].toString(), attributes: { unit_of_measurement: '°C' } }],
-      [room.humidity, { state: [61.1, 54.9, 58.5, 42, 63, 49][index].toString(), attributes: { unit_of_measurement: '%' } }],
+      [room.temperature, { state: [21.1, 22.8, 22.5, 19.6, 21.4, 20.2][index].toString(), attributes: { unit_of_measurement: '°C' }, last_updated: new Date().toISOString() }],
+      [room.humidity, { state: [61.1, 54.9, 58.5, 42, 63, 49][index].toString(), attributes: { unit_of_measurement: '%' }, last_updated: new Date().toISOString() }],
       [room.lights[0], { state: index % 2 === 0 ? 'on' : 'off', attributes: { friendly_name: ['Wohn- und Essbereich', 'Arbeitszimmer', 'Küche', 'Schlafzimmer', 'Badezimmer', 'Flur'][index] } }],
       ...Object.values(room.cleaning).map(id => [id, { state: id.startsWith('script.') ? 'off' : '2026-10-17T08:00:00+00:00', attributes: {} }]),
     ])),

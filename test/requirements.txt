@@ -1,2 +1,3 @@
 # Match the Jinja version used by Home Assistant Core 2026.10.1.
 Jinja2==3.1.6
+PyYAML==6.0.3

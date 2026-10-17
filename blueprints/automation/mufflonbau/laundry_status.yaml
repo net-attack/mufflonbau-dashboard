@@ -1,0 +1,153 @@
+blueprint:
+  name: Mufflonbau · Wäsche fertig aus Leistung
+  description: >-
+    Erkennt ein Programm anhand eines Leistungssensors in W. Start und Ende
+    werden entprellt, ein Ende benötigt vorher einen erkannten Lauf.
+    Phasenhelfer und Termin bleiben über Neustarts erhalten; eine unterbrochene
+    Messung/neuer HA-Start beginnt die Endprüfung sicherheitshalber von vorn.
+    Eine ausgeschaltete Steckdose gilt nie als Programmende. Keine Gerätesteuerung.
+  domain: automation
+  source_url: https://github.com/net-attack/mufflonbau-dashboard/blob/feature/laundry-status/blueprints/automation/mufflonbau/laundry_status.yaml
+  homeassistant:
+    min_version: '2026.5.0'
+  input:
+    power:
+      name: Leistungssensor (W)
+      selector:
+        entity:
+          filter:
+            domain: sensor
+            device_class: power
+    plug:
+      name: Steckdose (nur Zustand lesen)
+      selector:
+        entity:
+          filter:
+            domain: switch
+    phase:
+      name: Phasenhelfer
+      description: input_select mit idle, starting, starting_after_finished, running, finishing, finished; ohne initial.
+      selector:
+        entity:
+          filter:
+            domain: input_select
+    deadline:
+      name: Prüfzeitpunkt
+      description: input_datetime mit Datum und Uhrzeit, ohne initial.
+      selector:
+        entity:
+          filter:
+            domain: input_datetime
+    last_finished:
+      name: Zuletzt fertig
+      description: input_datetime mit Datum und Uhrzeit, ohne initial.
+      selector:
+        entity:
+          filter:
+            domain: input_datetime
+    start_w:
+      name: Start oberhalb (W)
+      default: 10
+      selector:
+        number: { min: 1, max: 3000, step: 0.5, unit_of_measurement: W, mode: box }
+    finish_w:
+      name: Ende unterhalb (W)
+      default: 4
+      selector:
+        number: { min: 0.1, max: 100, step: 0.1, unit_of_measurement: W, mode: box }
+    start_seconds:
+      name: Start mindestens (Sekunden)
+      default: 120
+      selector:
+        number: { min: 10, max: 1800, step: 1, unit_of_measurement: s, mode: box }
+    finish_seconds:
+      name: Ende mindestens (Sekunden)
+      default: 600
+      selector:
+        number: { min: 60, max: 3600, step: 1, unit_of_measurement: s, mode: box }
+    completion_actions:
+      name: Optionale Fertigmeldung
+      description: Wird einmal pro erkanntem Lauf ausgeführt, nachdem finished gespeichert wurde.
+      default: []
+      selector:
+        action: {}
+
+# Sequential state updates; no waits, polling, device switching or alarm loop.
+mode: queued
+max: 100
+triggers:
+  - trigger: state
+    entity_id: !input power
+    to: null
+    id: reading
+  - trigger: state
+    entity_id: !input plug
+    to: null
+    id: reading
+  - trigger: time
+    at: !input deadline
+    id: deadline
+  - trigger: homeassistant
+    event: start
+    id: startup
+  - trigger: event
+    event_type: automation_reloaded
+    id: startup
+variables:
+  power_entity: !input power
+  plug_entity: !input plug
+  phase_entity: !input phase
+  deadline_entity: !input deadline
+  start_w: !input start_w
+  finish_w: !input finish_w
+  start_seconds: !input start_seconds
+  finish_seconds: !input finish_seconds
+actions:
+  - variables:
+      phase: "{{ states(phase_entity) }}"
+      power: "{{ states(power_entity) | float(none) }}"
+      deadline: "{{ state_attr(deadline_entity, 'timestamp') | float(0) }}"
+      current_time: "{{ now().timestamp() }}"
+      restarting: "{{ trigger.id == 'startup' }}"
+  # There is no native helper for a restored, armed appliance-cycle state machine.
+  # Do not turn invalid measurements into 0 W (which would look like a finish).
+  - variables:
+      next_phase: >-
+        {% if start_w <= finish_w or not is_state(plug_entity, 'on') %}
+          {{ 'finished' if phase in ['finished', 'starting_after_finished'] else 'idle' }}
+        {% elif not is_number(states(power_entity)) or power is none or power < 0 or state_attr(power_entity, 'unit_of_measurement') != 'W' %}
+          {{ 'running' if phase in ['running', 'finishing'] else 'finished' if phase in ['finished', 'starting_after_finished'] else 'idle' }}
+        {% elif phase in ['idle', 'finished'] %}
+          {{ ('starting_after_finished' if phase == 'finished' else 'starting') if power > start_w else phase }}
+        {% elif phase in ['starting', 'starting_after_finished'] %}
+          {{ ('finished' if phase == 'starting_after_finished' else 'idle') if power <= start_w else 'running' if not restarting and deadline > 0 and current_time >= deadline else phase }}
+        {% elif phase in ['running', 'finishing'] %}
+          {{ 'running' if power >= finish_w else 'finished' if phase == 'finishing' and not restarting and deadline > 0 and current_time >= deadline else 'finishing' }}
+        {% else %}
+          idle
+        {% endif %}
+  - if:
+      - "{{ next_phase in ['starting', 'starting_after_finished', 'finishing'] and (phase != next_phase or restarting) }}"
+    then:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: !input deadline
+        data:
+          timestamp: "{{ current_time + (finish_seconds if next_phase == 'finishing' else start_seconds) }}"
+  - if:
+      - "{{ phase != next_phase }}"
+    then:
+      - action: input_select.select_option
+        target:
+          entity_id: !input phase
+        data:
+          option: "{{ next_phase }}"
+      - if:
+          - "{{ next_phase == 'finished' and phase == 'finishing' }}"
+        then:
+          - action: input_datetime.set_datetime
+            target:
+              entity_id: !input last_finished
+            data:
+              timestamp: "{{ current_time }}"
+          - sequence: !input completion_actions

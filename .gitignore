@@ -1,9 +1,10 @@
 # Local migration input and installation-specific configuration.
 /old/
 /examples/*.local.yaml
-/node_modules/
+/node_modules
 /test-results/
 /debug/*.local.json
+/packages/*.local.yaml
 __pycache__/
 
 # Local floorplan sources are private and must not be committed.

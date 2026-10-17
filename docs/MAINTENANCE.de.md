@@ -52,9 +52,8 @@ Es wird kein Wartungszähler zurückgesetzt und keine Reinigung gestartet. Nach
 einer tatsächlich erledigten Wartung kann der Zähler wie bisher in der
 Geräteintegration zurückgesetzt werden.
 
-Testversion: **`v0.2.0-maintenance.1`** auf Branch `feature/saugfried-maintenance`.
-In HACS bei Mufflonbau über „Neu herunterladen“ diese Vorabversion wählen,
-danach das Dashboard neu laden
+Ab HACS-Version **`v0.2.0`** zusammen mit Lüftung, Wäscheinfo und Einkaufsliste
+verfügbar. In HACS aktualisieren, danach das Dashboard neu laden
 und die private YAML ergänzen. Besonders den Filterhinweis, Stunden/Tage,
 Lesbarkeit und Scrollen bis zum letzten Bauteil am Tablet prüfen. Zurück zur
 bisherigen Darstellung: `maintenance:` entfernen und die Strategie speichern.

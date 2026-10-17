@@ -1,8 +1,9 @@
 # iCloud-Einkaufsliste testen
 
-Branch: `feature/icloud-shopping` · HACS-Testversion: `v0.2.0-shopping.1`.
-Dieser Branch enthält die Einkaufsfunktion auf Basis des stabilen Saugfried-Fixes.
-Er benötigt weder Bubble Card noch das noch ungemergte Wetter-Paket.
+Ab HACS-Version **`v0.2.0`** zusammen mit Lüftungsampel, Wäscheinfo und
+Saugfrieds Wartungsstube verfügbar. Alle Features werden in derselben
+Mufflonbau-Strategie aktiviert; separate Test-Dashboards sind nicht erforderlich.
+Die Einkaufsfunktion benötigt weder Bubble Card noch das Wetter-Paket.
 
 Die vorhandene Liste **Einkaufsliste** wurde im Live-Inventar als aktive
 `todo`-Entität der Integration **icloud** gefunden. Ihre Funktionsmaske `119`
@@ -43,12 +44,11 @@ Es wird keine neue lokale Einkaufsliste und keine Kopie in einem zweiten
 Dienst angelegt. Bei fehlender oder nicht verfügbarer Entität bleibt der Fehler
 sichtbar, statt die Liste als leer anzuzeigen.
 
-Zum Testen den Pre-Release in HACS über „Neu herunterladen → Andere Version“
-auswählen, den Browser neu laden und die lokale Test-Strategie in einem
-Test-Dashboard verwenden. Es sind keine zusätzlichen Backend-Pakete oder neuen
-Integrationen erforderlich. Zum Zurückwechseln den stabilen Release auswählen.
-Pro HACS-Ressource ist jeweils eine Version geladen; die anderen getrennten
-Feature-Branches werden dadurch nicht automatisch mitinstalliert.
+In HACS auf `v0.2.0` oder neuer aktualisieren, den Browser neu laden und
+`shopping:` in der bestehenden Mufflonbau-Strategie ergänzen. Lüftung,
+Wäscheinfo und Wartungsstube können gleichzeitig aktiviert bleiben.
+Für die Einkaufsliste sind keine zusätzlichen Backend-Pakete oder neuen
+Integrationen erforderlich, wenn die gewünschte To-do-Entität bereits existiert.
 
 Prüfung: `npm run ci` umfasst Bundle, YAML-Beispiele, Unit- und Browser-Tests.
 Der Browser-Test prüft Enter, exaktes Ziel, Leertext, Fehler, erhaltene Eingabe,

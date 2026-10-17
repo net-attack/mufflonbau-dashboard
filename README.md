@@ -142,9 +142,12 @@ During development, keep the standard Home Assistant controls visible.
 ## Diagnosing entity and room assignments
 
 Paste [examples/diagnostics-template.jinja](examples/diagnostics-template.jinja)
-into Home Assistant Developer Tools > Template and save the JSON result to the
-ignored `debug/ha-inventory.local.json`. It includes real entity IDs, states,
-area/device mappings, light-group member IDs, capabilities, and vacuum errors.
+into Home Assistant Developer Tools > Template. Export `section = 'lights'`
+first and then `section = 'vacuum'`, resetting `offset = 0` for each section.
+Save results as ignored `debug/ha-lights-0.local.json` and
+`debug/ha-vacuum-0.local.json`. If `has_more` is true, continue using the returned
+`next_offset` value. The compact, size-bounded pages include real entity IDs,
+states, area/device mappings, light-group members, capabilities, and vacuum errors.
 See [debug/README.md](debug/README.md) for export details.
 
 The dashboard uses Home Assistant's entity states and services, without a separate

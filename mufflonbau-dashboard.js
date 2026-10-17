@@ -1219,6 +1219,17 @@ dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb
     :host([data-view=home]) .room-board .room-art svg { width:48px; height:48px; }
     :host([data-view=home]) .slot.mode-header ha-card { padding:18px 24px; }
   }
+  @media(min-width:701px) and (max-width:1100px), (min-width:701px) and (max-height:850px) {
+    :host([data-view=home]) { height:auto; min-height:100dvh; overflow:visible; }
+    :host([data-view=home]) .shell,:host([data-view=home]) main { height:auto; min-height:100dvh; }
+    :host([data-view=home]) main { padding-bottom:112px; }
+    :host([data-view=home]) .content { display:flex; flex:none; flex-direction:column; align-items:stretch; align-content:start; gap:14px; }
+    :host([data-view=home]) .slot { width:100%; min-height:0; }
+    :host([data-view=home]) .slot.mode-header { min-height:0; }
+    :host([data-view=home]) .slot.mode-climate { min-height:0; }
+    :host([data-view=home]) .slot.mode-cleaning { height:auto; min-height:160px; max-height:none; }
+    :host([data-view=home]) .slot > * { height:auto; }
+  }
   :host([data-view=cleaning]) .shell { height:calc(100dvh - 56px); min-height:0; }
   :host([data-view=cleaning]) main { height:100%; min-height:0; overflow:hidden; padding:18px clamp(18px,3vw,46px) 82px; display:flex; flex-direction:column; }
   :host([data-view=cleaning]) .topline { flex:none; margin-bottom:8px; }

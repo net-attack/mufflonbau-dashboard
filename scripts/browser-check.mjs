@@ -152,7 +152,7 @@ try {
   // Full dashboard previews use synthetic data only, including CI artifacts.
   await page.evaluate(async ({ config, hass }) => {
     document.body.style.margin = '0';
-    const main = document.querySelector('main'); main.style.cssText = 'display:block;max-width:none;margin:0';
+    const main = document.querySelector('main'); main.style.cssText = 'max-width:none;margin:0';
     window.calls = []; window.failAction = false;
     window.previewHass = { ...hass, callService: async (...args) => { if (window.failAction) throw new Error('Test failure'); window.calls.push(args); } };
     const result = await customElements.get('ll-strategy-dashboard-mufflonbau').generate(config, window.previewHass);
@@ -170,9 +170,14 @@ try {
     return { host: shell.getBoundingClientRect().height, main: main.getBoundingClientRect().height, scroll: main.scrollHeight,
       nav: { top: navigation.top, bottom: navigation.bottom }, content: [content.clientHeight, content.scrollHeight], slots };
   });
-  assert.ok(homeLayout.host <= 800 && homeLayout.scroll <= homeLayout.main + 1, `Home view should fit the Galaxy Tab A11 viewport: ${JSON.stringify(homeLayout)}`);
-  assert.ok(homeLayout.slots.every(slot => slot.bottom <= homeLayout.nav.top || slot.top >= homeLayout.nav.bottom), `Home cards must not overlap bottom navigation: ${JSON.stringify(homeLayout)}`);
+  assert.ok(homeLayout.host > 800 || homeLayout.scroll > homeLayout.main + 1, `Short tablet view must remain scrollable instead of clipping dashboard cards: ${JSON.stringify(homeLayout)}`);
+  assert.ok(await page.evaluate(() => document.scrollingElement.scrollHeight > document.scrollingElement.clientHeight), 'Short tablet dashboard must allow page scrolling');
   await page.screenshot({ path: 'test-results/dashboard-ambient-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 800, height: 1340 });
+  const portraitOverflow = await page.locator('#dashboard').evaluate(shell => getComputedStyle(shell).overflowY);
+  assert.notEqual(portraitOverflow, 'hidden', 'Galaxy Tab portrait home view must allow scrolling');
+  await page.screenshot({ path: 'test-results/dashboard-ambient-tablet-portrait.png', fullPage: true });
+  await page.setViewportSize({ width: 1340, height: 800 });
   const toggle = page.locator('#dashboard button[role=switch]').first();
   await toggle.click();
   assert.deepEqual(await page.evaluate(() => window.calls[0]), ['homeassistant', 'toggle', {}, { entity_id: 'light.living' }]);

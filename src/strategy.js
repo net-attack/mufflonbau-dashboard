@@ -7,6 +7,7 @@ import { calendarViews } from './modules/calendar.js';
 import { homeView, presenceView } from './modules/home.js';
 import { roomLightHierarchy } from './core/light-hierarchy.js';
 import { cleaningPageText } from './core/cleaning-theme.js';
+import { shoppingViews } from './modules/shopping.js';
 export function generateDashboard(rawConfig, hass) {
   const config = normalizeConfig(rawConfig);
   config.rooms = config.rooms.map(room => {
@@ -15,7 +16,7 @@ export function generateDashboard(rawConfig, hass) {
   });
   const language = resolveLanguage(config, hass);
   const context = { config, hass, language, text: translations[language] };
-  const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];
+  const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...shoppingViews(context), ...systemViews(context)];
   const allViews = [homeView(context, views), ...views];
   const firstLinks = ['home', 'calendar', 'rooms', 'cleaning'];
   const navigation = allViews.filter(item => !item.subview || item.path === 'presence').map(({ path, title, icon }) => ({ path, title, icon }))
@@ -27,7 +28,7 @@ export function generateDashboard(rawConfig, hass) {
     type: 'custom:mufflonbau-shell', title: config.title || 'Mufflonbau', language, appearance: config.appearance,
     path: item.path, view_title: item.path === 'cleaning' && config.cleaning?.theme === 'flusenfels' ? cleaningPageText(config.cleaning, language).title : item.title,
     cleaning_theme: item.path === 'cleaning' ? config.cleaning?.theme : undefined,
-    full_view: item.fullView, navigation, cards: item.cards,
+    full_view: item.fullView, navigation, shopping_enabled: Boolean(config.shopping), cards: item.cards,
   }] }));
   return { ...(config.kiosk_mode ? { kiosk_mode: config.kiosk_mode } : {}), title: config.title || 'Mufflonbau', views: styledViews };
 }

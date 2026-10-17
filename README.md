@@ -102,6 +102,7 @@ sections are optional; omitted sections generate no corresponding view.
 | `entities` | Favorite entities on the home view; preserves the original minimal configuration |
 | `people` | Compact presence cards with daily home time, recorded outings, last away time and a seven-day activity strip |
 | `weather` | Optional weather entity |
+| `shopping` | Explicit existing `todo` entity, compact quick-add card and native list details; [iCloud setup](docs/ICLOUD-SHOPPING.de.md) |
 | `calendars` | Calendar entities for the header summary and native calendar |
 | `rooms` | Room definitions, detailed below |
 | `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, and `map` (camera) IDs |

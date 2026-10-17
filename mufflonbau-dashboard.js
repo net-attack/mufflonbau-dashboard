@@ -34,7 +34,8 @@
     sun: "M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M5.6 18.4 7 17m10-10 1.4-1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0",
     drop: "M12 3s-7 8-7 12a7 7 0 0 0 14 0c0-4-7-12-7-12Z",
     person: "M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-2a8 8 0 0 1 16 0v2",
-    calendar: "M4 5h16v16H4zM8 3v4m8-4v4M4 11h16"
+    calendar: "M4 5h16v16H4zM8 3v4m8-4v4M4 11h16",
+    shopping: "M3 3h2l3 13h10l3-9H6M9 21h.01M18 21h.01"
   };
   function icon(name = "home") {
     const node = svgElement("svg", { viewBox: "0 0 24 24", width: 22, height: 22, fill: "none", stroke: "currentColor", "stroke-width": 1.6, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
@@ -1710,6 +1711,134 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
     }
   };
 
+  // src/core/shopping.js
+  function shoppingStatus(shopping, hass, language = "en") {
+    const state = hass.states[shopping.entity];
+    const value = numericState(state);
+    const count = value !== null && Number.isInteger(value) && value >= 0 ? value : null;
+    return {
+      count,
+      problem: stateProblem(state, language) ?? (count === null ? language === "de" ? "Ungültiger Listenstatus" : "Invalid list status" : null),
+      canAdd: count !== null && Boolean(Number(state?.attributes?.supported_features) & 1) && Boolean(hass.services?.todo?.add_item)
+    };
+  }
+  function shoppingListCard(shopping, language = "en") {
+    return {
+      type: "todo-list",
+      entity: shopping.entity,
+      title: shopping.name ?? (language === "de" ? "Einkaufsliste" : "Shopping list"),
+      hide_create: false,
+      hide_completed: true,
+      item_tap_action: "toggle"
+    };
+  }
+
+  // src/cards/shopping.js
+  var styles5 = `
+:host{display:block;min-width:0;font-family:Inter,'Avenir Next',system-ui,sans-serif;color:var(--mb-ink)}*{box-sizing:border-box}
+.panel{padding:16px 20px;border:1px solid var(--mb-line);border-radius:24px;background:var(--mb-surface);backdrop-filter:blur(18px)}
+a{display:flex;align-items:center;gap:12px;color:inherit;text-decoration:none;min-height:44px}a>svg:first-child{color:var(--mb-accent);flex:none}a>svg:last-child{margin-left:auto;flex:none}strong{display:block;font-size:16px}small{display:block;color:var(--mb-muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+form{display:flex;gap:8px;margin-top:12px}input{flex:1;min-width:0}input,button{min-height:44px;border:1px solid var(--mb-line);border-radius:13px;background:var(--mb-soft);color:var(--mb-ink);font:inherit;padding:10px 12px;font-size:15px}button{cursor:pointer;font-weight:600}button:disabled,input:disabled{opacity:.55;cursor:default}input:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--mb-accent);outline-offset:3px}.feedback{margin:8px 0 0;font-size:13px;line-height:1.5;overflow-wrap:anywhere}.feedback:empty{display:none}[role=alert]{color:var(--mb-ink)}
+`;
+  var MufflonbauShopping = class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+      this._draft = "";
+    }
+    setConfig(config) {
+      if (this._config?.shopping?.entity !== config.shopping.entity) {
+        this._draft = "";
+        this._message = "";
+      }
+      this._config = config;
+      this._render();
+    }
+    set hass(value) {
+      const old = this._hass;
+      this._hass = value;
+      if (!old || old.states[this._config?.shopping?.entity] !== value.states[this._config?.shopping?.entity] || old.states["sun.sun"] !== value.states["sun.sun"] || old.themes !== value.themes || old.services !== value.services) this._render();
+    }
+    getCardSize() {
+      return 2;
+    }
+    _render() {
+      if (!this._config || !this._hass) return;
+      const { shopping, language = "en" } = this._config;
+      const de = language === "de";
+      const status = shoppingStatus(shopping, this._hass, language);
+      const focused = this.shadowRoot.activeElement?.tagName === "INPUT";
+      const position = this.shadowRoot.activeElement?.selectionStart;
+      applyTheme(this, appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode), this._config.appearance?.theme);
+      const panel = element("section", void 0, "panel");
+      const link = element("a");
+      navigateLink(link, "shopping");
+      const copy2 = element("span");
+      copy2.append(
+        element("strong", shopping.name ?? (de ? "Einkaufsliste" : "Shopping list")),
+        element("small", status.problem ?? `${status.count} ${de ? status.count === 1 ? "offener Eintrag" : "offene Einträge" : status.count === 1 ? "item to buy" : "items to buy"}`)
+      );
+      link.append(icon("shopping"), copy2, icon("arrow"));
+      panel.append(link);
+      const form = element("form");
+      form.setAttribute("aria-label", de ? "Artikel zur Einkaufsliste hinzufügen" : "Add to shopping list");
+      const input = element("input");
+      input.type = "text";
+      input.name = "item";
+      input.autocomplete = "off";
+      input.placeholder = de ? "Was fehlt?" : "What do we need?";
+      input.setAttribute("aria-label", de ? "Neuer Artikel" : "New item");
+      input.value = this._draft;
+      input.disabled = this._busy || !status.canAdd;
+      const button = element("button", this._busy ? de ? "Wird hinzugefügt…" : "Adding…" : de ? "Hinzufügen" : "Add");
+      button.type = "submit";
+      button.disabled = this._busy || !status.canAdd || !this._draft.trim();
+      input.addEventListener("input", () => {
+        this._draft = input.value;
+        button.disabled = this._busy || !status.canAdd || !this._draft.trim();
+      });
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        this._submit();
+      });
+      form.append(input, button);
+      panel.append(form);
+      if (!status.problem && !status.canAdd) panel.append(element("small", de ? "Diese Liste unterstützt das Hinzufügen derzeit nicht." : "Adding is not currently supported for this list."));
+      const feedback = element("p", this._message ?? "", "feedback");
+      feedback.setAttribute("role", this._error ? "alert" : "status");
+      panel.append(feedback);
+      this.shadowRoot.replaceChildren(element("style", styles5), panel);
+      if (focused && !input.disabled) {
+        input.focus();
+        if (position !== void 0) input.setSelectionRange(position, position);
+      }
+    }
+    async _submit() {
+      if (this._busy || !this._draft.trim() || !shoppingStatus(this._config.shopping, this._hass, this._config.language).canAdd) return;
+      const entity2 = this._config.shopping.entity;
+      const item = this._draft.trim();
+      const de = this._config.language === "de";
+      this._busy = true;
+      this._error = false;
+      this._message = "";
+      this._render();
+      try {
+        await this._hass.callService("todo", "add_item", { item }, { entity_id: entity2 });
+        if (this._config.shopping.entity === entity2) {
+          this._draft = "";
+          this._message = de ? "Hinzugefügt. Die Liste wird über die Integration aktualisiert." : "Added. The integration will refresh the list.";
+        }
+      } catch {
+        this._error = true;
+        this._message = de ? "Hinzufügen fehlgeschlagen. Dein Text bleibt erhalten; bitte erneut versuchen." : "Could not add the item. Your text is preserved; please try again.";
+      } finally {
+        this._busy = false;
+        this._render();
+        this.shadowRoot.querySelector("input")?.focus();
+      }
+    }
+  };
+
   // src/core/floorplan.js
   var drawingTags = /* @__PURE__ */ new Set(["g", "path", "rect", "circle", "ellipse", "line", "polyline", "text"]);
   var drawingAttributes = /* @__PURE__ */ new Set(["d", "x", "y", "width", "height", "cx", "cy", "r", "rx", "ry", "x1", "x2", "y1", "y2", "points", "transform", "fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-dasharray", "opacity", "fill-opacity", "font-size", "text-anchor"]);
@@ -1781,6 +1910,12 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
       result[key2].forEach((id, index) => entity(id, `${key2}[${index}]`));
     }
     if (result.weather !== void 0) entity(result.weather, "weather");
+    if (result.shopping !== void 0) {
+      object(result.shopping, "shopping");
+      entity(result.shopping.entity, "shopping.entity");
+      if (!result.shopping.entity.startsWith("todo.")) fail("shopping.entity", "must reference a todo entity.");
+      if (result.shopping.name !== void 0 && (typeof result.shopping.name !== "string" || !result.shopping.name.trim())) fail("shopping.name", "must be a nonempty string.");
+    }
     list(result.rooms, "rooms");
     if (config.floorplan_drawing !== void 0) validateDrawing(config.floorplan_drawing);
     if (config.floorplan_bounds !== void 0 && (!Array.isArray(config.floorplan_bounds) || config.floorplan_bounds.length !== 4 || config.floorplan_bounds.some((n) => !Number.isFinite(n)) || config.floorplan_bounds[2] <= 0 || config.floorplan_bounds[3] <= 0)) fail("floorplan_bounds", "must contain x, y, positive width and height.");
@@ -1939,6 +2074,7 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
       ...config.calendars,
       ...config.expert_entities,
       config.weather,
+      config.shopping?.entity,
       ...config.monitors.map((monitor) => monitor.entity),
       ...config.rooms.flatMap((room) => [
         room.temperature,
@@ -2057,6 +2193,7 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
     if (config.people.length) cards.push(liveCard("presence-summary", { ...shared, compact: true, people: config.people }, language));
     if (config.cleaning?.entity) cards.push(liveCard("cleaning", { ...shared, compact: true, cleaning: config.cleaning }, language));
     if (config.monitors.length) cards.push(liveCard("warnings", { ...shared, monitors: config.monitors, compact: true }, language));
+    if (config.shopping) cards.push({ type: "custom:mufflonbau-shopping", ...shared, shopping: config.shopping, language });
     if (config.entities.length) cards.push(liveCard("devices", { ...shared, entities: config.entities, title: text.overview }, language));
     if (!config.rooms.length && !config.people.length && !config.entities.length && !otherViews.some((item) => !item.path.startsWith("admin"))) {
       cards.push(liveCard("message", { ...shared, content: text.empty }, language));
@@ -2084,6 +2221,18 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
     return { lights: configured.filter((id) => !members.has(id)), members: configured.filter((id) => members.has(id)) };
   }
 
+  // src/modules/shopping.js
+  function shoppingViews({ config, language }) {
+    if (!config.shopping) return [];
+    return [view(
+      "shopping",
+      config.shopping.name ?? (language === "de" ? "Einkaufsliste" : "Shopping list"),
+      "mdi:cart-outline",
+      [shoppingListCard(config.shopping, language)],
+      { subview: true }
+    )];
+  }
+
   // src/strategy.js
   function generateDashboard(rawConfig, hass) {
     const config = normalizeConfig(rawConfig);
@@ -2093,7 +2242,7 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
     });
     const language = resolveLanguage(config, hass);
     const context = { config, hass, language, text: translations[language] };
-    const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...systemViews(context)];
+    const views = [...roomViews(context), ...presenceView(context), ...climateViews(context), ...cleaningViews(context), ...calendarViews(context), ...shoppingViews(context), ...systemViews(context)];
     const allViews = [homeView(context, views), ...views];
     const firstLinks = ["home", "calendar", "rooms", "cleaning"];
     const navigation = allViews.filter((item) => !item.subview || item.path === "presence").map(({ path, title, icon: icon2 }) => ({ path, title, icon: icon2 })).sort((a, b) => {
@@ -2110,6 +2259,7 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
       cleaning_theme: item.path === "cleaning" ? config.cleaning?.theme : void 0,
       full_view: item.fullView,
       navigation,
+      shopping_enabled: Boolean(config.shopping),
       cards: item.cards
     }] }));
     return { ...config.kiosk_mode ? { kiosk_mode: config.kiosk_mode } : {}, title: config.title || "Mufflonbau", views: styledViews };
@@ -2117,6 +2267,10 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
 
   // src/design/shell-styles.js
   var shellStyles = `
+  :host([data-view=home][data-has-shopping]) { height:auto !important; min-height:100dvh; overflow:visible !important; }
+  :host([data-view=home][data-has-shopping]) .shell,:host([data-view=home][data-has-shopping]) main { height:auto !important; min-height:100dvh; }
+  .slot.shopping-summary { grid-column:1/-1; grid-row:4; }
+  :host([data-view=shopping]) .slot { grid-column:1/-1; }
   :host { display:block; min-width:0; min-height:calc(100dvh - 56px); background:var(--mb-canvas); background-image:var(--mb-wallpaper); background-size:cover; background-position:center bottom; background-attachment:fixed; color:var(--mb-ink); font-family:Inter,'Avenir Next',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
   * { box-sizing:border-box; } .shell { display:grid; grid-template-columns:210px minmax(0,1fr); min-height:inherit; }
   aside { padding:38px 22px; border-right:1px solid var(--mb-line); display:flex; flex-direction:column; gap:48px; }
@@ -2391,10 +2545,11 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
     _render() {
       if (!this._config) return;
       const text = translations[this._config.language ?? "en"];
-      const quickBack = ["rooms", "presence", "system", "climate", "cleaning"].includes(this._config.path);
+      const quickBack = ["rooms", "presence", "system", "climate", "cleaning", "shopping"].includes(this._config.path);
       const expertView = this._config.path === "expert";
       const shell = element("div", void 0, "shell");
       this.dataset.view = this._config.path;
+      this.toggleAttribute("data-has-shopping", Boolean(this._config.shopping_enabled));
       if (this._config.path === "cleaning" && this._config.cleaning_theme === "flusenfels") this.dataset.cleaningTheme = "flusenfels";
       else delete this.dataset.cleaningTheme;
       if (this._config.full_view) this.setAttribute("data-full-view", "true");
@@ -2443,8 +2598,8 @@ ${royal ? flusenfelsCardStyles : ""}`), panel);
       this.shadowRoot.replaceChildren(element("style", `${shellStyles}
 ${flusenfelsShellStyles}`), shell);
       this._navObserver = new ResizeObserver(() => {
-        const styles5 = getComputedStyle(nav);
-        const space = styles5.position === "fixed" ? nav.getBoundingClientRect().height + parseFloat(styles5.bottom || 0) + 12 : 16;
+        const styles6 = getComputedStyle(nav);
+        const space = styles6.position === "fixed" ? nav.getBoundingClientRect().height + parseFloat(styles6.bottom || 0) + 12 : 16;
         this.style.setProperty("--mb-nav-space", `${space}px`);
       });
       this._navObserver.observe(nav);
@@ -2465,18 +2620,20 @@ ${flusenfelsShellStyles}`), shell);
         const layout = { header: "wide", climate: "rooms", "room-summary": "compact", people: "compact", "presence-summary": "compact", devices: "devices", cleaning: "cleaning", warnings: "compact", floorplan: "wide", message: "wide" }[config.mode];
         if (layout) slot.classList.add(layout);
         let card;
-        if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history", "custom:mufflonbau-cleaning", "custom:mufflonbau-presence"].includes(config.type)) {
+        if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history", "custom:mufflonbau-cleaning", "custom:mufflonbau-presence", "custom:mufflonbau-shopping"].includes(config.type)) {
           card = document.createElement(config.type.slice(7));
           card.setConfig(config);
           if (config.type === "custom:mufflonbau-admin") slot.classList.add("wide");
           if (config.type === "custom:mufflonbau-presence") slot.classList.add("wide");
           if (config.type === "custom:mufflonbau-cleaning") slot.classList.add("cleaning");
+          if (config.type === "custom:mufflonbau-shopping") slot.classList.add("shopping-summary");
         } else if (helpers) card = helpers.createCardElement(config);
         else card = element("p", translations[this._config.language ?? "en"].cardLoadError);
         if (this._hass) card.hass = this._hass;
         const cameraMap = config.type === "picture-entity" && config.entity?.startsWith("camera.") && this._config.path === "cleaning";
         if (cameraMap) slot.classList.add("cleaning-map");
         if (this._config.path === "calendar") slot.classList.add("calendar");
+        if (this._config.path === "shopping") slot.classList.add("wide");
         this._children.push(card);
         if (cameraMap) {
           const viewport = element("div", void 0, "camera-viewport");
@@ -3512,6 +3669,7 @@ ${flusenfelsShellStyles}`), shell);
   if (!customElements.get("mufflonbau-history")) customElements.define("mufflonbau-history", MufflonbauHistory);
   if (!customElements.get("mufflonbau-presence")) customElements.define("mufflonbau-presence", MufflonbauPresence);
   if (!customElements.get("mufflonbau-cleaning")) customElements.define("mufflonbau-cleaning", MufflonbauCleaning);
+  if (!customElements.get("mufflonbau-shopping")) customElements.define("mufflonbau-shopping", MufflonbauShopping);
   if (!customElements.get("mufflonbau-shell")) customElements.define("mufflonbau-shell", MufflonbauShell);
   if (!customElements.get("mufflonbau-live")) customElements.define("mufflonbau-live", MufflonbauLiveCard);
   if (!customElements.get("ll-strategy-dashboard-mufflonbau")) customElements.define("ll-strategy-dashboard-mufflonbau", MufflonbauDashboardStrategy);

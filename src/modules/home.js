@@ -6,6 +6,7 @@ export function homeView({ config, text, language }, otherViews) {
   if (config.people.length) cards.push(liveCard('presence-summary', { ...shared, compact: true, people: config.people }, language));
   if (config.cleaning?.entity) cards.push(liveCard('cleaning', { ...shared, compact: true, cleaning: config.cleaning }, language));
   if (config.monitors.length) cards.push(liveCard('warnings', { ...shared, monitors: config.monitors, compact: true }, language));
+  if (config.shopping) cards.push({ type: 'custom:mufflonbau-shopping', ...shared, shopping: config.shopping, language });
   if (config.entities.length) cards.push(liveCard('devices', { ...shared, entities: config.entities, title: text.overview }, language));
   if (!config.rooms.length && !config.people.length && !config.entities.length && !otherViews.some(item => !item.path.startsWith('admin'))) {
     cards.push(liveCard('message', { ...shared, content: text.empty }, language));

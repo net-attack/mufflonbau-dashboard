@@ -29,10 +29,11 @@ export class MufflonbauShell extends HTMLElement {
   _render() {
     if (!this._config) return;
     const text = translations[this._config.language ?? 'en'];
-    const quickBack = ['rooms', 'presence', 'system', 'climate', 'cleaning'].includes(this._config.path);
+    const quickBack = ['rooms', 'presence', 'system', 'climate', 'cleaning', 'shopping'].includes(this._config.path);
     const expertView = this._config.path === 'expert';
     const shell = element('div', undefined, 'shell');
     this.dataset.view = this._config.path;
+    this.toggleAttribute('data-has-shopping', Boolean(this._config.shopping_enabled));
     if (this._config.path === 'cleaning' && this._config.cleaning_theme === 'flusenfels') this.dataset.cleaningTheme = 'flusenfels';
     else delete this.dataset.cleaningTheme;
     if (this._config.full_view) this.setAttribute('data-full-view', 'true'); else this.removeAttribute('data-full-view');
@@ -93,17 +94,19 @@ export class MufflonbauShell extends HTMLElement {
       const layout = { header: 'wide', climate: 'rooms', 'room-summary': 'compact', people: 'compact', 'presence-summary': 'compact', devices: 'devices', cleaning: 'cleaning', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
       if (layout) slot.classList.add(layout);
       let card;
-      if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning', 'custom:mufflonbau-presence'].includes(config.type)) {
+      if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning', 'custom:mufflonbau-presence', 'custom:mufflonbau-shopping'].includes(config.type)) {
         card = document.createElement(config.type.slice(7)); card.setConfig(config);
         if (config.type === 'custom:mufflonbau-admin') slot.classList.add('wide');
         if (config.type === 'custom:mufflonbau-presence') slot.classList.add('wide');
         if (config.type === 'custom:mufflonbau-cleaning') slot.classList.add('cleaning');
+        if (config.type === 'custom:mufflonbau-shopping') slot.classList.add('shopping-summary');
       } else if (helpers) card = helpers.createCardElement(config);
       else card = element('p', translations[this._config.language ?? 'en'].cardLoadError);
       if (this._hass) card.hass = this._hass;
       const cameraMap = config.type === 'picture-entity' && config.entity?.startsWith('camera.') && this._config.path === 'cleaning';
       if (cameraMap) slot.classList.add('cleaning-map');
       if (this._config.path === 'calendar') slot.classList.add('calendar');
+      if (this._config.path === 'shopping') slot.classList.add('wide');
       this._children.push(card);
       if (cameraMap) {
         const viewport = element('div', undefined, 'camera-viewport');

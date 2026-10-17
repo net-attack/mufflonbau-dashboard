@@ -4,7 +4,7 @@ export function roomViews(context) {
   const { config, text, language } = context;
   if (!config.rooms.length) return [];
   const overview = view('rooms', text.rooms, 'mdi:floor-plan', [
-    liveCard('floorplan', { rooms: config.rooms, appearance: config.appearance }, language),
+    liveCard('floorplan', { rooms: config.rooms, walls: config.floorplan_walls, appearance: config.appearance }, language),
     liveCard('climate', { rooms: config.rooms, appearance: config.appearance }, language),
   ]);
   return [overview, ...config.rooms.map(room => view(`room-${room.id}`, localized(room.name, language), room.icon ?? 'mdi:door', [

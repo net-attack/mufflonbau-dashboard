@@ -63,10 +63,10 @@ try {
       'sensor.battery': { state: '80', attributes: {} }, 'light.room': { state: 'off', attributes: {} } } };
     document.querySelectorAll('mufflonbau-live').forEach(card => { card.hass = window.sampleHass; });
   });
-  assert.match(await page.locator('#climate ha-card').innerText(), /In Home Assistant nicht verfügbar/);
+  assert.equal(await page.locator('#climate svg[role=img][aria-label="In Home Assistant nicht verfügbar"]').count(), 1);
   assert.match(await page.locator('#warnings ha-card').innerText(), /in Ordnung/);
-  assert.equal(await page.locator('#floorplan rect.lit').count(), 0);
-  assert.equal(await page.locator('#floorplan rect.offline').count(), 1);
+  assert.equal(await page.locator('#floorplan polygon.lit').count(), 0);
+  assert.equal(await page.locator('#floorplan polygon.offline').count(), 1);
   await page.locator('#floorplan a').click();
   assert.match(page.url(), /\/dashboard-test\/room-living$/);
   await page.evaluate(() => {
@@ -190,7 +190,7 @@ try {
   // Verify that secondary native cards inherit the same palette as custom cards.
   await page.evaluate(() => {
     const config = window.previewDashboard.views.find(view => view.path === 'system').cards[0];
-    const shell = document.querySelector('#dashboard'); shell.setConfig({ ...config, appearance: { mode: 'night' }, cards: config.cards.map(card => ({ ...card, appearance: { mode: 'night' } })) }); shell.hass = window.previewHass;
+    const shell = document.querySelector('#dashboard'); shell.setConfig({ ...config, appearance: { mode: 'night' }, cards: [...config.cards.map(card => ({ ...card, appearance: { mode: 'night' } })), { type: 'test-native-card' }] }); shell.hass = window.previewHass;
   });
   await page.locator('#dashboard .native-surface').waitFor();
   assert.equal(await page.locator('#dashboard .native-surface').evaluate(node => getComputedStyle(node).backgroundColor),

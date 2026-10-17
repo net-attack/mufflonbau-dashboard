@@ -90,6 +90,7 @@ sections are optional; omitted sections generate no corresponding view.
 | `rooms` | Room definitions, detailed below |
 | `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, and `map` (camera) IDs |
 | `monitors` | Objects containing `entity`, optional `name`, and optional `battery_below` threshold |
+| `admin` | Optional arrays of entity IDs in `internet`, `network`, `host`, and router-backed `clients` |
 | `expert_entities` | Additional entities to include in the expert view |
 | `appearance` | `theme: atmospheric`, `storybook`, or `calm`; `mode: auto`, `ambient`, or `night` |
 
@@ -112,9 +113,19 @@ stop, and return-home controls where supported by the vacuum.
 Monitors flag missing, `unknown`, and `unavailable` entities. With `battery_below`,
 invalid numeric readings also count as unavailable; values strictly below the
 threshold generate a battery warning. Values equal to the threshold are healthy.
-Warnings update with HA states without regenerating the dashboard. Tap a warning
-or a climate tile to open HA's entity details. The system view also lists healthy
-monitored devices. The expert view collects all referenced entities without duplicates.
+Warnings update with HA states without regenerating the dashboard. Battery
+sensors are checked at a 20% threshold by default; set `battery_below` to
+override it. Healthy readings stay hidden. Tap a warning or a climate tile to
+open HA's entity details.
+
+The admin view automatically discovers common Speedtest/WAN sensors, router
+network sensors, router-backed device trackers, and Home Assistant/Raspberry Pi
+processor, memory, disk, and uptime sensors. Add explicit IDs under `admin` when
+an entity uses an unusual name. Fritz DECT temperature and battery sensors are
+not treated as Internet metrics. Network presence is reported by the router's
+device tracker and may be delayed; it does not identify Wi-Fi versus Ethernet
+unless the integration exposes that detail. The expert view also includes the
+discovered admin entities.
 
 By default, appearance follows the HA dark theme. To preserve presence-based
 switching from an earlier installation, set `appearance.night_person` and

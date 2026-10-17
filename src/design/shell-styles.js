@@ -18,9 +18,27 @@ export const shellStyles = `
   .content { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); align-items:start; gap:22px; }
   .slot { min-width:0; grid-column:span 6; } .slot.wide { grid-column:1/-1; } .slot.rooms { grid-column:span 8; } .slot.compact { grid-column:span 4; }
   .slot.devices { grid-column:span 8; } .slot ha-card { background:var(--mb-surface); }
+  .slot.cleaning { grid-column:span 7; height:min(520px,calc(100dvh - 280px)); min-height:300px; }
+  .slot.cleaning-map { grid-column:span 5; height:min(520px,calc(100dvh - 280px)); min-height:260px; overflow:hidden; border-radius:24px; }
+  .slot.cleaning-map > * { width:100%; height:100%; }
+  :host([data-view=calendar][data-full-view=true]) { height:calc(100dvh - 56px); min-height:0; }
+  :host([data-view=calendar][data-full-view=true]) .shell,:host([data-view=calendar][data-full-view=true]) main { height:100%; min-height:0; }
+  :host([data-view=calendar][data-full-view=true]) main { display:flex; flex-direction:column; padding:20px clamp(18px,3vw,46px) 82px; }
+  :host([data-view=calendar][data-full-view=true]) .topline { flex:none; margin-bottom:12px; }
+  :host([data-view=calendar][data-full-view=true]) .heading { flex:none; margin:0 0 12px; }
+  :host([data-view=calendar][data-full-view=true]) .content { flex:1; min-height:0; }
+  :host([data-view=calendar][data-full-view=true]) .slot.calendar { grid-column:1/-1; min-height:0; height:100%; }
+  :host([data-view=calendar][data-full-view=true]) .slot.calendar > * { height:100%; }
+  :host([data-view=cleaning]),:host([data-view=calendar][data-full-view=true]) { overflow:hidden; }
+  :host([data-view=cleaning]) .shell { height:calc(100dvh - 56px); min-height:0; }
+  :host([data-view=cleaning]) main { height:100%; min-height:0; overflow:hidden; padding:18px clamp(18px,3vw,46px) 82px; display:flex; flex-direction:column; }
+  :host([data-view=cleaning]) .topline { flex:none; margin-bottom:8px; }
+  :host([data-view=cleaning]) .heading { flex:none; font-size:28px; margin:0 0 10px; }
+  :host([data-view=cleaning]) .content { flex:1; min-height:0; align-content:center; gap:14px; }
+  :host([data-view=cleaning]) .slot.cleaning,:host([data-view=cleaning]) .slot.cleaning-map { max-height:100%; }
   @media(min-width:1700px) { .shell { grid-template-columns:240px minmax(0,1fr); } }
   @media(max-width:1100px) { .shell { grid-template-columns:170px minmax(0,1fr); } aside { padding:28px 12px; } .brand { font-size:16px; } .slot.rooms,.slot.devices { grid-column:span 12; } .slot.compact { grid-column:span 6; } }
-  @media(max-width:700px) { .shell { display:flex; flex-direction:column; } aside { padding:16px; border:0; gap:18px; display:contents; } .brand,.footnote { display:none; } main { padding:22px 16px 92px; } .topline { margin-bottom:22px; letter-spacing:1px; } .heading { font-size:28px; } nav { position:fixed; inset:auto 12px 12px; z-index:10; flex-direction:row; overflow:visible; gap:2px; padding:7px; border:1px solid var(--mb-line); background:var(--mb-surface); border-radius:22px; box-shadow:0 8px 28px #00000012; } a { flex:1; min-width:58px; gap:5px; flex-direction:column; padding:10px 5px; font-size:9px; white-space:nowrap; } .secondary { display:none; } .more-menu { display:block; flex:1; min-width:58px; } summary { display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 5px; font-size:9px; color:var(--mb-muted); cursor:pointer; list-style:none; } summary::-webkit-details-marker { display:none; } .more-links { position:absolute; bottom:calc(100% + 12px); right:0; min-width:180px; padding:8px; background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:18px; box-shadow:0 8px 24px #0002; } .more-links a { flex-direction:row; font-size:12px; padding:14px; } nav svg { width:19px; height:19px; } .content { gap:16px; } .slot,.slot.compact { grid-column:1/-1; } .status { font-size:9px; } }
+  @media(max-width:700px) { .shell { display:flex; flex-direction:column; } aside { padding:16px; border:0; gap:18px; display:contents; } .brand,.footnote { display:none; } main { padding:22px 16px 92px; } .topline { margin-bottom:22px; letter-spacing:1px; } .heading { font-size:28px; } nav { position:fixed; inset:auto 12px 12px; z-index:10; flex-direction:row; overflow:visible; gap:2px; padding:7px; border:1px solid var(--mb-line); background:var(--mb-surface); border-radius:22px; box-shadow:0 8px 28px #00000012; } a { flex:1; min-width:58px; gap:5px; flex-direction:column; padding:10px 5px; font-size:9px; white-space:nowrap; } .secondary { display:none; } .more-menu { display:block; flex:1; min-width:58px; } summary { display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 5px; font-size:9px; color:var(--mb-muted); cursor:pointer; list-style:none; } summary::-webkit-details-marker { display:none; } .more-links { position:absolute; bottom:calc(100% + 12px); right:0; min-width:180px; padding:8px; background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:18px; box-shadow:0 8px 24px #0002; } .more-links a { flex-direction:row; font-size:12px; padding:14px; } nav svg { width:19px; height:19px; } .content { gap:16px; } .slot,.slot.compact { grid-column:1/-1; } .status { font-size:9px; } :host([data-view=cleaning]) main { padding:12px 10px 76px; } :host([data-view=cleaning]) .topline { margin-bottom:6px; } :host([data-view=cleaning]) .heading { font-size:22px; } }
   :host([data-theme=atmospheric]) .shell,:host([data-theme=storybook]) .shell { grid-template-columns:minmax(0,1fr); }
   :host([data-theme=atmospheric]) aside,:host([data-theme=storybook]) aside { display:contents; }
   :host([data-theme=atmospheric]) .brand,:host([data-theme=atmospheric]) .footnote,:host([data-theme=storybook]) .brand,:host([data-theme=storybook]) .footnote { display:none; }
@@ -30,5 +48,6 @@ export const shellStyles = `
   :host([data-theme=atmospheric]) .slot.devices,:host([data-theme=storybook]) .slot.devices { grid-column:1/-1; }
   :host([data-theme=storybook]) main { padding-bottom:240px; }
   @media(max-width:700px) { :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { inset:auto 12px 12px; transform:none; } }
+  @media(max-width:1100px) { :host([data-view=calendar][data-full-view=true]) main { padding-left:18px; padding-right:18px; } }
   @media(prefers-reduced-motion:no-preference) { a { transition:background .15s,color .15s; } }
 `;

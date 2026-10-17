@@ -54,11 +54,11 @@ test('collapses configured Hue group members in room views but retains them in e
 test('cleaning buttons target exactly the configured helper and do not invent room IDs', () => {
   const result = generateDashboard(fixture, { states: {} });
   const cards = cardsIn(result.views.find(view => view.path === 'cleaning').cards);
-  const actions = cards.filter(card => card.tap_action?.action === 'perform-action');
-  assert.deepEqual(actions.map(card => card.tap_action), [
-    { action: 'perform-action', perform_action: 'input_button.press', target: { entity_id: 'input_button.vacuum_living' } },
-    { action: 'perform-action', perform_action: 'input_button.press', target: { entity_id: 'input_button.mop_living' } },
-  ]);
+  const cleaning = cards.find(card => card.type === 'custom:mufflonbau-cleaning');
+  assert.deepEqual(cleaning.rooms.find(room => room.id === 'living').cleaning,
+    { vacuum: 'input_button.vacuum_living', mop: 'input_button.mop_living' });
+  assert.equal(result.views.find(item => item.path === 'calendar').cards[0].full_view, true);
+  assert.equal(result.views.find(item => item.path === 'calendar').fullView, true);
 });
 test('expert entity collection is complete and deduplicated', () => {
   const config = normalizeConfig({ ...fixture, expert_entities: ['sensor.temperature', 'sensor.extra'] });
@@ -88,6 +88,17 @@ test('warnings handle missing, unavailable, invalid, and threshold boundary valu
   assert.equal(warnings('0')[0].detail, 'Batterie: 0%');
   assert.equal(warnings('19')[0].name, 'Batterie');
   assert.equal(numericState({ state: '0' }), 0);
+});
+test('system checks warn on low batteries and broken numeric sensors without listing healthy readings', () => {
+  const warnings = monitorWarnings([
+    { entity: 'sensor.phone_battery' }, { entity: 'sensor.room_temperature' }, { entity: 'sensor.status' },
+  ], {
+    'sensor.phone_battery': { state: '95', attributes: { unit_of_measurement: '%' } },
+    'sensor.room_temperature': { state: 'NaN', attributes: { unit_of_measurement: '°C' } },
+    'sensor.status': { state: 'ready', attributes: {} },
+  }, 'de');
+  assert.deepEqual(warnings.map(item => [item.entity, item.detail]), [['sensor.room_temperature', 'Ungültiger Sensorwert']]);
+  assert.equal(monitorWarnings([{ entity: 'sensor.phone_battery' }], { 'sensor.phone_battery': { state: '19', attributes: { unit_of_measurement: '%' } } }, 'de')[0].detail, 'Batterie: 19%');
 });
 test('appearance preserves the old presence rule and falls back to the HA theme', () => {
   const config = { night_person: 'person.one', ambient_person: 'person.two' };

@@ -45,6 +45,10 @@ export class MufflonbauLiveCard extends HTMLElement {
     if (number === null) return stateProblem(state, this._language) ?? text.invalidValue;
     return `${new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(number)} ${state.attributes?.unit_of_measurement ?? fallbackUnit}`;
   }
+  _statusIcon(message) {
+    const status = icon('warning'); status.setAttribute('role', 'img');
+    status.setAttribute('aria-label', message); status.setAttribute('title', message); return status;
+  }
   _render() {
     if (!this._config || !this._hass) return;
     const language = resolveLanguage(this._config, this._hass);
@@ -172,9 +176,26 @@ export class MufflonbauLiveCard extends HTMLElement {
       button.type = 'button';
       button.dataset.entity = room.temperature ?? room.humidity ?? room.dew_point ?? '';
       button.append(element('strong', localized(room.name, this._language)));
-      if (room.temperature) button.append(element('div', this._value(room.temperature, '°C'), `value${numericState(this._hass.states[room.temperature]) === null ? ' status-value' : ''}`));
-      if (room.humidity) button.append(element('small', `${this._value(room.humidity, '%')} · ${text.humidity}`));
-      if (room.dew_point) button.append(element('small', `${text.dewPoint}: ${this._value(room.dew_point, '°C')}`));
+      if (room.temperature) {
+        const reading = element('div', undefined, `value${numericState(this._hass.states[room.temperature]) === null ? ' status-value' : ''}`);
+        if (numericState(this._hass.states[room.temperature]) === null) reading.append(this._statusIcon(stateProblem(this._hass.states[room.temperature], this._language) ?? text.invalidValue));
+        else reading.textContent = this._value(room.temperature, '°C');
+        button.append(reading);
+      }
+      if (room.humidity) {
+        const value = numericState(this._hass.states[room.humidity]);
+        const humidity = element('small');
+        if (value === null) humidity.append(this._statusIcon(stateProblem(this._hass.states[room.humidity], this._language) ?? text.invalidValue), element('span', ` · ${text.humidity}`));
+        else humidity.textContent = `${this._value(room.humidity, '%')} · ${text.humidity}`;
+        button.append(humidity);
+      }
+      if (room.dew_point) {
+        const value = numericState(this._hass.states[room.dew_point]);
+        const dewPoint = element('small');
+        if (value === null) dewPoint.append(element('span', `${text.dewPoint}: `), this._statusIcon(stateProblem(this._hass.states[room.dew_point], this._language) ?? text.invalidValue));
+        else dewPoint.textContent = `${text.dewPoint}: ${this._value(room.dew_point, '°C')}`;
+        button.append(dewPoint);
+      }
       button.addEventListener('click', () => button.dataset.entity ? this._moreInfo(button.dataset.entity) : link.click());
       const art = element('span', undefined, 'room-art'); art.setAttribute('aria-hidden', 'true'); art.append(icon(roomIcon(room)));
       tile.append(top, button, art); grid.append(tile);
@@ -254,19 +275,33 @@ export class MufflonbauLiveCard extends HTMLElement {
     this._section(card, text.rooms, text.floorplan);
     const rooms = this._config.rooms ?? [];
     const positions = rooms.map((room, index) => room.position ?? { x: (index % 3) * 280, y: Math.floor(index / 3) * 180, width: 260, height: 160 });
-    const width = Math.max(1, ...positions.map(position => position.x + position.width));
-    const height = Math.max(1, ...positions.map(position => position.y + position.height));
-    const svg = svgElement('svg', { viewBox: `-4 -4 ${width + 8} ${height + 8}`, role: 'group', class: 'floor-map', 'aria-label': text.rooms });
+    const polygons = positions.map(position => position.points ? [position.points] : position.parts ?? [[
+      [position.x, position.y], [position.x + position.width, position.y],
+      [position.x + position.width, position.y + position.height], [position.x, position.y + position.height],
+    ]]);
+    const allPoints = polygons.flat(2);
+    const minX = Math.min(0, ...allPoints.map(point => point[0]));
+    const minY = Math.min(0, ...allPoints.map(point => point[1]));
+    const width = Math.max(1, ...allPoints.map(point => point[0])) - minX;
+    const height = Math.max(1, ...allPoints.map(point => point[1])) - minY;
+    const svg = svgElement('svg', { viewBox: `${minX - 3} ${minY - 3} ${width + 6} ${height + 6}`, role: 'group', class: 'floor-map', 'aria-label': text.rooms });
+    for (const wall of this._config.walls ?? []) {
+      svg.append(svgElement('polyline', { points: wall.map(point => point.join(',')).join(' '), class: 'floor-wall' }));
+    }
     rooms.forEach((room, index) => {
       const position = positions[index];
+      const center = polygons[index].flat().reduce((point, item) => [point[0] + item[0] / polygons[index].flat().length, point[1] + item[1] / polygons[index].flat().length], [0, 0]);
       const link = svgElement('a', { 'data-room': room.id, 'aria-label': localized(room.name, this._language) });
       navigateLink(link, `room-${room.id}`);
       const lit = (room.lights ?? []).some(id => this._hass.states[id]?.state === 'on');
       const offline = [room.temperature, room.humidity].filter(Boolean).some(id => isOffline(this._hass.states[id]));
-      link.append(svgElement('rect', { ...position, rx: 12, class: `${lit ? 'lit' : ''} ${offline ? 'offline' : ''}` }));
-      link.append(svgElement('text', { x: position.x + 14, y: position.y + 28, class: 'room-name' }, localized(room.name, this._language)));
-      if (room.temperature) link.append(svgElement('text', { x: position.x + 14, y: position.y + 58, class: 'room-value' }, this._value(room.temperature, '°C')));
-      if (room.humidity) link.append(svgElement('text', { x: position.x + 14, y: position.y + 82, class: 'room-value' }, this._value(room.humidity, '%')));
+      for (const polygon of polygons[index]) {
+        link.append(svgElement('polygon', { points: polygon.map(point => point.join(',')).join(' '), class: `${lit ? 'lit' : ''} ${offline ? 'offline' : ''}` }));
+      }
+      const textAnchor = polygons[index].length > 1 ? 'middle' : 'start';
+      link.append(svgElement('text', { x: center[0], y: center[1] - 5, class: 'room-name', 'text-anchor': textAnchor }, localized(room.name, this._language)));
+      if (room.temperature) link.append(svgElement('text', { x: center[0], y: center[1] + 18, class: 'room-value', 'text-anchor': textAnchor }, this._value(room.temperature, '°C')));
+      if (room.humidity) link.append(svgElement('text', { x: center[0], y: center[1] + 38, class: 'room-value', 'text-anchor': textAnchor }, this._value(room.humidity, '%')));
       svg.append(link);
     });
     card.append(svg);

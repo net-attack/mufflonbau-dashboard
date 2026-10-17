@@ -15,7 +15,7 @@ for (const file of await readdir(new URL('../examples/', import.meta.url))) {
     assert.equal(config.type, 'custom:mufflonbau');
     // Examples must preserve the key rather than rely on legacy compatibility.
     for (const room of config.rooms ?? []) {
-      if (room.position) assert.equal(typeof room.position.y, 'number', 'Quote the YAML key "y" to prevent YAML 1.1 boolean conversion.');
+      if (room.position && !room.position.parts && !room.position.points) assert.equal(typeof room.position.y, 'number', 'Quote the YAML key "y" to prevent YAML 1.1 boolean conversion.');
     }
     const result = generateDashboard(config, { states: {}, locale: { language: 'de' } });
     assert.ok(result.views.length > 0);

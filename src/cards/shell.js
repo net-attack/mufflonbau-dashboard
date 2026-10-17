@@ -21,6 +21,8 @@ export class MufflonbauShell extends HTMLElement {
     if (!this._config) return;
     const text = translations[this._config.language ?? 'en'];
     const shell = element('div', undefined, 'shell');
+    this.dataset.view = this._config.path;
+    if (this._config.full_view) this.setAttribute('data-full-view', 'true'); else this.removeAttribute('data-full-view');
     const aside = element('aside');
     const brand = element('div', undefined, 'brand');
     brand.append(element('span', 'm', 'monogram'), element('span', this._config.title ?? 'Mufflonbau'));
@@ -67,15 +69,18 @@ export class MufflonbauShell extends HTMLElement {
     if (generation !== this._generation) return;
     for (const config of this._config.cards) {
       const slot = element('section', undefined, 'slot');
-      const layout = { header: 'wide', climate: 'rooms', people: 'compact', devices: 'devices', cleaning: 'compact', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
+      const layout = { header: 'wide', climate: 'rooms', people: 'compact', devices: 'devices', cleaning: 'cleaning', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
       if (layout) slot.classList.add(layout);
       let card;
-      if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history'].includes(config.type)) {
+      if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning'].includes(config.type)) {
         card = document.createElement(config.type.slice(7)); card.setConfig(config);
         if (config.type === 'custom:mufflonbau-admin') slot.classList.add('wide');
+        if (config.type === 'custom:mufflonbau-cleaning') slot.classList.add('cleaning');
       } else if (helpers) card = helpers.createCardElement(config);
       else card = element('p', translations[this._config.language ?? 'en'].cardLoadError);
       if (this._hass) card.hass = this._hass;
+      if (config.type === 'picture-entity' && config.entity?.startsWith('camera.')) slot.classList.add('cleaning-map');
+      if (this._config.path === 'calendar') slot.classList.add('calendar');
       this._children.push(card); slot.append(card); this._content.append(slot);
     }
   }

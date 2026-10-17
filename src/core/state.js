@@ -24,8 +24,13 @@ export function monitorWarnings(monitors, states, language) {
     const name = localized(monitor.name, language) || state?.attributes?.friendly_name || monitor.entity;
     if (isOffline(state)) return [{ entity: monitor.entity, name, detail: stateProblem(state, language) }];
     const value = numericState(state);
-    if (monitor.battery_below !== undefined && (value === null || value < monitor.battery_below)) {
-      return [{ entity: monitor.entity, name, detail: value === null ? text.invalidValue : `${text.battery}: ${value}%` }];
+    const battery = monitor.battery_below !== undefined || /battery/i.test(`${monitor.entity} ${name} ${state.attributes?.device_class ?? ''}`);
+    const numeric = battery || state.attributes?.unit_of_measurement !== undefined ||
+      ['apparent_power', 'current', 'distance', 'duration', 'energy', 'frequency', 'gas', 'humidity', 'illuminance', 'power', 'pressure', 'signal_strength', 'temperature', 'voltage'].includes(state.attributes?.device_class);
+    if (numeric && value === null) return [{ entity: monitor.entity, name, detail: text.invalidValue }];
+    const batteryLimit = monitor.battery_below ?? 20;
+    if (battery && (value < batteryLimit || value > 100)) {
+      return [{ entity: monitor.entity, name, detail: value > 100 ? text.invalidValue : `${text.battery}: ${value}%` }];
     }
     return [];
   });

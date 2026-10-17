@@ -31,6 +31,15 @@ export function normalizeConfig(config) {
   }
   if (result.weather !== undefined) entity(result.weather, 'weather');
   list(result.rooms, 'rooms');
+  if (config.floorplan_walls !== undefined) {
+    list(config.floorplan_walls, 'floorplan_walls');
+    config.floorplan_walls.forEach((wall, wallIndex) => {
+      list(wall, `floorplan_walls[${wallIndex}]`);
+      if (wall.length < 2 || wall.some(point => !Array.isArray(point) || point.length !== 2 || point.some(coordinate => !Number.isFinite(coordinate) || coordinate < 0))) {
+        fail(`floorplan_walls[${wallIndex}]`, 'must contain at least two valid non-negative coordinate pairs.');
+      }
+    });
+  }
   const ids = new Set();
   result.rooms = result.rooms.map((room, index) => {
     const path = `rooms[${index}]`;
@@ -60,6 +69,24 @@ export function normalizeConfig(config) {
     }
     if (room.position !== undefined) {
       object(room.position, `${path}.position`);
+      if (room.position.points !== undefined || room.position.parts !== undefined) {
+        const { points, parts } = room.position;
+        if (points !== undefined && parts !== undefined) fail(`${path}.position`, 'must use points or parts, not both.');
+        const shapes = parts ?? [points];
+        list(shapes, `${path}.position.parts`);
+        if (!shapes.length) fail(`${path}.position`, 'must contain at least one polygon.');
+        shapes.forEach((polygon, polygonIndex) => {
+          list(polygon, `${path}.position.parts[${polygonIndex}]`);
+          if (polygon.length < 3) fail(`${path}.position.parts[${polygonIndex}]`, 'must contain at least three points.');
+          polygon.forEach((point, pointIndex) => {
+            if (!Array.isArray(point) || point.length !== 2 || point.some(coordinate => !Number.isFinite(coordinate) || coordinate < 0)) {
+              fail(`${path}.position.parts[${polygonIndex}][${pointIndex}]`, 'must contain two valid non-negative coordinates.');
+            }
+          });
+        });
+        normalized.position = { ...(points === undefined ? { parts } : { points }) };
+        return { ...normalized, lights: normalized.lights };
+      }
       // HA's YAML 1.1 editor parses an unquoted y key as boolean true.
       // Recover already saved configurations without mutating their input.
       const { true: legacyY, ...position } = room.position;

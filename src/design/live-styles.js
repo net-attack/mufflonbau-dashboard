@@ -28,10 +28,14 @@ export const liveStyles = `
   .switch[aria-checked=true] { background:var(--mb-accent); } .switch[aria-checked=true]:after { transform:translateX(14px); }
   .robot { display:flex; align-items:center; gap:16px; padding:8px 0 18px; } .robot .icon-disc { width:62px; height:62px; border-radius:50%; } .robot strong { font-size:13px; line-height:1.5; }
   .link { display:flex; align-items:center; justify-content:space-between; padding-top:15px; border-top:1px solid var(--mb-line); font-size:12px; color:var(--mb-accent); text-decoration:none; }
-  .floor-map { width:100%; height:auto; max-height:65vh; margin-top:12px; } .floor-map text { fill:var(--mb-ink); pointer-events:none; }
-  .floor-map rect { stroke:var(--mb-line); stroke-width:3; fill:var(--mb-soft); } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
+  .floor-map { display:block; width:min(100%,calc((100dvh - 250px) * .8275)); height:auto; max-height:calc(100dvh - 250px); margin:12px auto 0; } .floor-map text { fill:var(--mb-ink); pointer-events:none; font-size:15px; }
+  .floor-map polygon { stroke:var(--mb-line); stroke-width:4; stroke-linejoin:round; fill:var(--mb-soft); vector-effect:non-scaling-stroke; } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
+  .floor-map a { cursor:pointer; } .floor-map a:focus-visible polygon { stroke:var(--mb-accent); stroke-width:7; }
+  .floor-map .floor-wall { fill:none; stroke:var(--mb-ink); stroke-width:8; stroke-linecap:square; stroke-linejoin:miter; opacity:.65; vector-effect:non-scaling-stroke; pointer-events:none; }
   .entity-id { font-family:ui-monospace,monospace; font-size:10px; overflow-wrap:anywhere; opacity:.8; }
-  .room-board .value.status-value { font-size:12px; letter-spacing:0; line-height:1.6; }
+  .room-board .value.status-value { display:flex; align-items:center; min-height:32px; font-size:12px; letter-spacing:0; line-height:1.6; }
+  .room-board .value.status-value svg { width:27px; height:27px; color:#a75f49; }
+  .room-board .climate-button small svg { width:15px; height:15px; vertical-align:middle; color:#a75f49; }
   .room-name { font-size:18px; font-weight:600; } .room-value { font-size:17px; } .message { color:var(--mb-muted); line-height:1.7; font-size:13px; }
   @media(max-width:700px) { ha-card { padding:20px; } .hero { padding:26px 22px; } .header { align-items:start; flex-wrap:wrap; } .clock { font-size:42px; } .clock-wrap { text-align:left; } h1 { font-size:34px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .room-tile { padding:14px; } .value { font-size:28px; } .device { padding:14px; } }
   ha-card:not([data-theme=calm]) { backdrop-filter:blur(18px); box-shadow:0 12px 32px #0000000d; }

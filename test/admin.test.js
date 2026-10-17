@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeConfig, collectEntities } from '../src/core/config.js';
-import { clientSummary, numericGroups } from '../src/core/admin.js';
+import { clientSummary, discoverAdminSources, numericGroups } from '../src/core/admin.js';
 import { generateDashboard } from '../src/strategy.js';
 import { fetchHistory, historyPoints, historyPath } from '../src/core/history.js';
 
@@ -17,6 +17,21 @@ test('network counts retain unknowns and do not equate arbitrary locations with 
   const states = Object.fromEntries(['home', 'not_home', 'unknown', 'unavailable', 'office'].map((state, index) => [`device_tracker.d${index}`, { state }]));
   assert.deepEqual(clientSummary([...Object.keys(states), 'device_tracker.missing'], states), { connected: 1, away: 1, unknown: 4, total: 6 });
 });
+test('admin auto-discovers Speedtest, router Wi-Fi clients and Raspberry Pi sensors without matching DECT readings', () => {
+  const discovered = discoverAdminSources({ internet: [], network: [], host: [], clients: [] }, {
+    'sensor.speedtest_download': { attributes: { friendly_name: 'Speedtest Download' } },
+    'sensor.fritz_dect_temperature': { attributes: { friendly_name: 'FRITZ DECT Temperature', unit_of_measurement: '°C' } },
+    'sensor.fritzbox_wifi_devices': { attributes: { friendly_name: 'FRITZ!Box Wi-Fi devices' } },
+    'device_tracker.phone': { state: 'home', attributes: { source_type: 'router', friendly_name: 'Phone' } },
+    'sensor.processor_temperature': { attributes: { unit_of_measurement: '°C' } },
+    'sensor.memory_use_percent': { attributes: { unit_of_measurement: '%' } },
+    'sensor.room_temperature': { attributes: { friendly_name: 'Room temperature', unit_of_measurement: '°C' } },
+  });
+  assert.deepEqual(discovered.internet, ['sensor.speedtest_download']);
+  assert.deepEqual(discovered.network, ['sensor.speedtest_download', 'sensor.fritzbox_wifi_devices']);
+  assert.deepEqual(discovered.clients, ['device_tracker.phone']);
+  assert.deepEqual(discovered.host, ['sensor.processor_temperature', 'sensor.memory_use_percent']);
+});
 test('admin is one high-level destination; technical subviews are reached by drill-down', () => {
   const dashboard = generateDashboard({ admin: { host: ['sensor.cpu', 'sensor.temp'] } }, { states: {
     'sensor.cpu': { state: '20', attributes: { unit_of_measurement: '%' } },
@@ -26,6 +41,21 @@ test('admin is one high-level destination; technical subviews are reached by dri
   assert.ok(navigation.some(item => item.path === 'admin'));
   assert.ok(!navigation.some(item => /^admin-|expert/.test(item.path)));
   assert.equal(dashboard.views.find(item => item.path === 'admin-host').cards[0].cards.filter(card => card.type === 'custom:mufflonbau-history').length, 2);
+});
+test('generated network and Pi views use live auto-discovered Home Assistant entities', () => {
+  const dashboard = generateDashboard({}, { states: {
+    'sensor.speedtest_download': { state: '240', attributes: { unit_of_measurement: 'Mbit/s' } },
+    'binary_sensor.fritz_connection': { state: 'on', attributes: { friendly_name: 'FRITZ!Box connection' } },
+    'device_tracker.tablet': { state: 'home', attributes: { source_type: 'router' } },
+    'sensor.processor_temperature': { state: '51', attributes: { unit_of_measurement: '°C' } },
+  } });
+  const network = dashboard.views.find(view => view.path === 'admin-network').cards[0].cards[0];
+  const host = dashboard.views.find(view => view.path === 'admin-host').cards[0].cards[0];
+  assert.ok(network.admin.network.includes('sensor.speedtest_download'));
+  assert.ok(network.admin.network.includes('binary_sensor.fritz_connection'));
+  assert.deepEqual(network.admin.clients, ['device_tracker.tablet']);
+  assert.deepEqual(host.admin.host, ['sensor.processor_temperature']);
+  assert.ok(dashboard.views.find(view => view.path === 'expert').cards[0].cards[0].entities.includes('sensor.processor_temperature'));
 });
 test('history groups never mix units or unrelated device classes', () => {
   const states = { a: { state: '10', attributes: { unit_of_measurement: '%' } }, b: { state: '20', attributes: { unit_of_measurement: '%' } }, c: { state: '10', attributes: { unit_of_measurement: '%', device_class: 'battery' } }, d: { state: 'unavailable' }, e: { state: 'unavailable', attributes: { unit_of_measurement: '°C' } } };

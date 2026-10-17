@@ -1,6 +1,29 @@
 import { availability, numericState } from './state.js';
 
 export const adminGroups = ['internet', 'network', 'host'];
+const sourcePatterns = {
+  internet: /speedtest|internet|wan|download|upload|ping|latency|external.?ip|connectivity|connection/i,
+  network: /wlan|wifi|wi-fi|network|lan|wan|speedtest|download|upload|ping|internet|ssid|connection|client/i,
+  host: /raspberry|raspi|\brpi\b|home.?assistant|processor|cpu|memory|ram|disk|swap|uptime/i,
+};
+export function discoverAdminSources(admin, states) {
+  const result = Object.fromEntries([...adminGroups, 'clients'].map(key => [key, [...(admin[key] ?? [])]]));
+  for (const [id, state] of Object.entries(states ?? {})) {
+    const domain = id.split('.')[0];
+    const name = `${id} ${state?.attributes?.friendly_name ?? ''} ${state?.attributes?.device_class ?? ''} ${state?.attributes?.integration ?? ''}`;
+    if (adminGroups.includes(domain) || !['sensor', 'binary_sensor', 'device_tracker'].includes(domain)) continue;
+    if (domain === 'device_tracker') {
+      if (state?.attributes?.source_type === 'router' || /fritz|fritzbox|wlan|wifi|wi-fi/i.test(name)) result.clients.push(id);
+      continue;
+    }
+    for (const group of adminGroups) {
+      if (sourcePatterns[group].test(name)) result[group].push(id);
+    }
+  }
+  for (const key of Object.keys(result)) result[key] = [...new Set(result[key])];
+  return result;
+}
+
 export function normalizeAdmin(value, validateEntity) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Mufflonbau: admin must be an object.');
   const result = {};

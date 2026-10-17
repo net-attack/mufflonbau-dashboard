@@ -23,6 +23,9 @@
     rooms: "M3 3h18v18H3zM3 12h9V3M12 12h9M12 12v9",
     climate: "M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0ZM12 8v10",
     cleaning: "M4 9h16v10H4zM9 9V5h6v4M8 19v2m8-2v2M8 13h.01M16 13h.01M9 16h6",
+    play: "m8 5 12 7-12 7V5Z",
+    stop: "M6 6h12v12H6z",
+    warning: "M12 3 2.4 20.5h19.2L12 3Zm0 6.2v5.1m0 2.7h.01",
     system: "M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7l-9-4Zm-4 9 3 3 5-6",
     admin: "M3 3h18v7H3zM3 14h18v7H3zM7 6h.01M7 17h.01M12 6h6M12 17h6",
     expert: "M4 7h16M4 17h16M8 4v6m8 4v6",
@@ -148,9 +151,9 @@ ${trees}${houses}
       technicalDetails: "Technical details",
       measured: "Last updated",
       adminIntro: "Technical details live here. Your home overview stays focused on daily life.",
-      internetSetup: "Select your router connection, download, upload and latency entities under admin.internet. A connected dashboard does not prove internet access.",
-      networkSetup: "Select router and Wi-Fi sensors under admin.network and router-backed device trackers under admin.clients. Presence alone does not distinguish Wi-Fi from Ethernet.",
-      hostSetup: "Add the System monitor integration, enable CPU temperature, processor, memory and disk sensors, then select them under admin.host.",
+      internetSetup: "Internet, WAN and Speedtest sensors are detected automatically. Rename unusual entities to include their purpose or add them under admin.internet.",
+      networkSetup: "Wi-Fi, router network sensors and router-backed device trackers are detected automatically. Presence alone does not distinguish Wi-Fi from Ethernet.",
+      hostSetup: "Raspberry Pi and Home Assistant processor, memory, disk and uptime sensors are detected automatically. Other sensors can be selected under admin.host.",
       clientNote: "Presence is reported by the selected integration; it may be delayed. Open a device for its reported connection details.",
       setup: "Set up data sources",
       historyLoading: "Loading history…",
@@ -184,6 +187,12 @@ ${trees}${houses}
       navigation: "Navigation",
       live: "Connected to your home",
       yourSpace: "A little space. All yours.",
+      startPause: "Start / pause",
+      stop: "Stop",
+      returnHome: "Return to dock",
+      roomActions: "ROOM CLEANING",
+      roomActionPrompt: "Choose a cleaning action for this room.",
+      close: "Close",
       morning: "Good morning.",
       afternoon: "Good afternoon.",
       evening: "Good evening.",
@@ -210,9 +219,9 @@ ${trees}${houses}
       technicalDetails: "Technische Details",
       measured: "Zuletzt aktualisiert",
       adminIntro: "Hier wohnen die technischen Details. Die Startseite bleibt auf den Alltag konzentriert.",
-      internetSetup: "Router-Verbindung, Download, Upload und Latenz unter admin.internet auswählen. Eine Dashboard-Verbindung belegt keinen Internetzugang.",
-      networkSetup: "Router- und WLAN-Sensoren unter admin.network und Router-Gerätetracker unter admin.clients auswählen. Anwesenheit allein unterscheidet WLAN und LAN nicht.",
-      hostSetup: "Integration System monitor hinzufügen, CPU-Temperatur, Prozessor-, RAM- und Speichersensoren aktivieren und unter admin.host auswählen.",
+      internetSetup: "Internet-, WAN- und Speedtest-Sensoren werden automatisch erkannt. Ungewöhnliche Entitäten kannst du passend umbenennen oder unter admin.internet ergänzen.",
+      networkSetup: "WLAN-, Router-Netzwerk-Sensoren und Router-Gerätetracker werden automatisch erkannt. Anwesenheit allein unterscheidet WLAN und LAN nicht.",
+      hostSetup: "Raspberry-Pi- und Home-Assistant-Sensoren für Prozessor, Speicher, Datenträger und Laufzeit werden automatisch erkannt. Weitere Sensoren kannst du unter admin.host ergänzen.",
       clientNote: "Die ausgewählte Integration meldet die Anwesenheit möglicherweise verzögert. Gerät öffnen, um dessen gemeldete Verbindungsdetails zu sehen.",
       setup: "Datenquellen einrichten",
       historyLoading: "Verlauf wird geladen…",
@@ -246,6 +255,12 @@ ${trees}${houses}
       navigation: "Navigation",
       live: "Mit deinem Zuhause verbunden",
       yourSpace: "Dein Zuhause. Dein Rückzugsort.",
+      startPause: "Start / Pause",
+      stop: "Stoppen",
+      returnHome: "Zur Ladestation",
+      roomActions: "RAUMREINIGUNG",
+      roomActionPrompt: "Wähle eine Reinigungsaktion für diesen Raum.",
+      close: "Schließen",
       morning: "Guten Morgen.",
       afternoon: "Guten Tag.",
       evening: "Guten Abend.",
@@ -301,8 +316,12 @@ ${trees}${houses}
       const name = localized(monitor.name, language) || state?.attributes?.friendly_name || monitor.entity;
       if (isOffline(state)) return [{ entity: monitor.entity, name, detail: stateProblem(state, language) }];
       const value = numericState(state);
-      if (monitor.battery_below !== void 0 && (value === null || value < monitor.battery_below)) {
-        return [{ entity: monitor.entity, name, detail: value === null ? text.invalidValue : `${text.battery}: ${value}%` }];
+      const battery = monitor.battery_below !== void 0 || /battery/i.test(`${monitor.entity} ${name} ${state.attributes?.device_class ?? ""}`);
+      const numeric = battery || state.attributes?.unit_of_measurement !== void 0 || ["apparent_power", "current", "distance", "duration", "energy", "frequency", "gas", "humidity", "illuminance", "power", "pressure", "signal_strength", "temperature", "voltage"].includes(state.attributes?.device_class);
+      if (numeric && value === null) return [{ entity: monitor.entity, name, detail: text.invalidValue }];
+      const batteryLimit = monitor.battery_below ?? 20;
+      if (battery && (value < batteryLimit || value > 100)) {
+        return [{ entity: monitor.entity, name, detail: value > 100 ? text.invalidValue : `${text.battery}: ${value}%` }];
       }
       return [];
     });
@@ -317,6 +336,28 @@ ${trees}${houses}
 
   // src/core/admin.js
   var adminGroups = ["internet", "network", "host"];
+  var sourcePatterns = {
+    internet: /speedtest|internet|wan|download|upload|ping|latency|external.?ip|connectivity|connection/i,
+    network: /wlan|wifi|wi-fi|network|lan|wan|speedtest|download|upload|ping|internet|ssid|connection|client/i,
+    host: /raspberry|raspi|\brpi\b|home.?assistant|processor|cpu|memory|ram|disk|swap|uptime/i
+  };
+  function discoverAdminSources(admin, states) {
+    const result = Object.fromEntries([...adminGroups, "clients"].map((key) => [key, [...admin[key] ?? []]]));
+    for (const [id, state] of Object.entries(states ?? {})) {
+      const domain = id.split(".")[0];
+      const name = `${id} ${state?.attributes?.friendly_name ?? ""} ${state?.attributes?.device_class ?? ""} ${state?.attributes?.integration ?? ""}`;
+      if (adminGroups.includes(domain) || !["sensor", "binary_sensor", "device_tracker"].includes(domain)) continue;
+      if (domain === "device_tracker") {
+        if (state?.attributes?.source_type === "router" || /fritz|fritzbox|wlan|wifi|wi-fi/i.test(name)) result.clients.push(id);
+        continue;
+      }
+      for (const group of adminGroups) {
+        if (sourcePatterns[group].test(name)) result[group].push(id);
+      }
+    }
+    for (const key of Object.keys(result)) result[key] = [...new Set(result[key])];
+    return result;
+  }
   function normalizeAdmin(value, validateEntity) {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Mufflonbau: admin must be an object.");
     const result = {};
@@ -648,6 +689,147 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
     }
   };
 
+  // src/cards/cleaning.js
+  var styles3 = `
+:host{display:block;min-width:0;height:100%;color:var(--mb-ink);font-family:Inter,'Avenir Next',system-ui,sans-serif}*{box-sizing:border-box}
+.panel{height:100%;padding:18px 20px;background:var(--mb-surface);border:1px solid var(--mb-line);border-radius:24px;backdrop-filter:blur(18px);display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:center;gap:12px;min-width:0}.robot-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:14px;background:var(--mb-soft);color:var(--mb-accent)}
+h2{font-size:18px;margin:0}header small,.meta{font-size:11px;color:var(--mb-muted);line-height:1.5}header .state{margin-left:auto;text-align:right;max-width:40%;overflow-wrap:anywhere}
+.actions{display:flex;gap:8px}.command{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 10px;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:14px;color:var(--mb-ink);font:inherit;font-size:12px;cursor:pointer}.command svg{width:18px;height:18px;color:var(--mb-accent)}
+.rooms{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-content:start;min-height:0}.room{min-height:52px;padding:8px 10px;display:flex;align-items:center;gap:8px;text-align:left;background:var(--mb-soft);border:1px solid var(--mb-line);border-radius:13px;color:var(--mb-ink);font:inherit;cursor:pointer}.room svg{width:18px;height:18px;color:var(--mb-accent);flex:none}.room span{font-size:11px;line-height:1.3;overflow-wrap:anywhere}
+button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid var(--mb-accent);outline-offset:2px}
+dialog{width:min(380px,calc(100% - 32px));padding:22px;border:1px solid var(--mb-line);border-radius:22px;background:var(--mb-surface);color:var(--mb-ink);box-shadow:0 24px 80px #0005}dialog::backdrop{background:#10182080;backdrop-filter:blur(5px)}dialog h3{margin:0 0 8px;font-size:18px}dialog p{margin:0 0 18px;color:var(--mb-muted);font-size:12px}.dialog-actions{display:grid;gap:8px}.dialog-close{width:100%;min-height:44px;margin-top:12px;background:transparent;border:1px solid var(--mb-line);border-radius:12px;color:var(--mb-muted);font:inherit;cursor:pointer}
+.feedback{min-height:16px;margin:0;color:var(--mb-muted);font-size:11px}.feedback[role=alert]{color:#a45440}
+@media(max-width:900px){.panel{padding:14px;gap:10px}.rooms{gap:6px}.room{min-height:48px;padding:7px}.room span{font-size:10px}}
+@media(max-width:560px){.rooms{grid-template-columns:repeat(2,minmax(0,1fr))}.actions .command{font-size:10px}}
+`;
+  var commands = [["start_pause", "play", "startPause"], ["stop", "stop", "stop"], ["return_home", "home", "returnHome"]];
+  var roomCommands = [["vacuum", "cleaning", "vacuum"], ["mop", "drop", "mop"]];
+  var MufflonbauCleaning = class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" });
+    }
+    setConfig(config) {
+      this._config = config;
+      this._render();
+    }
+    set hass(value) {
+      const previous = this._hass;
+      this._hass = value;
+      const ids = [this._config?.cleaning?.entity, this._config?.cleaning?.battery, this._config?.cleaning?.current_room].filter(Boolean);
+      if (!previous || ids.some((id) => previous.states[id] !== value.states[id]) || previous.themes !== value.themes) this._render();
+    }
+    getCardSize() {
+      return 5;
+    }
+    async _service(domain, service, entity2, button, feedback, text) {
+      button.disabled = true;
+      feedback.removeAttribute("role");
+      feedback.textContent = "";
+      try {
+        await this._hass.callService(domain, service, {}, { entity_id: entity2 });
+      } catch {
+        feedback.setAttribute("role", "alert");
+        feedback.textContent = text.actionFailed;
+      } finally {
+        button.disabled = false;
+      }
+    }
+    _moreInfo(id) {
+      this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: id }, bubbles: true, composed: true }));
+    }
+    _render() {
+      if (!this._config || !this._hass) return;
+      const { cleaning = {}, rooms = [], language = "en" } = this._config;
+      const text = translations[language];
+      applyTheme(this, appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode), this._config.appearance?.theme);
+      const panel = element("section", void 0, "panel");
+      const header = element("header");
+      const badge = element("span", void 0, "robot-icon");
+      badge.append(icon("cleaning"));
+      const identity = element("div");
+      identity.append(element("h2", this._name(cleaning.entity)), element("small", text.cleaning));
+      header.append(badge, identity);
+      if (cleaning.entity) {
+        const state = this._hass.states[cleaning.entity];
+        const status = element("span", stateProblem(state, language) ?? text.states[state?.state] ?? state?.state ?? text.missing, "state");
+        header.append(status);
+      }
+      panel.append(header);
+      const meta = element("div", void 0, "meta");
+      const details = [];
+      if (cleaning.battery) details.push(`${text.battery}: ${this._display(cleaning.battery, "%")}`);
+      if (cleaning.current_room) details.push(`${text.room}: ${this._display(cleaning.current_room)}`);
+      meta.textContent = details.join("   ·   ");
+      if (details.length) panel.append(meta);
+      const feedback = element("p", void 0, "feedback");
+      if (cleaning.entity) {
+        const controls = element("div", void 0, "actions");
+        for (const [service, symbol, label2] of commands) {
+          const button = element("button", void 0, "command");
+          button.type = "button";
+          button.disabled = isOffline(this._hass.states[cleaning.entity]);
+          button.append(icon(symbol), element("span", text[label2]));
+          button.addEventListener("click", () => this._service("vacuum", service, cleaning.entity, button, feedback, text));
+          controls.append(button);
+        }
+        panel.append(controls);
+      }
+      const actionRooms = rooms.filter((room) => Object.keys(room.cleaning ?? {}).length);
+      if (actionRooms.length) {
+        panel.append(element("p", text.roomActions, "meta"));
+        const roomGrid = element("div", void 0, "rooms");
+        for (const room of actionRooms) {
+          const button = element("button", void 0, "room");
+          button.type = "button";
+          button.append(icon("rooms"), element("span", localized(room.name, language)));
+          button.addEventListener("click", () => this._openRoom(room, text, feedback));
+          roomGrid.append(button);
+        }
+        panel.append(roomGrid);
+      }
+      panel.append(feedback);
+      this.shadowRoot.replaceChildren(element("style", styles3), panel);
+    }
+    _openRoom(room, text, feedback) {
+      const dialog = element("dialog");
+      const heading = element("h3", localized(room.name, this._config.language ?? "en"));
+      dialog.append(heading, element("p", text.roomActionPrompt));
+      const actions = element("div", void 0, "dialog-actions");
+      for (const [kind, symbol, label2] of roomCommands) {
+        const entity2 = room.cleaning?.[kind];
+        if (!entity2) continue;
+        const button = element("button", void 0, "command");
+        button.type = "button";
+        button.append(icon(symbol), element("span", text[label2]));
+        button.addEventListener("click", async () => {
+          await this._service("input_button", "press", entity2, button, feedback, text);
+          if (!feedback.hasAttribute("role")) dialog.close();
+        });
+        actions.append(button);
+      }
+      const close = element("button", text.close, "dialog-close");
+      close.type = "button";
+      close.addEventListener("click", () => dialog.close());
+      dialog.append(actions, close);
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+      this.shadowRoot.append(dialog);
+      dialog.addEventListener("close", () => dialog.remove(), { once: true });
+      dialog.showModal();
+    }
+    _name(id) {
+      return id ? this._hass.states[id]?.attributes?.friendly_name ?? id.split(".").at(-1).replaceAll("_", " ") : translations[this._config.language ?? "en"].vacuum;
+    }
+    _display(id, unit = "") {
+      const state = this._hass.states[id];
+      const text = translations[this._config.language ?? "en"];
+      return stateProblem(state, this._config.language ?? "en") ?? `${state.state}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : unit}`;
+    }
+  };
+
   // src/core/config.js
   function fail(path, message) {
     throw new Error(`Mufflonbau: ${path} ${message}`);
@@ -687,6 +869,15 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
     }
     if (result.weather !== void 0) entity(result.weather, "weather");
     list(result.rooms, "rooms");
+    if (config.floorplan_walls !== void 0) {
+      list(config.floorplan_walls, "floorplan_walls");
+      config.floorplan_walls.forEach((wall, wallIndex) => {
+        list(wall, `floorplan_walls[${wallIndex}]`);
+        if (wall.length < 2 || wall.some((point) => !Array.isArray(point) || point.length !== 2 || point.some((coordinate) => !Number.isFinite(coordinate) || coordinate < 0))) {
+          fail(`floorplan_walls[${wallIndex}]`, "must contain at least two valid non-negative coordinate pairs.");
+        }
+      });
+    }
     const ids = /* @__PURE__ */ new Set();
     result.rooms = result.rooms.map((room, index) => {
       const path = `rooms[${index}]`;
@@ -716,6 +907,24 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
       }
       if (room.position !== void 0) {
         object(room.position, `${path}.position`);
+        if (room.position.points !== void 0 || room.position.parts !== void 0) {
+          const { points, parts } = room.position;
+          if (points !== void 0 && parts !== void 0) fail(`${path}.position`, "must use points or parts, not both.");
+          const shapes = parts ?? [points];
+          list(shapes, `${path}.position.parts`);
+          if (!shapes.length) fail(`${path}.position`, "must contain at least one polygon.");
+          shapes.forEach((polygon, polygonIndex) => {
+            list(polygon, `${path}.position.parts[${polygonIndex}]`);
+            if (polygon.length < 3) fail(`${path}.position.parts[${polygonIndex}]`, "must contain at least three points.");
+            polygon.forEach((point, pointIndex) => {
+              if (!Array.isArray(point) || point.length !== 2 || point.some((coordinate) => !Number.isFinite(coordinate) || coordinate < 0)) {
+                fail(`${path}.position.parts[${polygonIndex}][${pointIndex}]`, "must contain two valid non-negative coordinates.");
+              }
+            });
+          });
+          normalized.position = { ...points === void 0 ? { parts } : { points } };
+          return { ...normalized, lights: normalized.lights };
+        }
         const { true: legacyY, ...position } = room.position;
         normalized.position = { ...position, y: position.y ?? legacyY };
         for (const key of ["x", "y", "width", "height"]) {
@@ -800,7 +1009,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
     const { config, text, language } = context;
     if (!config.rooms.length) return [];
     const overview = view("rooms", text.rooms, "mdi:floor-plan", [
-      liveCard("floorplan", { rooms: config.rooms, appearance: config.appearance }, language),
+      liveCard("floorplan", { rooms: config.rooms, walls: config.floorplan_walls, appearance: config.appearance }, language),
       liveCard("climate", { rooms: config.rooms, appearance: config.appearance }, language)
     ]);
     return [overview, ...config.rooms.map((room) => view(`room-${room.id}`, localized(room.name, language), room.icon ?? "mdi:door", [
@@ -828,27 +1037,10 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
     if (!config.cleaning && !config.rooms.some((room) => room.cleaning)) return [];
     const cleaning = config.cleaning ?? {};
     const cards = [];
-    if (cleaning.entity) cards.push({ type: "tile", entity: cleaning.entity, features: [{ type: "vacuum-commands", commands: ["start_pause", "stop", "return_home"] }] });
-    if (cleaning.map) cards.push({ type: "picture-entity", entity: cleaning.map, camera_view: "live", show_name: false, show_state: false });
-    cards.push(...entityList([cleaning.battery, cleaning.current_room].filter(Boolean), text.cleaning));
-    for (const room of config.rooms) {
-      const actions = Object.entries(room.cleaning ?? {});
-      if (!actions.length) continue;
-      cards.push({
-        type: "grid",
-        title: localized(room.name, language),
-        columns: 2,
-        square: false,
-        cards: actions.map(([kind, entity2]) => ({
-          type: "button",
-          entity: entity2,
-          name: text[kind],
-          icon: kind === "vacuum" ? "mdi:vacuum" : "mdi:water",
-          tap_action: { action: "perform-action", perform_action: "input_button.press", target: { entity_id: entity2 } },
-          hold_action: { action: "more-info" }
-        }))
-      });
+    if (cleaning.entity || cleaning.battery || cleaning.current_room || config.rooms.some((room) => Object.keys(room.cleaning ?? {}).length)) {
+      cards.push({ type: "custom:mufflonbau-cleaning", cleaning, rooms: config.rooms, language, appearance: config.appearance });
     }
+    if (cleaning.map) cards.push({ type: "picture-entity", entity: cleaning.map, camera_view: "live", show_name: false, show_state: false });
     return [view("cleaning", text.cleaning, "mdi:robot-vacuum", cards)];
   }
 
@@ -856,16 +1048,16 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
   function systemViews({ config, hass, text, language }) {
     const views = [];
     if (config.monitors.length) views.push(view("system", text.system, "mdi:alert-circle-outline", [
-      liveCard("warnings", { monitors: config.monitors, appearance: config.appearance }, language),
-      ...entityList(config.monitors.map((monitor) => monitor.entity), text.system)
+      liveCard("warnings", { monitors: config.monitors, appearance: config.appearance }, language)
     ]));
-    const entities = collectEntities(config);
-    const adminCard = (section) => ({ expert_available: entities.length > 0, type: "custom:mufflonbau-admin", section, admin: config.admin, language, appearance: config.appearance });
+    const admin = discoverAdminSources(config.admin, hass.states);
+    const entities = [.../* @__PURE__ */ new Set([...collectEntities(config), ...Object.values(admin).flat()])];
+    const adminCard = (section) => ({ expert_available: entities.length > 0, type: "custom:mufflonbau-admin", section, admin, language, appearance: config.appearance });
     views.push(view("admin", text.admin, "mdi:server-network", [adminCard("overview")]));
     for (const group of adminGroups) {
       views.push(view(`admin-${group}`, text[group], "mdi:server-network", [
         adminCard(group),
-        ...numericGroups(config.admin[group], hass.states).map((entities2) => ({
+        ...numericGroups(admin[group], hass.states).map((entities2) => ({
           type: "custom:mufflonbau-history",
           entities: entities2,
           language,
@@ -881,7 +1073,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
   function calendarViews({ config, text }) {
     return config.calendars.length ? [view("calendar", text.calendar, "mdi:calendar-month-outline", [
       { type: "calendar", initial_view: "listWeek", entities: config.calendars }
-    ])] : [];
+    ], { fullView: true })] : [];
   }
 
   // src/modules/home.js
@@ -932,6 +1124,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
       appearance: config.appearance,
       path: item.path,
       view_title: item.title,
+      full_view: item.fullView,
       navigation,
       cards: item.cards
     }] }));
@@ -959,9 +1152,27 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
   .content { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); align-items:start; gap:22px; }
   .slot { min-width:0; grid-column:span 6; } .slot.wide { grid-column:1/-1; } .slot.rooms { grid-column:span 8; } .slot.compact { grid-column:span 4; }
   .slot.devices { grid-column:span 8; } .slot ha-card { background:var(--mb-surface); }
+  .slot.cleaning { grid-column:span 7; height:min(520px,calc(100dvh - 280px)); min-height:300px; }
+  .slot.cleaning-map { grid-column:span 5; height:min(520px,calc(100dvh - 280px)); min-height:260px; overflow:hidden; border-radius:24px; }
+  .slot.cleaning-map > * { width:100%; height:100%; }
+  :host([data-view=calendar][data-full-view=true]) { height:calc(100dvh - 56px); min-height:0; }
+  :host([data-view=calendar][data-full-view=true]) .shell,:host([data-view=calendar][data-full-view=true]) main { height:100%; min-height:0; }
+  :host([data-view=calendar][data-full-view=true]) main { display:flex; flex-direction:column; padding:20px clamp(18px,3vw,46px) 82px; }
+  :host([data-view=calendar][data-full-view=true]) .topline { flex:none; margin-bottom:12px; }
+  :host([data-view=calendar][data-full-view=true]) .heading { flex:none; margin:0 0 12px; }
+  :host([data-view=calendar][data-full-view=true]) .content { flex:1; min-height:0; }
+  :host([data-view=calendar][data-full-view=true]) .slot.calendar { grid-column:1/-1; min-height:0; height:100%; }
+  :host([data-view=calendar][data-full-view=true]) .slot.calendar > * { height:100%; }
+  :host([data-view=cleaning]),:host([data-view=calendar][data-full-view=true]) { overflow:hidden; }
+  :host([data-view=cleaning]) .shell { height:calc(100dvh - 56px); min-height:0; }
+  :host([data-view=cleaning]) main { height:100%; min-height:0; overflow:hidden; padding:18px clamp(18px,3vw,46px) 82px; display:flex; flex-direction:column; }
+  :host([data-view=cleaning]) .topline { flex:none; margin-bottom:8px; }
+  :host([data-view=cleaning]) .heading { flex:none; font-size:28px; margin:0 0 10px; }
+  :host([data-view=cleaning]) .content { flex:1; min-height:0; align-content:center; gap:14px; }
+  :host([data-view=cleaning]) .slot.cleaning,:host([data-view=cleaning]) .slot.cleaning-map { max-height:100%; }
   @media(min-width:1700px) { .shell { grid-template-columns:240px minmax(0,1fr); } }
   @media(max-width:1100px) { .shell { grid-template-columns:170px minmax(0,1fr); } aside { padding:28px 12px; } .brand { font-size:16px; } .slot.rooms,.slot.devices { grid-column:span 12; } .slot.compact { grid-column:span 6; } }
-  @media(max-width:700px) { .shell { display:flex; flex-direction:column; } aside { padding:16px; border:0; gap:18px; display:contents; } .brand,.footnote { display:none; } main { padding:22px 16px 92px; } .topline { margin-bottom:22px; letter-spacing:1px; } .heading { font-size:28px; } nav { position:fixed; inset:auto 12px 12px; z-index:10; flex-direction:row; overflow:visible; gap:2px; padding:7px; border:1px solid var(--mb-line); background:var(--mb-surface); border-radius:22px; box-shadow:0 8px 28px #00000012; } a { flex:1; min-width:58px; gap:5px; flex-direction:column; padding:10px 5px; font-size:9px; white-space:nowrap; } .secondary { display:none; } .more-menu { display:block; flex:1; min-width:58px; } summary { display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 5px; font-size:9px; color:var(--mb-muted); cursor:pointer; list-style:none; } summary::-webkit-details-marker { display:none; } .more-links { position:absolute; bottom:calc(100% + 12px); right:0; min-width:180px; padding:8px; background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:18px; box-shadow:0 8px 24px #0002; } .more-links a { flex-direction:row; font-size:12px; padding:14px; } nav svg { width:19px; height:19px; } .content { gap:16px; } .slot,.slot.compact { grid-column:1/-1; } .status { font-size:9px; } }
+  @media(max-width:700px) { .shell { display:flex; flex-direction:column; } aside { padding:16px; border:0; gap:18px; display:contents; } .brand,.footnote { display:none; } main { padding:22px 16px 92px; } .topline { margin-bottom:22px; letter-spacing:1px; } .heading { font-size:28px; } nav { position:fixed; inset:auto 12px 12px; z-index:10; flex-direction:row; overflow:visible; gap:2px; padding:7px; border:1px solid var(--mb-line); background:var(--mb-surface); border-radius:22px; box-shadow:0 8px 28px #00000012; } a { flex:1; min-width:58px; gap:5px; flex-direction:column; padding:10px 5px; font-size:9px; white-space:nowrap; } .secondary { display:none; } .more-menu { display:block; flex:1; min-width:58px; } summary { display:flex; flex-direction:column; align-items:center; gap:5px; padding:10px 5px; font-size:9px; color:var(--mb-muted); cursor:pointer; list-style:none; } summary::-webkit-details-marker { display:none; } .more-links { position:absolute; bottom:calc(100% + 12px); right:0; min-width:180px; padding:8px; background:var(--mb-surface); border:1px solid var(--mb-line); border-radius:18px; box-shadow:0 8px 24px #0002; } .more-links a { flex-direction:row; font-size:12px; padding:14px; } nav svg { width:19px; height:19px; } .content { gap:16px; } .slot,.slot.compact { grid-column:1/-1; } .status { font-size:9px; } :host([data-view=cleaning]) main { padding:12px 10px 76px; } :host([data-view=cleaning]) .topline { margin-bottom:6px; } :host([data-view=cleaning]) .heading { font-size:22px; } }
   :host([data-theme=atmospheric]) .shell,:host([data-theme=storybook]) .shell { grid-template-columns:minmax(0,1fr); }
   :host([data-theme=atmospheric]) aside,:host([data-theme=storybook]) aside { display:contents; }
   :host([data-theme=atmospheric]) .brand,:host([data-theme=atmospheric]) .footnote,:host([data-theme=storybook]) .brand,:host([data-theme=storybook]) .footnote { display:none; }
@@ -971,6 +1182,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
   :host([data-theme=atmospheric]) .slot.devices,:host([data-theme=storybook]) .slot.devices { grid-column:1/-1; }
   :host([data-theme=storybook]) main { padding-bottom:240px; }
   @media(max-width:700px) { :host([data-theme=atmospheric]) nav,:host([data-theme=storybook]) nav { inset:auto 12px 12px; transform:none; } }
+  @media(max-width:1100px) { :host([data-view=calendar][data-full-view=true]) main { padding-left:18px; padding-right:18px; } }
   @media(prefers-reduced-motion:no-preference) { a { transition:background .15s,color .15s; } }
 `;
 
@@ -1000,6 +1212,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
       if (!this._config) return;
       const text = translations[this._config.language ?? "en"];
       const shell = element("div", void 0, "shell");
+      this.dataset.view = this._config.path;
+      if (this._config.full_view) this.setAttribute("data-full-view", "true");
+      else this.removeAttribute("data-full-view");
       const aside = element("aside");
       const brand = element("div", void 0, "brand");
       brand.append(element("span", "m", "monogram"), element("span", this._config.title ?? "Mufflonbau"));
@@ -1058,16 +1273,19 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
       if (generation !== this._generation) return;
       for (const config of this._config.cards) {
         const slot = element("section", void 0, "slot");
-        const layout = { header: "wide", climate: "rooms", people: "compact", devices: "devices", cleaning: "compact", warnings: "compact", floorplan: "wide", message: "wide" }[config.mode];
+        const layout = { header: "wide", climate: "rooms", people: "compact", devices: "devices", cleaning: "cleaning", warnings: "compact", floorplan: "wide", message: "wide" }[config.mode];
         if (layout) slot.classList.add(layout);
         let card;
-        if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history"].includes(config.type)) {
+        if (["custom:mufflonbau-live", "custom:mufflonbau-admin", "custom:mufflonbau-history", "custom:mufflonbau-cleaning"].includes(config.type)) {
           card = document.createElement(config.type.slice(7));
           card.setConfig(config);
           if (config.type === "custom:mufflonbau-admin") slot.classList.add("wide");
+          if (config.type === "custom:mufflonbau-cleaning") slot.classList.add("cleaning");
         } else if (helpers) card = helpers.createCardElement(config);
         else card = element("p", translations[this._config.language ?? "en"].cardLoadError);
         if (this._hass) card.hass = this._hass;
+        if (config.type === "picture-entity" && config.entity?.startsWith("camera.")) slot.classList.add("cleaning-map");
+        if (this._config.path === "calendar") slot.classList.add("calendar");
         this._children.push(card);
         slot.append(card);
         this._content.append(slot);
@@ -1106,10 +1324,14 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
   .switch[aria-checked=true] { background:var(--mb-accent); } .switch[aria-checked=true]:after { transform:translateX(14px); }
   .robot { display:flex; align-items:center; gap:16px; padding:8px 0 18px; } .robot .icon-disc { width:62px; height:62px; border-radius:50%; } .robot strong { font-size:13px; line-height:1.5; }
   .link { display:flex; align-items:center; justify-content:space-between; padding-top:15px; border-top:1px solid var(--mb-line); font-size:12px; color:var(--mb-accent); text-decoration:none; }
-  .floor-map { width:100%; height:auto; max-height:65vh; margin-top:12px; } .floor-map text { fill:var(--mb-ink); pointer-events:none; }
-  .floor-map rect { stroke:var(--mb-line); stroke-width:3; fill:var(--mb-soft); } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
+  .floor-map { display:block; width:min(100%,calc((100dvh - 250px) * .8275)); height:auto; max-height:calc(100dvh - 250px); margin:12px auto 0; } .floor-map text { fill:var(--mb-ink); pointer-events:none; font-size:15px; }
+  .floor-map polygon { stroke:var(--mb-line); stroke-width:4; stroke-linejoin:round; fill:var(--mb-soft); vector-effect:non-scaling-stroke; } .floor-map .lit { fill:var(--mb-active); } .floor-map .offline { stroke:#b67545; stroke-dasharray:6; }
+  .floor-map a { cursor:pointer; } .floor-map a:focus-visible polygon { stroke:var(--mb-accent); stroke-width:7; }
+  .floor-map .floor-wall { fill:none; stroke:var(--mb-ink); stroke-width:8; stroke-linecap:square; stroke-linejoin:miter; opacity:.65; vector-effect:non-scaling-stroke; pointer-events:none; }
   .entity-id { font-family:ui-monospace,monospace; font-size:10px; overflow-wrap:anywhere; opacity:.8; }
-  .room-board .value.status-value { font-size:12px; letter-spacing:0; line-height:1.6; }
+  .room-board .value.status-value { display:flex; align-items:center; min-height:32px; font-size:12px; letter-spacing:0; line-height:1.6; }
+  .room-board .value.status-value svg { width:27px; height:27px; color:#a75f49; }
+  .room-board .climate-button small svg { width:15px; height:15px; vertical-align:middle; color:#a75f49; }
   .room-name { font-size:18px; font-weight:600; } .room-value { font-size:17px; } .message { color:var(--mb-muted); line-height:1.7; font-size:13px; }
   @media(max-width:700px) { ha-card { padding:20px; } .hero { padding:26px 22px; } .header { align-items:start; flex-wrap:wrap; } .clock { font-size:42px; } .clock-wrap { text-align:left; } h1 { font-size:34px; } .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .room-tile { padding:14px; } .value { font-size:28px; } .device { padding:14px; } }
   ha-card:not([data-theme=calm]) { backdrop-filter:blur(18px); box-shadow:0 12px 32px #0000000d; }
@@ -1201,6 +1423,13 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
       const text = translations[this._language];
       if (number === null) return stateProblem(state, this._language) ?? text.invalidValue;
       return `${new Intl.NumberFormat(this._language, { maximumFractionDigits: 1 }).format(number)} ${state.attributes?.unit_of_measurement ?? fallbackUnit}`;
+    }
+    _statusIcon(message) {
+      const status = icon("warning");
+      status.setAttribute("role", "img");
+      status.setAttribute("aria-label", message);
+      status.setAttribute("title", message);
+      return status;
     }
     _render() {
       if (!this._config || !this._hass) return;
@@ -1362,9 +1591,26 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
         button.type = "button";
         button.dataset.entity = room.temperature ?? room.humidity ?? room.dew_point ?? "";
         button.append(element("strong", localized(room.name, this._language)));
-        if (room.temperature) button.append(element("div", this._value(room.temperature, "°C"), `value${numericState(this._hass.states[room.temperature]) === null ? " status-value" : ""}`));
-        if (room.humidity) button.append(element("small", `${this._value(room.humidity, "%")} · ${text.humidity}`));
-        if (room.dew_point) button.append(element("small", `${text.dewPoint}: ${this._value(room.dew_point, "°C")}`));
+        if (room.temperature) {
+          const reading = element("div", void 0, `value${numericState(this._hass.states[room.temperature]) === null ? " status-value" : ""}`);
+          if (numericState(this._hass.states[room.temperature]) === null) reading.append(this._statusIcon(stateProblem(this._hass.states[room.temperature], this._language) ?? text.invalidValue));
+          else reading.textContent = this._value(room.temperature, "°C");
+          button.append(reading);
+        }
+        if (room.humidity) {
+          const value = numericState(this._hass.states[room.humidity]);
+          const humidity = element("small");
+          if (value === null) humidity.append(this._statusIcon(stateProblem(this._hass.states[room.humidity], this._language) ?? text.invalidValue), element("span", ` · ${text.humidity}`));
+          else humidity.textContent = `${this._value(room.humidity, "%")} · ${text.humidity}`;
+          button.append(humidity);
+        }
+        if (room.dew_point) {
+          const value = numericState(this._hass.states[room.dew_point]);
+          const dewPoint = element("small");
+          if (value === null) dewPoint.append(element("span", `${text.dewPoint}: `), this._statusIcon(stateProblem(this._hass.states[room.dew_point], this._language) ?? text.invalidValue));
+          else dewPoint.textContent = `${text.dewPoint}: ${this._value(room.dew_point, "°C")}`;
+          button.append(dewPoint);
+        }
         button.addEventListener("click", () => button.dataset.entity ? this._moreInfo(button.dataset.entity) : link.click());
         const art = element("span", void 0, "room-art");
         art.setAttribute("aria-hidden", "true");
@@ -1493,19 +1739,35 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
       this._section(card, text.rooms, text.floorplan);
       const rooms = this._config.rooms ?? [];
       const positions = rooms.map((room, index) => room.position ?? { x: index % 3 * 280, y: Math.floor(index / 3) * 180, width: 260, height: 160 });
-      const width = Math.max(1, ...positions.map((position) => position.x + position.width));
-      const height = Math.max(1, ...positions.map((position) => position.y + position.height));
-      const svg = svgElement("svg", { viewBox: `-4 -4 ${width + 8} ${height + 8}`, role: "group", class: "floor-map", "aria-label": text.rooms });
+      const polygons = positions.map((position) => position.points ? [position.points] : position.parts ?? [[
+        [position.x, position.y],
+        [position.x + position.width, position.y],
+        [position.x + position.width, position.y + position.height],
+        [position.x, position.y + position.height]
+      ]]);
+      const allPoints = polygons.flat(2);
+      const minX = Math.min(0, ...allPoints.map((point) => point[0]));
+      const minY = Math.min(0, ...allPoints.map((point) => point[1]));
+      const width = Math.max(1, ...allPoints.map((point) => point[0])) - minX;
+      const height = Math.max(1, ...allPoints.map((point) => point[1])) - minY;
+      const svg = svgElement("svg", { viewBox: `${minX - 3} ${minY - 3} ${width + 6} ${height + 6}`, role: "group", class: "floor-map", "aria-label": text.rooms });
+      for (const wall of this._config.walls ?? []) {
+        svg.append(svgElement("polyline", { points: wall.map((point) => point.join(",")).join(" "), class: "floor-wall" }));
+      }
       rooms.forEach((room, index) => {
         const position = positions[index];
+        const center = polygons[index].flat().reduce((point, item) => [point[0] + item[0] / polygons[index].flat().length, point[1] + item[1] / polygons[index].flat().length], [0, 0]);
         const link = svgElement("a", { "data-room": room.id, "aria-label": localized(room.name, this._language) });
         navigateLink(link, `room-${room.id}`);
         const lit = (room.lights ?? []).some((id) => this._hass.states[id]?.state === "on");
         const offline = [room.temperature, room.humidity].filter(Boolean).some((id) => isOffline(this._hass.states[id]));
-        link.append(svgElement("rect", { ...position, rx: 12, class: `${lit ? "lit" : ""} ${offline ? "offline" : ""}` }));
-        link.append(svgElement("text", { x: position.x + 14, y: position.y + 28, class: "room-name" }, localized(room.name, this._language)));
-        if (room.temperature) link.append(svgElement("text", { x: position.x + 14, y: position.y + 58, class: "room-value" }, this._value(room.temperature, "°C")));
-        if (room.humidity) link.append(svgElement("text", { x: position.x + 14, y: position.y + 82, class: "room-value" }, this._value(room.humidity, "%")));
+        for (const polygon of polygons[index]) {
+          link.append(svgElement("polygon", { points: polygon.map((point) => point.join(",")).join(" "), class: `${lit ? "lit" : ""} ${offline ? "offline" : ""}` }));
+        }
+        const textAnchor = polygons[index].length > 1 ? "middle" : "start";
+        link.append(svgElement("text", { x: center[0], y: center[1] - 5, class: "room-name", "text-anchor": textAnchor }, localized(room.name, this._language)));
+        if (room.temperature) link.append(svgElement("text", { x: center[0], y: center[1] + 18, class: "room-value", "text-anchor": textAnchor }, this._value(room.temperature, "°C")));
+        if (room.humidity) link.append(svgElement("text", { x: center[0], y: center[1] + 38, class: "room-value", "text-anchor": textAnchor }, this._value(room.humidity, "%")));
         svg.append(link);
       });
       card.append(svg);
@@ -1523,6 +1785,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--mb-accent);outline-
   };
   if (!customElements.get("mufflonbau-admin")) customElements.define("mufflonbau-admin", MufflonbauAdmin);
   if (!customElements.get("mufflonbau-history")) customElements.define("mufflonbau-history", MufflonbauHistory);
+  if (!customElements.get("mufflonbau-cleaning")) customElements.define("mufflonbau-cleaning", MufflonbauCleaning);
   if (!customElements.get("mufflonbau-shell")) customElements.define("mufflonbau-shell", MufflonbauShell);
   if (!customElements.get("mufflonbau-live")) customElements.define("mufflonbau-live", MufflonbauLiveCard);
   if (!customElements.get("ll-strategy-dashboard-mufflonbau")) customElements.define("ll-strategy-dashboard-mufflonbau", MufflonbauDashboardStrategy);

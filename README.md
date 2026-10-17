@@ -174,13 +174,16 @@ The same complete check runs locally and in GitHub Actions:
 
 ```sh
 npm ci
+python3 -m pip install -r test/requirements.txt
 npx playwright install chromium
 npm run ci
 ```
 
 `npm run ci` checks bundle freshness and syntax, runs unit tests and the actual
 YAML examples through the Home Assistant 2026.10.1 frontend parser (`js-yaml`
-5.4.2 with `YAML11_SCHEMA`), then tests the shipped bundle in Chromium. If local
+5.4.2 with `YAML11_SCHEMA`), renders the diagnostic export in a sandboxed Jinja environment with simulated HA
+helpers (including set-valued and nested attributes), then tests the shipped
+bundle in Chromium. If local
 `examples/*.local.yaml` files exist, they are checked too; they stay excluded
 from Git and are not uploaded to GitHub.
 

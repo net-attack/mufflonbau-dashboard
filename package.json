@@ -8,7 +8,8 @@
     "check": "node scripts/build.mjs --check && node --check mufflonbau-dashboard.js",
     "test": "node --test",
     "test:browser": "node scripts/browser-check.mjs",
-    "ci": "npm run check && npm test && npm run test:browser"
+    "ci": "npm run check && npm test && npm run test:templates && npm run test:browser",
+    "test:templates": "python3 -m unittest discover -s test -p '*_test.py'"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

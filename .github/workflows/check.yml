@@ -12,6 +12,13 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: test/requirements.txt
+      - name: Install template test dependencies
+        run: python -m pip install -r test/requirements.txt
       - run: npm ci
       - name: Install test browser
         run: npx playwright install --with-deps chromium

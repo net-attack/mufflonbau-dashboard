@@ -24,3 +24,9 @@ rooms:
     name: Schlafzimmer
     temperature: sensor.example_bedroom_temperature
     humidity: sensor.example_bedroom_humidity
+  - id: bathroom
+    name: Badezimmer
+    temperature: sensor.example_bathroom_temperature
+    humidity: sensor.example_bathroom_humidity
+    windows:
+      - binary_sensor.example_bathroom_window

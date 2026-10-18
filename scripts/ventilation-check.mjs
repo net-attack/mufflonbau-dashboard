@@ -16,13 +16,14 @@ export async function checkVentilation(sourcePage) {
         'sensor.living_temperature': state(21, '°C'), 'sensor.living_humidity': state(65, '%'),
         'sensor.bedroom_temperature': state(24, '°C'), 'sensor.bedroom_humidity': state(45, '%'),
         'sensor.bathroom_temperature': { state: 'unavailable', attributes: { unit_of_measurement: '°C' } }, 'sensor.bathroom_humidity': state(70, '%'),
+        'binary_sensor.bathroom_window': { state: 'off', attributes: { friendly_name: 'Badfenster', device_class: 'opening' }, last_updated: '2020-01-01T00:00:00Z' },
       }, locale: { language: 'de' }, themes: { darkMode: false } };
       window.ventConfig = { title: 'Mufflonbau', language: 'de', appearance: { theme: 'storybook', mode: 'ambient' },
         ventilation: { outdoor_temperature: 'sensor.outdoor_temperature', outdoor_humidity: 'sensor.outdoor_humidity' },
         rooms: [
           { id: 'living', name: 'Wohnzimmer', temperature: 'sensor.living_temperature', humidity: 'sensor.living_humidity' },
           { id: 'bedroom', name: 'Schlafzimmer', temperature: 'sensor.bedroom_temperature', humidity: 'sensor.bedroom_humidity' },
-          { id: 'bathroom', name: '<img src=x onerror=alert(1)>', temperature: 'sensor.bathroom_temperature', humidity: 'sensor.bathroom_humidity' },
+          { id: 'bathroom', name: '<img src=x onerror=alert(1)>', temperature: 'sensor.bathroom_temperature', humidity: 'sensor.bathroom_humidity', windows: ['binary_sensor.bathroom_window'] },
         ],
       };
       window.ventDashboard = await customElements.get('ll-strategy-dashboard-mufflonbau').generate(window.ventConfig, window.ventHass);
@@ -51,6 +52,32 @@ export async function checkVentilation(sourcePage) {
     assert.equal(await detail.locator('img').count(), 0, 'Entity labels must be text, not executable HTML');
     await detail.locator('[data-room=living] [data-entity="sensor.living_temperature"]').tap();
     assert.equal(await page.evaluate(() => window.ventMoreInfo.at(-1)), 'sensor.living_temperature');
+    const windowContact = detail.locator('[data-room=bathroom] .ventilation-window');
+    assert.match(await windowContact.innerText(), /Fenster geschlossen/);
+    assert.equal(await detail.locator('[data-room=bedroom] .ventilation-window').count(), 0);
+    await windowContact.tap();
+    assert.equal(await page.evaluate(() => window.ventMoreInfo.at(-1)), 'binary_sensor.bathroom_window');
+    const setContact = async state => page.evaluate(state => {
+      const states = { ...window.ventHass.states };
+      if (state === null) delete states['binary_sensor.bathroom_window'];
+      else states['binary_sensor.bathroom_window'] = { state, attributes: { friendly_name: 'Badfenster', device_class: 'opening' } };
+      window.ventHass = { ...window.ventHass, states };
+      document.querySelector('#vent-dashboard').hass = window.ventHass;
+    }, state);
+    await setContact('on');
+    assert.match(await windowContact.innerText(), /Fenster offen/);
+    await shell.locator('.back-link').tap();
+    assert.match(await summary.innerText(), /Fenster offen: 1/);
+    await summary.tap();
+    for (const [state, expected] of [['unavailable', /nicht verfügbar/], ['unknown', /Zustand unbekannt/], [null, /Entity nicht gefunden/]]) {
+      await setContact(state);
+      assert.match(await windowContact.innerText(), expected);
+      assert.doesNotMatch(await windowContact.innerText(), /Fenster geschlossen/);
+    }
+    await shell.locator('.back-link').tap();
+    assert.match(await summary.innerText(), /Fensterstatus unbekannt: 1/);
+    await summary.tap();
+    await setContact('off');
     for (const theme of ['storybook', 'atmospheric', 'calm']) {
       for (const mode of ['ambient', 'night']) {
         await page.evaluate(async ({ theme, mode }) => {
@@ -113,6 +140,7 @@ export async function checkVentilation(sourcePage) {
       window.showVentView('ventilation');
     });
     assert.match(await detail.locator('ha-card').innerText(), /Ventilation.*Reading is too old/s);
+    assert.match(await windowContact.innerText(), /Window closed/);
     await page.evaluate(async () => {
       const state = (value, unit) => ({ state: String(value), attributes: { unit_of_measurement: unit }, last_updated: new Date().toISOString() });
       window.ventConfig.language = 'de';

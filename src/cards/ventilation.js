@@ -19,6 +19,10 @@ export const ventilationStyles = `
   .ventilation-room p { font-size:14px; line-height:1.6; }
   .ventilation-readings { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
   .ventilation-readings button { font:inherit; font-size:14px; min-height:44px; border:1px solid var(--mb-line); background:var(--mb-soft); border-radius:10px; padding:8px 12px; }
+  .ventilation-windows { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 14px; }
+  .ventilation-window { display:flex; flex-direction:column; gap:3px; max-width:100%; min-height:44px; padding:8px 12px; text-align:left; font:inherit; font-size:14px; border:1px solid var(--mb-line); border-radius:10px; background:var(--mb-soft); overflow-wrap:anywhere; }
+  .ventilation-window small { font-size:11px; color:var(--mb-muted); }
+  .ventilation-window[data-status=open] { background:var(--mb-active); border-color:var(--mb-accent); }
   .ventilation-metrics { color:var(--mb-muted); font-size:13px; line-height:1.7; margin-top:8px; }
   .ventilation-issue { overflow-wrap:anywhere; font-size:13px; line-height:1.6; margin-top:8px; }
   .ventilation-issue button { text-decoration:underline; min-height:44px; display:block; padding:6px 0; font-size:13px; }
@@ -37,8 +41,11 @@ export function renderVentilation(owner, card, text) {
       model.unknown === model.rooms.length ? text.ventilationCheck :
       model.rooms.some(item => item.status === 'wait') ? text.ventilationWait :
       model.rooms.some(item => item.status === 'wetter') ? text.ventilationWetter : text.ventilationNoNeed;
-    owner._summaryLink(card, 'ventilation', 'ventilation', title, status,
-      model.unknown && model.unknown < model.rooms.length ? `${model.unknown} ${model.unknown === 1 ? text.room : text.rooms} · ${text.ventilationCheck}` : undefined);
+    const details = [];
+    if (model.unknown && model.unknown < model.rooms.length) details.push(`${model.unknown} ${model.unknown === 1 ? text.room : text.rooms} · ${text.ventilationCheck}`);
+    if (model.openWindows) details.push(text.ventilationOpenWindows.replace('{count}', String(model.openWindows)));
+    if (model.unknownWindows) details.push(text.ventilationUnknownWindows.replace('{count}', String(model.unknownWindows)));
+    owner._summaryLink(card, 'ventilation', 'ventilation', title, status, details.join(' · ') || undefined);
     return;
   }
   owner._section(card, title);
@@ -85,6 +92,19 @@ export function renderVentilation(owner, card, text) {
     status.append(element('span', undefined, `ventilation-dot ${item.status}`), element('span', text[{
       dry: 'ventilationDry', wetter: 'ventilationWetter', wait: 'ventilationWait', comfortable: 'ventilationNoNeed', dryIndoor: 'ventilationAlreadyDry', unknown: 'ventilationCheck',
     }[item.status]])); section.append(status);
+    if (item.windows.length) {
+      const contacts = element('div', undefined, 'ventilation-windows');
+      for (const contact of item.windows) {
+        const label = text[contact.status === 'open' ? 'windowOpen' : contact.status === 'closed' ? 'windowClosed' : contact.status];
+        const name = owner._name(contact.entity);
+        const button = element('button', undefined, 'ventilation-window'); button.type = 'button';
+        button.dataset.entity = contact.entity; button.dataset.status = contact.status;
+        button.setAttribute('aria-label', `${name}: ${label}`);
+        button.append(element('span', label), element('small', name));
+        button.addEventListener('click', () => owner._moreInfo(contact.entity)); contacts.append(button);
+      }
+      section.append(contacts);
+    }
     if (item.issues.length) {
       item.indoor.issues.forEach(problem => issue(section, problem));
       if (model.outdoor.issues.length) section.append(element('p', text.ventilationOutdoorMissing));

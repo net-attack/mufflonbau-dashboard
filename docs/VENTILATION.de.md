@@ -48,6 +48,36 @@ Die bisherige Einzelpaar-Konfiguration mit `outdoor_temperature` und
 `outdoor_humidity` funktioniert weiter. Entweder diese beiden Felder oder
 `outdoor_sources` verwenden, niemals beide Formen zusammen. `name` ist optional.
 
+## Fensterkontakte
+
+Ab **`v0.3.3`** kann jeder Raum zusätzlich seine vorhandenen Fensterkontakte
+unter `windows` zuordnen. In den bestehenden Raumeintrag ergänzen; alle IDs
+dieses Beispiels sind synthetisch:
+
+```yaml
+rooms:
+  - id: bathroom
+    name: Badezimmer
+    temperature: sensor.example_bathroom_temperature
+    humidity: sensor.example_bathroom_humidity
+    windows:
+      - binary_sensor.example_bathroom_window
+```
+
+Die Lüftungsdetails zeigen jeden zugeordneten Kontakt als **Fenster offen** oder
+**Fenster geschlossen**. Fehlende, unbekannte oder unverfügbare Zustände bleiben
+ausdrücklich erkennbar. Antippen öffnet die HA-Entitätsdetails. Die Startkachel
+zeigt zusätzlich die Anzahl offener Fenster und gegebenenfalls unbekannter
+Fensterzustände in den betrachteten Räumen. Räume ohne zugeordneten Kontakt
+erhalten keine angenommene Fensterstellung.
+
+Die Feuchtebewertung bleibt daneben sichtbar: Ein offenes Fenster beweist keinen
+Luftwechsel oder Trocknungserfolg. Ein ausgefallener Fensterkontakt macht gültige
+Klimawerte nicht ungültig; umgekehrt bleibt der Fensterstatus auch beim Ausfall
+eines Klimasensors sichtbar. Kontakte melden oft nur Änderungen. Ein seit Stunden
+unverändert geschlossenes Fenster unterliegt deshalb nicht dem Alterslimit der
+Temperatur-/Feuchtemessungen. Es werden weiterhin keine Geräte geschaltet.
+
 ## Bedeutung der Ampel
 
 - **Grün / „Lüften trocknet“:** Innenfeuchte mindestens `humidity_high` (Standard
@@ -120,7 +150,8 @@ unverfügbar und ist als Reserve konfiguriert. West bleibt bevorzugt; bei dessen
 Ausfall übernimmt Ost, sobald dessen beide Messwerte gültig und aktuell sind.
 Innen bleiben die vorhandenen
 Zuordnungen für Wohn-/Essbereich, Arbeitszimmer, Küche, Schlafzimmer und Bad
-erhalten. Der Flur hat kein vollständiges Paar und wird ausgelassen. Persönliche
+erhalten. Der persönliche gemeinsame Entwurf enthält inzwischen auch das neue
+Temperatur-/Feuchtepaar im Flur und den bestätigten Badfensterkontakt. Persönliche
 Entity-IDs und Inventare bleiben außerhalb der geteilten Dateien.
 
 Die YAML wird mit dem HA-Frontend-Parser geprüft; Unit- und Browserprüfungen

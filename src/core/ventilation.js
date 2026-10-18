@@ -71,6 +71,14 @@ function pair(temperature, humidity, states, now, maxAge) {
   const issues = readings.filter(item => item.problem);
   return issues.length ? { issues } : { ...moisture(readings[0].value, readings[1].value), readings, issues };
 }
+function windowContacts(room, states) {
+  return (room.windows ?? []).map(entity => {
+    const state = states[entity];
+    const health = availability(state);
+    const status = health !== 'available' ? health : state.state === 'on' ? 'open' : state.state === 'off' ? 'closed' : 'invalidValue';
+    return { entity, status };
+  });
+}
 export function ventilationStatus(config, rooms, states, now = Date.now()) {
   const settings = { max_age_minutes: 180, humidity_high: 60, min_drying_difference: 1, ...config };
   const sources = outdoorSources(settings).map(source => ({ source, ...pair(source.temperature, source.humidity, states, now, settings.max_age_minutes) }));
@@ -78,9 +86,12 @@ export function ventilationStatus(config, rooms, states, now = Date.now()) {
   const selected = sources.find(source => !source.issues.length);
   const outdoor = selected ? { ...selected, sources, fallback: selected !== sources[0] } : { issues: sources.flatMap(source => source.issues), sources, fallback: false };
   const results = ventilationRooms(rooms, settings).map(room => {
+    // Contacts report changes, so a long-unchanged state is valid. The climate
+    // freshness limit must not turn a closed window into a missing reading.
+    const windows = windowContacts(room, states);
     const indoor = pair(room.temperature, room.humidity, states, now, settings.max_age_minutes);
     const issues = [...outdoor.issues, ...indoor.issues];
-    if (issues.length) return { room, indoor, issues, status: 'unknown', comfort: null };
+    if (issues.length) return { room, indoor, issues, windows, status: 'unknown', comfort: null };
     // Compare at the SAME indoor temperature: cold air expands when warmed.
     // Vapour pressure / dew point determine drying potential at similar ambient pressure.
     const outdoorAtIndoor = 216.74 * outdoor.vaporPressure / (indoor.temperature + 273.15);
@@ -91,8 +102,10 @@ export function ventilationStatus(config, rooms, states, now = Date.now()) {
     const status = humid && drying ? 'dry' : wetter ? 'wetter' : humid ? 'wait' : indoor.humidity < 40 ? 'dryIndoor' : 'comfortable';
     const comfort = outdoor.temperature >= indoor.temperature + 2 ? 'warmer' :
       outdoor.temperature < 10 ? 'cold' : indoor.temperature >= 24 && outdoor.temperature <= indoor.temperature - 2 ? 'cooling' : 'neutral';
-    return { room, indoor, issues, status, comfort, difference, outdoorAtIndoor };
+    return { room, indoor, issues, windows, status, comfort, difference, outdoorAtIndoor };
   });
   return { outdoor, rooms: results, ready: results.filter(item => item.status === 'dry').length,
-    unknown: results.filter(item => item.status === 'unknown').length };
+    unknown: results.filter(item => item.status === 'unknown').length,
+    openWindows: results.flatMap(item => item.windows).filter(item => item.status === 'open').length,
+    unknownWindows: results.flatMap(item => item.windows).filter(item => !['open', 'closed'].includes(item.status)).length };
 }

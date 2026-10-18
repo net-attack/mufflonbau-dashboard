@@ -100,6 +100,14 @@ export function normalizeConfig(config) {
     for (const key of ['temperature', 'humidity', 'dew_point']) {
       if (room[key] !== undefined) entity(room[key], `${path}.${key}`);
     }
+    if (room.windows !== undefined) {
+      list(room.windows, `${path}.windows`);
+      room.windows.forEach((id, index) => {
+        entity(id, `${path}.windows[${index}]`);
+        if (!id.startsWith('binary_sensor.')) fail(`${path}.windows[${index}]`, 'must reference a binary_sensor window contact.');
+      });
+      if (new Set(room.windows).size !== room.windows.length) fail(`${path}.windows`, 'must contain unique window contacts.');
+    }
     for (const key of ['lights', 'entities']) {
       list(normalized[key], `${path}.${key}`);
       normalized[key].forEach(id => entity(id, `${path}.${key}`));
@@ -244,7 +252,7 @@ export function collectEntities(config) {
   return [...new Set([
     ...Object.values(config.admin ?? {}).flat(), ...config.entities, ...config.people, ...config.calendars, ...config.expert_entities,
     config.weather, config.shopping?.entity, config.weather_alerts?.entity, ...ventilationEntities(config.ventilation), ...config.monitors.map(monitor => monitor.entity),
-    ...config.rooms.flatMap(room => [room.temperature, room.humidity, room.dew_point,
+    ...config.rooms.flatMap(room => [room.temperature, room.humidity, room.dew_point, ...(room.windows ?? []),
       ...room.lights, ...(room.member_lights ?? []), ...room.entities, ...Object.values(room.cleaning ?? {})]),
     ...config.rooms.flatMap(room => (room.objects ?? []).map(item => item.entity)),
     ...(config.floorplan_objects ?? []).map(item => item.entity),

@@ -154,6 +154,8 @@ ${trees}${houses}
       ventilationAlreadyDry: "Air is already dry",
       ventilationCheck: "Check readings",
       ventilationIntro: "The traffic light compares indoor and outdoor moisture. Cooling and room comfort are considered separately.",
+      ventilationOpenWindows: "Open windows: {count}",
+      ventilationUnknownWindows: "Unknown window states: {count}",
       ventilationOutdoor: "Outdoors",
       ventilationAbsolute: "Absolute humidity",
       ventilationDifference: "Drying difference at room temperature",
@@ -174,7 +176,7 @@ ${trees}${houses}
       ventilationComfort_warmer: "Warmer outside: ventilation may heat up the room.",
       ventilationComfort_cooling: "Cooler outside: ventilation may also help cool this warm room.",
       ventilationComfort_neutral: "Consider room temperature and comfort when ventilating.",
-      ventilationHelp: "Green: indoor humidity ≥ {humidity}% and at least {difference} drying benefit, comparing both air masses at indoor temperature. Readings older than {age} minutes are excluded. These are approximate calculations from the configured sensors at similar ambient pressure. The light does not measure CO₂, pollutants, mould risk or window state, and does not estimate a ventilation duration.",
+      ventilationHelp: "Green: indoor humidity ≥ {humidity}% and at least {difference} drying benefit, comparing both air masses at indoor temperature. Climate readings older than {age} minutes are excluded. Window states come from the configured contacts and are shown separately. These are approximate calculations from the configured sensors at similar ambient pressure. The light does not measure CO₂, pollutants or mould risk, and does not estimate a ventilation duration.",
       adminShort: "Admin",
       presenceShort: "Presence",
       category: "Category",
@@ -291,6 +293,8 @@ ${trees}${houses}
       ventilationAlreadyDry: "Luft schon trocken",
       ventilationCheck: "Messwerte prüfen",
       ventilationIntro: "Die Ampel vergleicht die Feuchtigkeit drinnen und draußen. Kühlung und Wohlfühltemperatur werden getrennt betrachtet.",
+      ventilationOpenWindows: "Fenster offen: {count}",
+      ventilationUnknownWindows: "Fensterstatus unbekannt: {count}",
       ventilationOutdoor: "Draußen",
       ventilationAbsolute: "Absolute Feuchte",
       ventilationDifference: "Trocknungsdifferenz bei Raumtemperatur",
@@ -311,7 +315,7 @@ ${trees}${houses}
       ventilationComfort_warmer: "Draußen wärmer: Lüften kann den Raum aufheizen.",
       ventilationComfort_cooling: "Draußen kühler: Lüften kann diesen warmen Raum zusätzlich abkühlen.",
       ventilationComfort_neutral: "Beim Lüften auch Raumtemperatur und Wohlbefinden beachten.",
-      ventilationHelp: "Grün: innen mindestens {humidity}% Luftfeuchtigkeit und mindestens {difference} Trocknungsvorteil, beide Luftmassen bei Innentemperatur verglichen. Werte älter als {age} Minuten werden ausgeschlossen. Die Berechnung ist eine Näherung aus den gewählten Sensoren bei ähnlichem Luftdruck. Die Ampel misst weder CO₂, Schadstoffe, Schimmelrisiko noch Fensterzustände und schätzt keine Lüftungsdauer.",
+      ventilationHelp: "Grün: innen mindestens {humidity}% Luftfeuchtigkeit und mindestens {difference} Trocknungsvorteil, beide Luftmassen bei Innentemperatur verglichen. Klimawerte älter als {age} Minuten werden ausgeschlossen. Fensterzustände stammen aus den zugeordneten Kontakten und werden separat angezeigt. Die Berechnung ist eine Näherung aus den gewählten Sensoren bei ähnlichem Luftdruck. Die Ampel misst weder CO₂, Schadstoffe noch Schimmelrisiko und schätzt keine Lüftungsdauer.",
       adminShort: "Admin",
       presenceShort: "Anwesenheit",
       category: "Kategorie",
@@ -2382,15 +2386,24 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
     const issues = readings.filter((item) => item.problem);
     return issues.length ? { issues } : { ...moisture(readings[0].value, readings[1].value), readings, issues };
   }
+  function windowContacts(room, states) {
+    return (room.windows ?? []).map((entity2) => {
+      const state = states[entity2];
+      const health = availability(state);
+      const status = health !== "available" ? health : state.state === "on" ? "open" : state.state === "off" ? "closed" : "invalidValue";
+      return { entity: entity2, status };
+    });
+  }
   function ventilationStatus(config, rooms, states, now = Date.now()) {
     const settings = { max_age_minutes: 180, humidity_high: 60, min_drying_difference: 1, ...config };
     const sources = outdoorSources(settings).map((source) => ({ source, ...pair(source.temperature, source.humidity, states, now, settings.max_age_minutes) }));
     const selected = sources.find((source) => !source.issues.length);
     const outdoor = selected ? { ...selected, sources, fallback: selected !== sources[0] } : { issues: sources.flatMap((source) => source.issues), sources, fallback: false };
     const results = ventilationRooms(rooms, settings).map((room) => {
+      const windows = windowContacts(room, states);
       const indoor = pair(room.temperature, room.humidity, states, now, settings.max_age_minutes);
       const issues = [...outdoor.issues, ...indoor.issues];
-      if (issues.length) return { room, indoor, issues, status: "unknown", comfort: null };
+      if (issues.length) return { room, indoor, issues, windows, status: "unknown", comfort: null };
       const outdoorAtIndoor = 216.74 * outdoor.vaporPressure / (indoor.temperature + 273.15);
       const difference = indoor.absolute - outdoorAtIndoor;
       const drying = difference >= settings.min_drying_difference;
@@ -2398,13 +2411,15 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
       const humid = indoor.humidity >= settings.humidity_high;
       const status = humid && drying ? "dry" : wetter ? "wetter" : humid ? "wait" : indoor.humidity < 40 ? "dryIndoor" : "comfortable";
       const comfort = outdoor.temperature >= indoor.temperature + 2 ? "warmer" : outdoor.temperature < 10 ? "cold" : indoor.temperature >= 24 && outdoor.temperature <= indoor.temperature - 2 ? "cooling" : "neutral";
-      return { room, indoor, issues, status, comfort, difference, outdoorAtIndoor };
+      return { room, indoor, issues, windows, status, comfort, difference, outdoorAtIndoor };
     });
     return {
       outdoor,
       rooms: results,
       ready: results.filter((item) => item.status === "dry").length,
-      unknown: results.filter((item) => item.status === "unknown").length
+      unknown: results.filter((item) => item.status === "unknown").length,
+      openWindows: results.flatMap((item) => item.windows).filter((item) => item.status === "open").length,
+      unknownWindows: results.flatMap((item) => item.windows).filter((item) => !["open", "closed"].includes(item.status)).length
     };
   }
 
@@ -2512,6 +2527,14 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
       const normalized = { ...room, lights: room.lights ?? [], entities: room.entities ?? [] };
       for (const key2 of ["temperature", "humidity", "dew_point"]) {
         if (room[key2] !== void 0) entity(room[key2], `${path}.${key2}`);
+      }
+      if (room.windows !== void 0) {
+        list(room.windows, `${path}.windows`);
+        room.windows.forEach((id, index2) => {
+          entity(id, `${path}.windows[${index2}]`);
+          if (!id.startsWith("binary_sensor.")) fail(`${path}.windows[${index2}]`, "must reference a binary_sensor window contact.");
+        });
+        if (new Set(room.windows).size !== room.windows.length) fail(`${path}.windows`, "must contain unique window contacts.");
       }
       for (const key2 of ["lights", "entities"]) {
         list(normalized[key2], `${path}.${key2}`);
@@ -2667,6 +2690,7 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
         room.temperature,
         room.humidity,
         room.dew_point,
+        ...room.windows ?? [],
         ...room.lights,
         ...room.member_lights ?? [],
         ...room.entities,
@@ -3315,6 +3339,10 @@ ${flusenfelsShellStyles}`), shell);
   .ventilation-room p { font-size:14px; line-height:1.6; }
   .ventilation-readings { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
   .ventilation-readings button { font:inherit; font-size:14px; min-height:44px; border:1px solid var(--mb-line); background:var(--mb-soft); border-radius:10px; padding:8px 12px; }
+  .ventilation-windows { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 14px; }
+  .ventilation-window { display:flex; flex-direction:column; gap:3px; max-width:100%; min-height:44px; padding:8px 12px; text-align:left; font:inherit; font-size:14px; border:1px solid var(--mb-line); border-radius:10px; background:var(--mb-soft); overflow-wrap:anywhere; }
+  .ventilation-window small { font-size:11px; color:var(--mb-muted); }
+  .ventilation-window[data-status=open] { background:var(--mb-active); border-color:var(--mb-accent); }
   .ventilation-metrics { color:var(--mb-muted); font-size:13px; line-height:1.7; margin-top:8px; }
   .ventilation-issue { overflow-wrap:anywhere; font-size:13px; line-height:1.6; margin-top:8px; }
   .ventilation-issue button { text-decoration:underline; min-height:44px; display:block; padding:6px 0; font-size:13px; }
@@ -3329,14 +3357,11 @@ ${flusenfelsShellStyles}`), shell);
       card.classList.add("dashboard-summary", "ventilation-summary");
       card.dataset.status = model.ready ? "dry" : model.rooms.some((item) => ["wait", "wetter"].includes(item.status)) ? "wait" : "neutral";
       const status = model.ready ? `${model.ready} ${model.ready === 1 ? text.room : text.rooms} · ${text.ventilationDry}` : model.unknown === model.rooms.length ? text.ventilationCheck : model.rooms.some((item) => item.status === "wait") ? text.ventilationWait : model.rooms.some((item) => item.status === "wetter") ? text.ventilationWetter : text.ventilationNoNeed;
-      owner._summaryLink(
-        card,
-        "ventilation",
-        "ventilation",
-        title,
-        status,
-        model.unknown && model.unknown < model.rooms.length ? `${model.unknown} ${model.unknown === 1 ? text.room : text.rooms} · ${text.ventilationCheck}` : void 0
-      );
+      const details = [];
+      if (model.unknown && model.unknown < model.rooms.length) details.push(`${model.unknown} ${model.unknown === 1 ? text.room : text.rooms} · ${text.ventilationCheck}`);
+      if (model.openWindows) details.push(text.ventilationOpenWindows.replace("{count}", String(model.openWindows)));
+      if (model.unknownWindows) details.push(text.ventilationUnknownWindows.replace("{count}", String(model.unknownWindows)));
+      owner._summaryLink(card, "ventilation", "ventilation", title, status, details.join(" · ") || void 0);
       return;
     }
     owner._section(card, title);
@@ -3400,6 +3425,22 @@ ${flusenfelsShellStyles}`), shell);
         unknown: "ventilationCheck"
       }[item.status]]));
       section.append(status);
+      if (item.windows.length) {
+        const contacts = element("div", void 0, "ventilation-windows");
+        for (const contact of item.windows) {
+          const label2 = text[contact.status === "open" ? "windowOpen" : contact.status === "closed" ? "windowClosed" : contact.status];
+          const name = owner._name(contact.entity);
+          const button = element("button", void 0, "ventilation-window");
+          button.type = "button";
+          button.dataset.entity = contact.entity;
+          button.dataset.status = contact.status;
+          button.setAttribute("aria-label", `${name}: ${label2}`);
+          button.append(element("span", label2), element("small", name));
+          button.addEventListener("click", () => owner._moreInfo(contact.entity));
+          contacts.append(button);
+        }
+        section.append(contacts);
+      }
       if (item.issues.length) {
         item.indoor.issues.forEach((problem) => issue(section, problem));
         if (model.outdoor.issues.length) section.append(element("p", text.ventilationOutdoorMissing));
@@ -3831,7 +3872,7 @@ ${flusenfelsShellStyles}`), shell);
         ...(config.objects ?? []).map((item) => item.entity),
         ...cleaningEntities(config.cleaning),
         ...(config.monitors ?? []).map((item) => item.entity),
-        ...(config.rooms ?? []).flatMap((room) => [room.temperature, room.humidity, room.dew_point, ...room.lights ?? [], ...(room.objects ?? []).map((item) => item.entity)]),
+        ...(config.rooms ?? []).flatMap((room) => [room.temperature, room.humidity, room.dew_point, ...room.windows ?? [], ...room.lights ?? [], ...(room.objects ?? []).map((item) => item.entity)]),
         "sun.sun"
       ].filter(Boolean))];
       this._render();

@@ -20,7 +20,7 @@ export class MufflonbauLiveCard extends HTMLElement {
       ...ventilationEntities(config.ventilation), config.weather, config.weather_alerts?.entity, ...(config.calendars ?? []), ...(config.entities ?? []), ...(config.people ?? []),
       ...(config.objects ?? []).map(item => item.entity),
       ...cleaningEntities(config.cleaning), ...(config.monitors ?? []).map(item => item.entity),
-      ...(config.rooms ?? []).flatMap(room => [room.temperature, room.humidity, room.dew_point, ...(room.lights ?? []), ...(room.objects ?? []).map(item => item.entity)]),
+      ...(config.rooms ?? []).flatMap(room => [room.temperature, room.humidity, room.dew_point, ...(room.windows ?? []), ...(room.lights ?? []), ...(room.objects ?? []).map(item => item.entity)]),
       'sun.sun',
     ].filter(Boolean))];
     this._render();

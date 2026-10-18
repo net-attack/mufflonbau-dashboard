@@ -19,6 +19,43 @@ const redundant = { outdoor_sources: [
 ] };
 const redundantReadings = () => ({ ...readings(), 'sensor.east_temperature': state(12, '°C'), 'sensor.east_humidity': state(70, '%') });
 
+test('explicit window contacts retain independent open/closed and failure states without expiring unchanged contacts', () => {
+  const bathroom = { ...room, windows: ['binary_sensor.bath_window'] };
+  const states = { ...readings(), 'binary_sensor.bath_window': state('off', undefined, now - 86400000) };
+  const closed = model(states, settings, [bathroom]);
+  assert.equal(closed.rooms[0].windows[0].status, 'closed');
+  assert.equal(closed.openWindows, 0);
+  assert.equal(closed.unknownWindows, 0);
+  for (const [value, expected] of [['on', 'open'], ['unknown', 'unknown'], ['unavailable', 'unavailable'], ['bad', 'invalidValue'], [undefined, 'missing']]) {
+    states['binary_sensor.bath_window'] = value === undefined ? undefined : state(value);
+    const result = model(states, settings, [bathroom]);
+    assert.equal(result.rooms[0].windows[0].status, expected);
+    assert.equal(result.openWindows, value === 'on' ? 1 : 0);
+    assert.equal(result.unknownWindows, value === 'on' ? 0 : 1);
+    assert.equal(result.rooms[0].status, 'dry', 'Contact health does not change the moisture comparison');
+  }
+  states['binary_sensor.bath_window'] = state('on');
+  states[room.temperature] = state('unavailable', '°C');
+  const failedClimate = model(states, settings, [bathroom]);
+  assert.equal(failedClimate.rooms[0].status, 'unknown');
+  assert.equal(failedClimate.openWindows, 1, 'Window state remains useful without climate readings');
+  assert.deepEqual(model().rooms[0].windows, [], 'A room without a configured contact makes no window-state claim');
+});
+
+test('window contacts are validated, collected and passed to both ventilation cards', () => {
+  const withWindow = { ...room, windows: ['binary_sensor.living_window'] };
+  const config = normalizeConfig({ rooms: [withWindow], ventilation: settings });
+  assert.ok(collectEntities(config).includes('binary_sensor.living_window'));
+  const dashboard = generateDashboard(config, { states: {} });
+  for (const path of ['home', 'ventilation']) {
+    const card = dashboard.views.find(view => view.path === path).cards[0].cards.find(card => card.mode === 'ventilation');
+    assert.deepEqual(card.rooms[0].windows, withWindow.windows);
+  }
+  for (const windows of ['binary_sensor.window', ['sensor.window'], ['binary_sensor.window', 'binary_sensor.window'], [null]]) {
+    assert.throws(() => normalizeConfig({ rooms: [{ ...room, windows }] }), /windows/);
+  }
+});
+
 test('uses preferred complete outdoor pair, falls back for invalid or stale readings and returns after recovery', () => {
   const states = redundantReadings();
   const first = model(states, redundant);

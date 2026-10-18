@@ -122,6 +122,7 @@ sections are optional; omitted sections generate no corresponding view.
 
 Each room has a unique stable `id` (lowercase slug) and a `name` (string or
 `{en: ..., de: ...}`). Optional fields: `icon`, `temperature`, `humidity`,
+`windows` (an array of binary-sensor window contacts shown in ventilation),
 `dew_point`, `lights` (IDs), `entities` (IDs), and `note` (string or translated label).
 `position: {x: 0, "y": 0, width: 300, height: 180}` places the room in the schematic floorplan.
 For non-rectangular rooms, use `position.points: [[0, 0], [300, 0], [300, 180], [0, 180]]`

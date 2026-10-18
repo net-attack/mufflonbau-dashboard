@@ -40,7 +40,9 @@ export class MufflonbauCleaning extends HTMLElement {
     const active = this.shadowRoot.activeElement;
     const focus = active?.dataset.room ? `[data-room="${active.dataset.room}"]` : active?.dataset.command ? `[data-command="${active.dataset.command}"]` : undefined;
     this._busy = true; this._error = ''; this._render();
-    try { await this._hass.callService(domain, service, {}, { entity_id: entity }); }
+    // Named script actions wait for mode setup and report failures. turn_on
+    // returns as soon as a script starts, hiding errors and unlocking too early.
+    try { await this._hass.callService(domain, service, {}, ...(entity ? [{ entity_id: entity }] : [])); }
     catch { this._error = text.actionFailed; }
     finally { this._busy = false; this._render(); if (focus) this.shadowRoot.querySelector(focus)?.focus(); }
   }
@@ -134,7 +136,7 @@ export class MufflonbauCleaning extends HTMLElement {
           copy.append(element('small', entity, 'entity-id'));
         }
         button.append(icon('rooms'), copy);
-        button.addEventListener('click', () => this._service(entity.startsWith('script.') ? 'script' : 'input_button', entity.startsWith('script.') ? 'turn_on' : 'press', entity, text)); roomGrid.append(button);
+        button.addEventListener('click', () => this._service(entity.startsWith('script.') ? 'script' : 'input_button', entity.startsWith('script.') ? entity.slice(7) : 'press', entity.startsWith('script.') ? undefined : entity, text)); roomGrid.append(button);
       }
       panel.append(roomGrid);
     }

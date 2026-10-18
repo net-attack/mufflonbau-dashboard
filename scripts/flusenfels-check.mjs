@@ -72,7 +72,7 @@ export async function checkFlusenfels(sourcePage) {
     await card.locator('[data-mode=clean_genius]').click();
     assert.equal(await page.evaluate(() => window.courtCalls.length), 0);
     await card.locator('[data-room=living]').click();
-    assert.deepEqual(await page.evaluate(() => window.courtCalls.at(-1)), ['script', 'turn_on', {}, { entity_id: 'script.clean_genius_living' }]);
+    assert.deepEqual(await page.evaluate(() => window.courtCalls.at(-1)), ['script', 'clean_genius_living', {}]);
     await shell.locator('.camera-toolbar button[aria-label=Vergrößern]').click();
     assert.match(await shell.locator('.camera-content').getAttribute('style'), /scale\(1\.5\)/);
     for (const size of [{ width: 893, height: 533 }, { width: 533, height: 893 }, { width: 390, height: 844 }]) {

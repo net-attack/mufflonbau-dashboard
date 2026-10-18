@@ -1678,7 +1678,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       this._error = "";
       this._render();
       try {
-        await this._hass.callService(domain, service, {}, { entity_id: entity2 });
+        await this._hass.callService(domain, service, {}, ...entity2 ? [{ entity_id: entity2 }] : []);
       } catch {
         this._error = text.actionFailed;
       } finally {
@@ -1809,7 +1809,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
             copy2.append(element("small", entity2, "entity-id"));
           }
           button.append(icon("rooms"), copy2);
-          button.addEventListener("click", () => this._service(entity2.startsWith("script.") ? "script" : "input_button", entity2.startsWith("script.") ? "turn_on" : "press", entity2, text));
+          button.addEventListener("click", () => this._service(entity2.startsWith("script.") ? "script" : "input_button", entity2.startsWith("script.") ? entity2.slice(7) : "press", entity2.startsWith("script.") ? void 0 : entity2, text));
           roomGrid.append(button);
         }
         panel.append(roomGrid);

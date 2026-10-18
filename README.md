@@ -138,10 +138,20 @@ the floorplan and room overview.
 A room's `cleaning` object maps `vacuum`, `mop`, and optionally `clean_genius` to
 **existing input_button helpers or scripts**. Choose Saugen, Wischen, or CleanGenius
 above the room list, then tap a room to start that action directly, without a dialog.
-Input buttons call `input_button.press`; scripts call `script.turn_on` on the exact
-configured entity. Unconfigured modes and unavailable helpers stay disabled.
+Input buttons call `input_button.press`; scripts call their exact `script.<name>`
+action and keep the controls busy until the script returns. Script errors appear
+on the cleaning card. Keep room scripts short: configure the mode and start the
+selected room, without waiting for the physical cleaning run to finish.
+Unconfigured modes and unavailable helpers stay disabled.
 The CleanGenius helper/script must set the device's CleanGenius mode and start the
 intended room; the dashboard does not infer Dreame segment IDs or select options.
+For Dreame manual vacuum/mop scripts, disable CleanGenius and customized room
+cleaning before selecting **Sweeping**/**Mopping**. Wait for the select entity to
+become available and confirm the requested mode before starting. **Mopping after
+sweeping** performs both steps and must not be used for the mop-only action.
+Prefer `vacuum.clean_area` with verified HA area mappings; old numeric segment
+IDs can point to different rooms after map changes. See the
+[room-cleaning repair guide](docs/CLEANING.de.md) for checks and script examples.
 
 ```yaml
 cleaning: # inside a room definition

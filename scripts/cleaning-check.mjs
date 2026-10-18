@@ -57,14 +57,15 @@ export async function checkCleaning(page, config, hass) {
   assert.equal(await panel.locator('[data-command=stop]').isDisabled(), true, 'Unregistered actions must not be invoked');
   await page.evaluate(() => { document.querySelector('#cleaning-controls').hass = window.cleaningHass; });
   assert.equal(await panel.locator('[data-command=stop]').isEnabled(), true, 'Service registration changes must update controls');
-  for (const [mode, domain, service] of [['vacuum', 'input_button', 'press'], ['mop', 'input_button', 'press'], ['clean_genius', 'script', 'turn_on']]) {
+  for (const [mode, domain, service] of [['vacuum', 'input_button', 'press'], ['mop', 'input_button', 'press'], ['clean_genius', 'script', 'clean_genius_living']]) {
     const count = await page.evaluate(() => window.cleaningCalls.length);
     await panel.locator(`[data-mode="${mode}"]`).click();
     assert.equal(await page.evaluate(() => window.cleaningCalls.length), count, 'Choosing a mode alone must never start a clean');
     assert.equal(await panel.locator(`[data-mode="${mode}"]`).getAttribute('aria-pressed'), 'true');
     await panel.locator('[data-room=living]').click();
     await page.waitForFunction(expected => window.cleaningCalls.length === expected, count + 1);
-    assert.deepEqual(await page.evaluate(() => window.cleaningCalls.at(-1)), [domain, service, {}, { entity_id: config.rooms[0].cleaning[mode] }]);
+    const expected = domain === 'script' ? [domain, service, {}] : [domain, service, {}, { entity_id: config.rooms[0].cleaning[mode] }];
+    assert.deepEqual(await page.evaluate(() => window.cleaningCalls.at(-1)), expected);
     assert.equal(await panel.locator('dialog').count(), 0, 'Rooms must start the chosen action directly without a second dialog');
   }
   await page.evaluate(() => { window.cleaningReject = true; });
@@ -77,6 +78,25 @@ export async function checkCleaning(page, config, hass) {
   assert.equal(await panel.locator('button:enabled').count(), 0, 'Pending actions must prevent duplicate starts and mode changes');
   await page.evaluate(() => { window.cleaningHold = false; window.cleaningRelease(); });
   await panel.locator('[data-room=living]:enabled').waitFor();
+  // Manual room scripts must use the same awaited path as CleanGenius, and
+  // changing mode/room must dispatch exactly that script without a vacuum start.
+  await page.evaluate(() => {
+    const rooms = window.cleaningConfig.rooms.map(room => ({ ...room, cleaning: {
+      vacuum: `script.vacuum_${room.id}`, mop: `script.mop_${room.id}`, clean_genius: `script.clean_genius_${room.id}`,
+    } }));
+    const states = { ...window.cleaningHass.states };
+    for (const room of rooms) for (const id of Object.values(room.cleaning)) states[id] = { state: 'off', attributes: {} };
+    const card = document.querySelector('#cleaning-controls');
+    card.setConfig({ ...window.cleaningConfig, rooms }); card.hass = { ...window.cleaningHass, states };
+  });
+  for (const [mode, room] of [['mop', 'bathroom'], ['vacuum', 'living'], ['clean_genius', 'bathroom']]) {
+    const count = await page.evaluate(() => window.cleaningCalls.length);
+    await panel.locator(`[data-mode="${mode}"]`).click();
+    await panel.locator(`[data-room="${room}"]`).click();
+    assert.equal(await page.evaluate(() => window.cleaningCalls.length), count + 1);
+    assert.deepEqual(await page.evaluate(() => window.cleaningCalls.at(-1)), ['script', `${mode}_${room}`, {}]);
+  }
+  await page.evaluate(() => { document.querySelector('#cleaning-controls').hass = window.cleaningHass; });
   await page.evaluate(() => {
     const rooms = window.cleaningConfig.rooms.map(room => ({ ...room, cleaning: { vacuum: room.cleaning.vacuum, mop: room.cleaning.mop } }));
     document.querySelector('#cleaning-controls').setConfig({ ...window.cleaningConfig, rooms });

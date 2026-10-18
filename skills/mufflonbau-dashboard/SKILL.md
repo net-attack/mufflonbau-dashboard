@@ -60,6 +60,15 @@ shared examples, logs or commits.
   IDs. For requested new scripts, inspect the device's supported actions and
   exact option/area/segment identifiers first. Do not start a physical cleaning
   run merely to validate configuration.
+- Check the current robot map against HA's vacuum area mapping and every existing
+  room automation. Old segment IDs may still validate while selecting another
+  room. For Dreame, manual vacuum/mop scripts must disable CleanGenius and
+  customized room cleaning before selecting the observed sweeping/mopping option;
+  wait for the selector to become available and confirm the mode before starting
+  the mapped HA area. Mop-only must not use mopping-after-sweeping. CleanGenius
+  must explicitly select mop-after-vacuum when the owner requests that sequence.
+  See `docs/CLEANING.de.md`. Use short room scripts so named script actions can
+  report setup errors to the dashboard without waiting for a full cleaning run.
 - For live writes within the owner's requested scope, read and back up the
   current configuration, use the server's supported write API and concurrency
   protection if available, then read back and compare the result. Do not edit

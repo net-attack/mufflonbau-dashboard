@@ -2,9 +2,19 @@
 
 Die optionale Wäschekammer ergänzt die Startseite um eine kompakte Zeile. Tippen
 öffnet die Details in einem Dialog mit großen Tasten. Ein erkanntes Programmende
-bleibt als „Fertig · Wäsche wartet“ sichtbar, bis ihr „Wäsche erledigt“ bestätigt
-oder ein neuer Lauf erkannt wird. Die Bestätigung ändert nur den neuen
-Phasenhelfer. Waschmaschine und Trockner werden niemals geschaltet.
+bleibt als „Fertig · Wäsche wartet“ sichtbar, bis ihr „Wäsche erledigt“ bestätigt.
+Mit dem optionalen `acknowledged`-Helfer bleibt die Meldung auch bei einem neuen
+Lauf erhalten. Die Bestätigung speichert nur, welches Programmende quittiert wurde;
+sie setzt keinen laufenden Programmstatus zurück. Schließen, Escape und Neuladen
+bestätigen nichts. Waschmaschine und Trockner werden unabhängig erkannt und
+bestätigt. Ein Trocknerstart löscht keine Waschmaschinenmeldung; ein Waschgang
+setzt keinen anschließenden Trocknerlauf voraus. Die Geräte werden niemals geschaltet.
+
+Ab **`v0.3.2`** sind Prüfzeitpunkte auf volle Sekunden abgestimmt. Dadurch bleibt
+die Enderkennung bei unverändertem 0-W-Verbrauch nicht durch Sekundenbruchteile
+hängen. Ein Neuladen der Automationen verschiebt eine gültige Endprüfung nicht
+mehr. Für diese Reparatur den installierten Wäsche-Blueprint aktualisieren;
+das HACS-Frontend allein aktualisiert installierte Blueprints nicht.
 
 Ab HACS-Version **`v0.2.0`** zusammen mit Lüftung, Einkaufsliste und Wartungsstube
 verfügbar. In HACS aktualisieren und den Browser neu laden. Das Frontend allein erstellt
@@ -27,7 +37,7 @@ beobachteten Entity-IDs stehen ausschließlich in den ignorierten Dateien:
 
 Die geteilten Beispiele [`examples/laundry.yaml`](../examples/laundry.yaml) und
 [`packages/laundry_status.yaml`](../packages/laundry_status.yaml) enthalten
-synthetische Geräte-IDs. Die sechs `input_*`-Helfer sind bewusst **neu anzulegen**,
+synthetische Geräte-IDs. Die acht `input_*`-Helfer sind bewusst **neu anzulegen**,
 nicht bereits entdeckte Gerätesensoren. Nach Installation ihre Entity-IDs prüfen,
 falls gleichnamige Helfer schon existieren. Private Dateien sind nicht im PR
 enthalten und können bei Bedarf im lokalen Checkout eingesehen werden.
@@ -40,19 +50,20 @@ Installation per Paket oder über Helfer und Blueprint im HA-Editor.
 
 1. [`blueprints/automation/mufflonbau/laundry_status.yaml`](../blueprints/automation/mufflonbau/laundry_status.yaml)
    nach `/config/blueprints/automation/mufflonbau/laundry_status.yaml` übernehmen.
-   Alternativ den Blueprint nach Veröffentlichung aus seiner Branch-URL in HA
+   Alternativ den Blueprint aus seiner `main`-URL in HA
    importieren. Er ist für zwei Geräte wiederverwendbar und über Selektoren
    konfigurierbar.
 2. Bei bereits eingerichteten HA-Packages das **private**
    `packages/laundry_status.local.yaml` nach
    `/config/packages/mufflonbau_laundry.yaml` kopieren. Ohne Packages die drei
-   Helfer je Gerät über Einstellungen → Geräte & Dienste → Helfer anlegen:
+   Erkennungshelfer plus den Bestätigungshelfer je Gerät über Einstellungen → Geräte & Dienste → Helfer anlegen:
    Auswahlhelfer mit Optionen `idle`, `starting`, `starting_after_finished`, `running`, `finishing`, `finished`
-   in dieser Reihenfolge; zwei Datum/Uhrzeit-Helfer mit Datum **und** Uhrzeit.
+   in dieser Reihenfolge; drei Datum/Uhrzeit-Helfer mit Datum **und** Uhrzeit:
+   `deadline`, `last_finished` und `acknowledged`.
    Danach zwei Automationen aus dem Blueprint erstellen und die echten
    Messentitäten sowie die jeweiligen Helfer auswählen. Helfer nie mit einem
    festen `initial` konfigurieren, damit Wiederherstellung erhalten bleibt.
-   Die beiden neuen „Zuletzt fertig“-Helfer einmalig auf `1970-01-01 00:00:00`
+   Neue „Zuletzt fertig“- und „Bestätigt“-Helfer einmalig auf `1970-01-01 00:00:00`
    setzen: HA initialisiert neue Datum-Helfer sonst mit dem heutigen Datum,
    das fälschlich als bisheriges Programmende erscheinen würde. Dies ist nur
    der Startwert beim Anlegen, kein festes `initial` für jeden Neustart.
@@ -68,6 +79,23 @@ Installation per Paket oder über Helfer und Blueprint im HA-Editor.
 Ohne YAML-Packages bleiben die gleichen Einstellungen über Helfer und
 Blueprint-Automationen in HA pflegbar. Eine komplette Paket-Neuinstallation und
 manuell angelegte gleichnamige Helfer dürfen nicht parallel verwendet werden.
+
+### Bestehende Installation aktualisieren
+
+Den vorhandenen Blueprint unter seinem bisherigen Installationspfad durch die
+aktuelle Version ersetzen. Je Gerät zusätzlich einen Datum/Uhrzeit-Helfer für
+`acknowledged` anlegen und einmalig auf `1970-01-01 00:00:00` setzen. Bereits
+vorhandene `last_finished`-Werte und Phasen beibehalten. Im jeweiligen
+`laundry:`-Eintrag `acknowledged: input_datetime.<bestätigungshelfer>` ergänzen;
+Waschmaschine und Trockner benötigen getrennte Bestätigungshelfer. Der Blueprint
+benötigt dafür keine neuen Eingaben.
+
+Ohne `acknowledged` bleibt die frühere Phasenbestätigung kompatibel; ein neuer
+bestätigter Lauf ersetzt dann die alte Fertigphase. Mit `acknowledged` vergleicht
+das Dashboard den letzten Abschluss mit dem bestätigten Abschluss. Ein alter
+Bestätigungsklick kann dadurch eine inzwischen neu eingetroffene Fertigmeldung
+nicht löschen. Bei mehreren unbestätigten Abschlüssen wird der jüngste angezeigt.
+Der Zeitpunkt des letzten Abschlusses bleibt auch nach dem Bestätigen sichtbar.
 
 ## Erkennung und Wiederholschutz
 
@@ -94,7 +122,8 @@ Ein kurzer Lastimpuls reicht nicht zum Scharfschalten; eine kurze Ruhephase
 reicht nicht zur Fertigmeldung. Verbrauch oberhalb der Endschwelle setzt die
 Endprüfung zurück. `unknown`, `unavailable`, negative/nichtnumerische Werte und
 eine andere Einheit gelten niemals als 0 W. Nach einer unterbrochenen Messung,
-HA-Neustart oder Neuladen beginnt eine laufende Endprüfung vollständig von vorn.
+HA-Neustart beginnt eine laufende Endprüfung vollständig von vorn. Ein reines
+Automation-Neuladen übernimmt bei gültiger Messung den bestehenden Prüftermin.
 Der vorher erkannte Lauf bleibt bei einer Sensorstörung erhalten; bei einer
 ausgeschalteten/unerreichbaren Steckdose wird er sicherheitshalber verworfen.
 Eine bereits gespeicherte Fertigmeldung bleibt sichtbar.
@@ -134,7 +163,7 @@ Home Assistants laufendem Konfigurationsvalidator ist erst nach Installation der
 Backend-Dateien möglich; der lokale Checkout hat kein HA-Python-Paket installiert.
 
 Zum Rückbau `laundry:` aus der Strategie entfernen und die beiden Automationen
-deaktivieren. Anschließend nur die sechs neu angelegten Wäschehelfer bzw. das
+deaktivieren. Anschließend nur die acht neu angelegten Wäschehelfer bzw. das
 Wäschepaket entfernen. Bestehende Shelly-Entitäten bleiben erhalten.
 
 Referenzen: [Blueprint-Schema](https://www.home-assistant.io/docs/blueprint/schema/),

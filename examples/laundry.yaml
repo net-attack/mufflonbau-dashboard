@@ -8,9 +8,11 @@ laundry:
     plug: switch.example_washer
     status: input_select.mufflonbau_washer_phase
     last_finished: input_datetime.mufflonbau_washer_last_finished
+    acknowledged: input_datetime.mufflonbau_washer_acknowledged
   - id: dryer
     name: { en: Tumble dryer, de: Trockner }
     power: sensor.example_dryer_power
     plug: switch.example_dryer
     status: input_select.mufflonbau_dryer_phase
     last_finished: input_datetime.mufflonbau_dryer_last_finished
+    acknowledged: input_datetime.mufflonbau_dryer_acknowledged

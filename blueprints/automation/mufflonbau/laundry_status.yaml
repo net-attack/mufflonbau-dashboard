@@ -7,7 +7,7 @@ blueprint:
     Messung/neuer HA-Start beginnt die Endprüfung sicherheitshalber von vorn.
     Eine ausgeschaltete Steckdose gilt nie als Programmende. Keine Gerätesteuerung.
   domain: automation
-  source_url: https://github.com/net-attack/mufflonbau-dashboard/blob/feature/laundry-status/blueprints/automation/mufflonbau/laundry_status.yaml
+  source_url: https://github.com/net-attack/mufflonbau-dashboard/blob/main/blueprints/automation/mufflonbau/laundry_status.yaml
   homeassistant:
     min_version: '2026.5.0'
   input:
@@ -92,7 +92,7 @@ triggers:
     id: startup
   - trigger: event
     event_type: automation_reloaded
-    id: startup
+    id: reload
 variables:
   power_entity: !input power
   plug_entity: !input plug
@@ -106,7 +106,9 @@ actions:
   - variables:
       phase: "{{ states(phase_entity) }}"
       power: "{{ states(power_entity) | float(none) }}"
-      deadline: "{{ state_attr(deadline_entity, 'timestamp') | float(0) }}"
+      # input_datetime time triggers fire at whole seconds, even when an old
+      # helper's timestamp attribute still contains microseconds.
+      deadline: "{{ state_attr(deadline_entity, 'timestamp') | int(0) }}"
       current_time: "{{ now().timestamp() }}"
       restarting: "{{ trigger.id == 'startup' }}"
   # There is no native helper for a restored, armed appliance-cycle state machine.
@@ -133,7 +135,7 @@ actions:
         target:
           entity_id: !input deadline
         data:
-          timestamp: "{{ current_time + (finish_seconds if next_phase == 'finishing' else start_seconds) }}"
+          timestamp: "{{ (current_time + (finish_seconds if next_phase == 'finishing' else start_seconds)) | round(0, 'ceil') | int }}"
   - if:
       - "{{ phase != next_phase }}"
     then:
@@ -149,5 +151,5 @@ actions:
             target:
               entity_id: !input last_finished
             data:
-              timestamp: "{{ current_time }}"
+              timestamp: "{{ current_time | int }}"
           - sequence: !input completion_actions

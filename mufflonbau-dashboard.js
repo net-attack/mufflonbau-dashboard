@@ -2245,11 +2245,16 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
 
   // src/core/laundry.js
   var laundryText = {
-    de: { title: "Wäschekammer", idle: "Bereit", starting: "Start wird erkannt", running: "Läuft", finishing: "Programmende wird geprüft", finished: "Fertig · Wäsche wartet", missing: "Erkennung noch nicht eingerichtet", unavailable: "Messung nicht verfügbar", unknown: "Status unbekannt", power: "Leistung", last: "Zuletzt fertig", acknowledge: "Wäsche erledigt", close: "Schließen", error: "Bestätigung fehlgeschlagen", inferred: "Programmstatus aus dem Stromverbrauch geschätzt. Keine Restzeit verfügbar." },
-    en: { title: "Laundry room", idle: "Ready", starting: "Detecting start", running: "Running", finishing: "Checking programme end", finished: "Finished · laundry waiting", missing: "Detection not set up yet", unavailable: "Reading unavailable", unknown: "Unknown status", power: "Power", last: "Last finished", acknowledge: "Laundry collected", close: "Close", error: "Acknowledgement failed", inferred: "Programme status estimated from power consumption. Remaining time unavailable." }
+    de: { title: "Wäschekammer", idle: "Bereit", starting: "Start wird erkannt", running: "Läuft", finishing: "Programmende wird geprüft", finished: "Fertig · Wäsche wartet", pending: "Fertigmeldung offen", confirm: "Diese Fertigmeldung bleibt bis zu deiner Bestätigung sichtbar. Schließen bestätigt sie nicht.", missing: "Erkennung noch nicht eingerichtet", unavailable: "Messung nicht verfügbar", unknown: "Status unbekannt", power: "Leistung", last: "Zuletzt fertig", acknowledge: "Wäsche erledigt", close: "Schließen", error: "Bestätigung fehlgeschlagen", inferred: "Programmstatus aus dem Stromverbrauch geschätzt. Keine Restzeit verfügbar." },
+    en: { title: "Laundry room", idle: "Ready", starting: "Detecting start", running: "Running", finishing: "Checking programme end", finished: "Finished · laundry waiting", pending: "Completion awaiting confirmation", confirm: "This completion stays visible until you confirm it. Closing does not acknowledge it.", missing: "Detection not set up yet", unavailable: "Reading unavailable", unknown: "Unknown status", power: "Power", last: "Last finished", acknowledge: "Laundry collected", close: "Close", error: "Acknowledgement failed", inferred: "Programme status estimated from power consumption. Remaining time unavailable." }
   };
   function laundryEntities(items = []) {
-    return items.flatMap((item) => [item.power, item.status, item.last_finished, item.plug]).filter(Boolean);
+    return items.flatMap((item) => [item.power, item.status, item.last_finished, item.acknowledged, item.plug]).filter(Boolean);
+  }
+  function laundryTimestamp(state) {
+    if (!state || ["unknown", "unavailable"].includes(state.state)) return null;
+    const timestamp = state.attributes?.timestamp;
+    return Number.isFinite(timestamp) && timestamp > 946684800 ? Math.floor(timestamp) : null;
   }
   function laundryStatus(item, states, language = "en") {
     const text = laundryText[language];
@@ -2262,7 +2267,12 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
       if (!states[item.status]) status = "missing";
       else if (power === null || item.plug && states[item.plug]?.state !== "on") status = "unavailable";
     }
-    return { name: localized(item.name, language), status, label: text[status], power };
+    const finished = laundryTimestamp(states[item.last_finished]);
+    const acknowledged = laundryTimestamp(states[item.acknowledged]);
+    const pending = item.acknowledged ? finished !== null ? acknowledged === null || finished > acknowledged : status === "finished" : status === "finished";
+    if (pending && ["idle", "starting"].includes(status)) status = "finished";
+    if (!pending && status === "finished") status = power === null || item.plug && states[item.plug]?.state !== "on" ? "unavailable" : phase === "starting_after_finished" ? "starting" : "idle";
+    return { name: localized(item.name, language), status, label: text[status], power, pending, finished };
   }
 
   // src/core/floorplan.js
@@ -2456,8 +2466,9 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
       for (const key2 of ["power", "status"]) entity(item[key2], `${path}.${key2}`);
       if (!item.power.startsWith("sensor.")) fail(`${path}.power`, "must reference a power sensor in W.");
       if (!item.status.startsWith("input_select.")) fail(`${path}.status`, "must reference the laundry phase input_select helper.");
-      for (const key2 of ["last_finished", "plug"]) if (item[key2] !== void 0) entity(item[key2], `${path}.${key2}`);
+      for (const key2 of ["last_finished", "acknowledged", "plug"]) if (item[key2] !== void 0) entity(item[key2], `${path}.${key2}`);
       if (item.last_finished && !item.last_finished.startsWith("input_datetime.")) fail(`${path}.last_finished`, "must reference an input_datetime helper.");
+      if (item.acknowledged && (!item.acknowledged.startsWith("input_datetime.") || !item.last_finished || item.acknowledged === item.last_finished)) fail(`${path}.acknowledged`, "requires last_finished and a separate input_datetime helper.");
       if (item.plug && !item.plug.startsWith("switch.")) fail(`${path}.plug`, "must reference the monitored plug switch.");
     });
     if (result.weather_alerts !== void 0) {
@@ -4423,6 +4434,8 @@ dialog{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 24px);paddin
     constructor() {
       super();
       this.attachShadow({ mode: "open" });
+      this._busy = /* @__PURE__ */ new Set();
+      this._errors = /* @__PURE__ */ new Set();
     }
     setConfig(config) {
       this._config = config;
@@ -4440,6 +4453,24 @@ dialog{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 24px);paddin
     disconnectedCallback() {
       this.shadowRoot.querySelector("dialog")?.close();
     }
+    async _acknowledge(item, result) {
+      if (this._busy.has(item.id)) return;
+      this._busy.add(item.id);
+      this._errors.delete(item.id);
+      this._render();
+      try {
+        if (item.acknowledged) {
+          await this._hass.callService("input_datetime", "set_datetime", { timestamp: result.finished }, { entity_id: item.acknowledged });
+        } else {
+          await this._hass.callService("input_select", "select_option", { option: "idle" }, { entity_id: item.status });
+        }
+      } catch {
+        this._errors.add(item.id);
+      } finally {
+        this._busy.delete(item.id);
+        this._render();
+      }
+    }
     _render() {
       if (!this._hass || !this._config) return;
       const wasOpen = this.shadowRoot.querySelector("dialog")?.open;
@@ -4449,12 +4480,12 @@ dialog{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 24px);paddin
       applyTheme(this, mode, this._config.appearance?.theme);
       const items = this._config.laundry ?? [];
       const results = items.map((item) => laundryStatus(item, this._hass.states, language));
-      const panel = element("ha-card", void 0, `panel${results.some((item) => item.status === "finished") ? " ready" : ""}`);
+      const panel = element("ha-card", void 0, `panel${results.some((item) => item.pending) ? " ready" : ""}`);
       const open = element("button", void 0, "open");
       open.type = "button";
       open.dataset.action = "open";
       open.setAttribute("aria-haspopup", "dialog");
-      const description = results.map((item) => `${item.name}: ${item.label}`).join(" · ");
+      const description = results.map((item) => `${item.name}: ${item.label}${item.pending && item.status !== "finished" ? ` · ${text.pending}` : ""}`).join(" · ");
       const copy2 = element("span", void 0, "copy");
       const detail = element("small", description);
       detail.title = description;
@@ -4484,28 +4515,23 @@ dialog{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 24px);paddin
         section.append(element("h3", result.name), element("p", result.label, "state"));
         const reading3 = result.power === null ? "—" : `${new Intl.NumberFormat(language, { maximumFractionDigits: 1 }).format(result.power)} W`;
         section.append(element("div", `${text.power}: ${reading3}`, "meta"));
-        const date = new Date(this._hass.states[item.last_finished]?.state);
+        const date = result.finished === null ? /* @__PURE__ */ new Date(NaN) : new Date(result.finished * 1e3);
         if (Number.isFinite(date.getTime()) && date.getFullYear() > 2e3) section.append(element("div", `${text.last}: ${new Intl.DateTimeFormat(language, { dateStyle: "short", timeStyle: "short", timeZone: this._hass.config?.time_zone }).format(date)}`, "meta"));
-        if (result.status === "finished") {
+        if (result.pending) {
+          const pending = element("p", `${result.status === "finished" ? "" : `${text.pending}. `}${text.confirm}`, "note pending");
+          pending.setAttribute("role", "status");
+          section.append(pending);
           const ack = element("button", text.acknowledge, "ack");
           ack.type = "button";
           ack.dataset.action = `ack-${item.id}`;
-          ack.disabled = this._busy === item.id;
-          ack.addEventListener("click", async () => {
-            this._busy = item.id;
-            ack.disabled = true;
-            try {
-              await this._hass.callService("input_select", "select_option", { option: "idle" }, { entity_id: item.status });
-            } catch {
-              const error = element("p", text.error, "error");
-              error.setAttribute("role", "alert");
-              section.append(error);
-            } finally {
-              this._busy = void 0;
-              ack.disabled = false;
-            }
-          });
+          ack.disabled = this._busy.has(item.id) || Boolean(item.acknowledged && (result.finished === null || !this._hass.states[item.acknowledged] || ["unknown", "unavailable"].includes(this._hass.states[item.acknowledged].state)));
+          ack.addEventListener("click", () => this._acknowledge(item, result));
           section.append(ack);
+          if (this._errors.has(item.id)) {
+            const error = element("p", text.error, "error");
+            error.setAttribute("role", "alert");
+            section.append(error);
+          }
         }
         dialog.append(section);
       });

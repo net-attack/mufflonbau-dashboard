@@ -2,6 +2,7 @@
 # Replace them with observed power/plug entities before installing this file.
 # Copy the blueprint to /config/blueprints/automation/mufflonbau/laundry_status.yaml.
 # These helpers are NEW entities created by this package, not discovered devices.
+# Set last_finished and acknowledged once to 1970-01-01 00:00:00 after creating.
 # No initial: restored phases prevent duplicate notifications after restart.
 input_select:
   mufflonbau_washer_phase:
@@ -21,12 +22,20 @@ input_datetime:
     name: Washer last finished
     has_date: true
     has_time: true
+  mufflonbau_washer_acknowledged:
+    name: Washer last acknowledged completion
+    has_date: true
+    has_time: true
   mufflonbau_dryer_deadline:
     name: Dryer detection deadline
     has_date: true
     has_time: true
   mufflonbau_dryer_last_finished:
     name: Dryer last finished
+    has_date: true
+    has_time: true
+  mufflonbau_dryer_acknowledged:
+    name: Dryer last acknowledged completion
     has_date: true
     has_time: true
 automation:

@@ -69,6 +69,13 @@ shared examples, logs or commits.
   must explicitly select mop-after-vacuum when the owner requests that sequence.
   See `docs/CLEANING.de.md`. Use short room scripts so named script actions can
   report setup errors to the dashboard without waiting for a full cleaning run.
+- Keep laundry appliances independent. Completion acknowledgement uses a separate
+  restored `input_datetime` per appliance via `laundry[].acknowledged`; initialize
+  new acknowledgement helpers once to 1970-01-01, without a fixed `initial`.
+  Preserve existing completion times and running phases. Acknowledging a previous
+  completion must not reset a new cycle or acknowledge another appliance.
+  Update the installed laundry blueprint as well as HACS when repairing detection;
+  see `docs/LAUNDRY.de.md` for the upgrade steps.
 - For live writes within the owner's requested scope, read and back up the
   current configuration, use the server's supported write API and concurrency
   protection if available, then read back and compare the result. Do not edit

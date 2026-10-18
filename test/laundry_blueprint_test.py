@@ -30,7 +30,7 @@ class Cycle:
         self.plug = 'on'
         self.unit = 'W'
 
-    def update(self, power=None, seconds=0, startup=False):
+    def update(self, power=None, seconds=0, startup=False, reloaded=False):
         self.now += seconds
         if power is not None:
             self.power = power
@@ -42,11 +42,13 @@ class Cycle:
                 return False
         env.globals.update(states=lambda entity: str(self.power), is_number=is_number,
                            is_state=lambda entity, state: self.plug == state,
-                           state_attr=lambda entity, attr: self.unit)
+                           state_attr=lambda entity, attr: self.deadline if attr == 'timestamp' else self.unit)
+        deadline = int(env.from_string(BLUEPRINT['actions'][0]['variables']['deadline']).render(deadline_entity='input_datetime.synthetic'))
+        restarting = env.from_string(BLUEPRINT['actions'][0]['variables']['restarting']).render(trigger={'id': 'startup' if startup else 'reload' if reloaded else 'reading'}) == 'True'
         context = dict(phase=self.phase, power=float(self.power) if is_number(self.power) else None,
                        power_entity='sensor.synthetic', plug_entity='switch.synthetic',
                        start_w=10, finish_w=4, start_seconds=120, finish_seconds=600,
-                       deadline=self.deadline, current_time=self.now, restarting=startup)
+                       deadline=deadline, current_time=self.now, restarting=restarting)
         next_phase = env.from_string(BLUEPRINT['actions'][1]['variables']['next_phase']).render(**context).strip()
         context['next_phase'] = next_phase
         schedule = BLUEPRINT['actions'][2]
@@ -61,6 +63,30 @@ class Cycle:
 
 
 class LaundryBlueprintTest(unittest.TestCase):
+    def test_fractional_legacy_deadline_finishes_at_whole_second_trigger(self):
+        c = Cycle()
+        c.phase = 'finishing'; c.power = 0
+        c.deadline = c.now + 600.75
+        self.assertEqual(c.update(seconds=600), 'finished')
+        self.assertEqual(c.alerts, 1)
+        self.assertEqual(c.update(seconds=3600), 'finished', 'No further power change is needed')
+        self.assertEqual(c.alerts, 1)
+
+    def test_new_deadlines_round_up_and_reload_preserves_them(self):
+        c = Cycle(); c.now += .75
+        c.update(200)
+        self.assertEqual(c.deadline, 100121)
+        c.now = c.deadline
+        self.assertEqual(c.update(), 'running')
+        c.update(0)
+        deadline = c.deadline
+        self.assertEqual(c.update(0, seconds=590, reloaded=True), 'finishing')
+        self.assertEqual(c.deadline, deadline)
+        self.assertEqual(c.update(0, seconds=10, reloaded=True), 'finished')
+        reload_trigger = next(t for t in BLUEPRINT['triggers'] if t.get('event_type') == 'automation_reloaded')
+        self.assertEqual(reload_trigger['id'], 'reload')
+        self.assertEqual(BLUEPRINT['actions'][0]['variables']['restarting'], "{{ trigger.id == 'startup' }}")
+
     def test_idle_and_startup_cannot_finish(self):
         c = Cycle()
         self.assertEqual(c.update(0, startup=True), 'idle')

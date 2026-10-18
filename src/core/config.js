@@ -53,8 +53,9 @@ export function normalizeConfig(config) {
     for (const key of ['power', 'status']) entity(item[key], `${path}.${key}`);
     if (!item.power.startsWith('sensor.')) fail(`${path}.power`, 'must reference a power sensor in W.');
     if (!item.status.startsWith('input_select.')) fail(`${path}.status`, 'must reference the laundry phase input_select helper.');
-    for (const key of ['last_finished', 'plug']) if (item[key] !== undefined) entity(item[key], `${path}.${key}`);
+    for (const key of ['last_finished', 'acknowledged', 'plug']) if (item[key] !== undefined) entity(item[key], `${path}.${key}`);
     if (item.last_finished && !item.last_finished.startsWith('input_datetime.')) fail(`${path}.last_finished`, 'must reference an input_datetime helper.');
+    if (item.acknowledged && (!item.acknowledged.startsWith('input_datetime.') || !item.last_finished || item.acknowledged === item.last_finished)) fail(`${path}.acknowledged`, 'requires last_finished and a separate input_datetime helper.');
     if (item.plug && !item.plug.startsWith('switch.')) fail(`${path}.plug`, 'must reference the monitored plug switch.');
   });
   if (result.weather_alerts !== undefined) {

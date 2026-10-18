@@ -13,7 +13,7 @@ dialog{width:min(600px,calc(100vw - 24px));max-height:calc(100dvh - 24px);paddin
 `;
 
 export class MufflonbauLaundry extends HTMLElement {
-  constructor() { super(); this.attachShadow({ mode: 'open' }); }
+  constructor() { super(); this.attachShadow({ mode: 'open' }); this._busy = new Set(); this._errors = new Set(); }
   setConfig(config) { this._config = config; this._watched = laundryEntities(config.laundry); this._render(); }
   set hass(value) {
     const previous = this._hass; this._hass = value;
@@ -21,6 +21,18 @@ export class MufflonbauLaundry extends HTMLElement {
   }
   getCardSize() { return 1; }
   disconnectedCallback() { this.shadowRoot.querySelector('dialog')?.close(); }
+  async _acknowledge(item, result) {
+    if (this._busy.has(item.id)) return;
+    this._busy.add(item.id); this._errors.delete(item.id); this._render();
+    try {
+      if (item.acknowledged) {
+        await this._hass.callService('input_datetime', 'set_datetime', { timestamp: result.finished }, { entity_id: item.acknowledged });
+      } else {
+        await this._hass.callService('input_select', 'select_option', { option: 'idle' }, { entity_id: item.status });
+      }
+    } catch { this._errors.add(item.id); }
+    finally { this._busy.delete(item.id); this._render(); }
+  }
   _render() {
     if (!this._hass || !this._config) return;
     const wasOpen = this.shadowRoot.querySelector('dialog')?.open;
@@ -30,9 +42,9 @@ export class MufflonbauLaundry extends HTMLElement {
     applyTheme(this, mode, this._config.appearance?.theme);
     const items = this._config.laundry ?? [];
     const results = items.map(item => laundryStatus(item, this._hass.states, language));
-    const panel = element('ha-card', undefined, `panel${results.some(item => item.status === 'finished') ? ' ready' : ''}`);
+    const panel = element('ha-card', undefined, `panel${results.some(item => item.pending) ? ' ready' : ''}`);
     const open = element('button', undefined, 'open'); open.type = 'button'; open.dataset.action = 'open'; open.setAttribute('aria-haspopup', 'dialog');
-    const description = results.map(item => `${item.name}: ${item.label}`).join(' · ');
+    const description = results.map(item => `${item.name}: ${item.label}${item.pending && item.status !== 'finished' ? ` · ${text.pending}` : ''}`).join(' · ');
     const copy = element('span', undefined, 'copy'); const detail = element('small', description); detail.title = description;
     copy.append(element('strong', text.title), detail);
     const badge = element('span', undefined, 'summary-icon'); badge.append(icon('drop'));
@@ -47,16 +59,14 @@ export class MufflonbauLaundry extends HTMLElement {
       section.append(element('h3', result.name), element('p', result.label, 'state'));
       const reading = result.power === null ? '—' : `${new Intl.NumberFormat(language, { maximumFractionDigits: 1 }).format(result.power)} W`;
       section.append(element('div', `${text.power}: ${reading}`, 'meta'));
-      const date = new Date(this._hass.states[item.last_finished]?.state);
+      const date = result.finished === null ? new Date(NaN) : new Date(result.finished * 1000);
       if (Number.isFinite(date.getTime()) && date.getFullYear() > 2000) section.append(element('div', `${text.last}: ${new Intl.DateTimeFormat(language, { dateStyle: 'short', timeStyle: 'short', timeZone: this._hass.config?.time_zone }).format(date)}`, 'meta'));
-      if (result.status === 'finished') {
-        const ack = element('button', text.acknowledge, 'ack'); ack.type = 'button'; ack.dataset.action = `ack-${item.id}`; ack.disabled = this._busy === item.id;
-        ack.addEventListener('click', async () => {
-          this._busy = item.id; ack.disabled = true;
-          try { await this._hass.callService('input_select', 'select_option', { option: 'idle' }, { entity_id: item.status }); }
-          catch { const error = element('p', text.error, 'error'); error.setAttribute('role', 'alert'); section.append(error); }
-          finally { this._busy = undefined; ack.disabled = false; }
-        }); section.append(ack);
+      if (result.pending) {
+        const pending = element('p', `${result.status === 'finished' ? '' : `${text.pending}. `}${text.confirm}`, 'note pending'); pending.setAttribute('role', 'status'); section.append(pending);
+        const ack = element('button', text.acknowledge, 'ack'); ack.type = 'button'; ack.dataset.action = `ack-${item.id}`;
+        ack.disabled = this._busy.has(item.id) || Boolean(item.acknowledged && (result.finished === null || !this._hass.states[item.acknowledged] || ['unknown', 'unavailable'].includes(this._hass.states[item.acknowledged].state)));
+        ack.addEventListener('click', () => this._acknowledge(item, result)); section.append(ack);
+        if (this._errors.has(item.id)) { const error = element('p', text.error, 'error'); error.setAttribute('role', 'alert'); section.append(error); }
       }
       dialog.append(section);
     });

@@ -52,7 +52,9 @@ export const translations = {
     allDetails: 'View details', floorplan: 'Floorplan', noEvents: 'No upcoming events', actionFailed: 'Action failed. Please try again.',
     cardLoadError: 'Card could not be loaded. Reload the dashboard.',
     states: { on: 'On', off: 'Off', home: 'Home', not_home: 'Away', docked: 'At the dock', cleaning: 'Cleaning', returning: 'Returning home', paused: 'Paused', idle: 'Ready' },
-    vacuum: 'Vacuum', mop: 'Mop', cleanGenius: 'CleanGenius', cleaningMode: 'Cleaning mode', chooseCleaningRoom: 'Tap a room to start the selected mode.', notConfigured: 'Not configured', room: 'Room', dewPoint: 'Dew point',
+    vacuum: 'Vacuum', mop: 'Mop', cleanGenius: 'CleanGenius', cleaningMode: 'Cleaning mode', chooseCleaningRoom: 'Tap a room to start the selected mode.',
+    wholeHome: 'Entire home', chooseCleaningTarget: 'Start cleans the entire home in the selected mode. Tap a room to clean only that room.',
+    notConfigured: 'Not configured', room: 'Room', dewPoint: 'Dew point',
   },
   de: {
     ventilation: 'Lüftungsampel', ventilationDry: 'Lüften trocknet', ventilationWetter: 'Draußen feuchter',
@@ -130,7 +132,9 @@ export const translations = {
     allDetails: 'Details ansehen', floorplan: 'Grundriss', noEvents: 'Keine anstehenden Termine', actionFailed: 'Aktion fehlgeschlagen. Bitte erneut versuchen.',
     cardLoadError: 'Karte konnte nicht geladen werden. Bitte Dashboard neu laden.',
     states: { on: 'An', off: 'Aus', home: 'Zuhause', not_home: 'Unterwegs', docked: 'An der Station', cleaning: 'Reinigung läuft', returning: 'Fährt zur Station', paused: 'Pausiert', idle: 'Bereit' },
-    vacuum: 'Saugen', mop: 'Wischen', cleanGenius: 'CleanGenius', cleaningMode: 'Reinigungsmodus', chooseCleaningRoom: 'Raum antippen startet den gewählten Modus.', notConfigured: 'Noch nicht eingerichtet', room: 'Raum', dewPoint: 'Taupunkt',
+    vacuum: 'Saugen', mop: 'Wischen', cleanGenius: 'CleanGenius', cleaningMode: 'Reinigungsmodus', chooseCleaningRoom: 'Raum antippen startet den gewählten Modus.',
+    wholeHome: 'Gesamte Wohnung', chooseCleaningTarget: 'Start reinigt die gesamte Wohnung im gewählten Modus. Raum antippen reinigt nur diesen Raum.',
+    notConfigured: 'Noch nicht eingerichtet', room: 'Raum', dewPoint: 'Taupunkt',
   },
 };
 

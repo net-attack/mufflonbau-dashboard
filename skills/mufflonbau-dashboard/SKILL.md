@@ -67,6 +67,10 @@ shared examples, logs or commits.
   wait for the selector to become available and confirm the mode before starting
   the mapped HA area. Mop-only must not use mopping-after-sweeping. CleanGenius
   must explicitly select mop-after-vacuum when the owner requests that sequence.
+  For whole-home starts in the selected mode, map `cleaning.whole_home.vacuum`,
+  `mop` and `clean_genius` to real helpers/scripts. They must configure and confirm
+  the mode, then call `vacuum.start` without a room selection. Do not chain room
+  scripts to simulate a whole-home run. Paused jobs resume without changing scope.
   See `docs/CLEANING.de.md`. Use short room scripts so named script actions can
   report setup errors to the dashboard without waiting for a full cleaning run.
 - Keep laundry appliances independent. Completion acknowledgement uses a separate

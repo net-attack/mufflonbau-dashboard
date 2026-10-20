@@ -4,6 +4,15 @@ Ein Raumklick startet die unter `rooms[].cleaning` hinterlegte Aktion. Der
 Dashboard-Raumname korrigiert keine falsche Raum-ID in einer HA-Automation.
 Saugen, Wischen und CleanGenius brauchen jeweils eine passende Raumaktion.
 
+Der obere Start-Knopf kann denselben gewählten Modus für die gesamte Wohnung
+starten. Dafür unter dem übergeordneten `cleaning.whole_home` je eine bestehende
+Aktion für `vacuum`, `mop` und `clean_genius` hinterlegen (siehe README).
+Diese Skripte bestätigen wie die Raumskripte zuerst den Modus und verwenden
+danach `vacuum.start` ohne Raumauswahl. Sie dürfen keine einzelnen Raumskripte
+nacheinander starten. Pause und Fortsetzen behalten den laufenden Auftrag bei.
+Ohne `cleaning.whole_home` verwendet Start weiterhin den im Roboter gespeicherten
+Modus; bei einer unvollständigen Zuordnung bleibt Start für fehlende Modi gesperrt.
+
 Vor einer Reparatur die aktuelle Dashboard-, Skript- und Automationskonfiguration
 sichern. Die aktuelle Roboterkarte mit der Bereichszuordnung unter den
 Einstellungen der Vacuum-Entität vergleichen. Anschließend alle Automationen und

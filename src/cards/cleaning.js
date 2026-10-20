@@ -2,7 +2,7 @@ import { element, icon } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
 import { appearanceMode, isCleaningActionUnavailable, stateProblem } from '../core/state.js';
 import { localized, translations } from '../core/i18n.js';
-import { cleaningActivity, vacuumCommand } from '../core/cleaning.js';
+import { cleaningActivity, cleaningCommand, cleaningHelperAction } from '../core/cleaning.js';
 import { cleaningPageText, saugfriedMood } from '../core/cleaning-theme.js';
 import { applyFlusenfelsTheme, flusenfelsCardStyles, saugfriedArt } from '../design/flusenfels.js';
 
@@ -31,6 +31,7 @@ export class MufflonbauCleaning extends HTMLElement {
   set hass(value) {
     const previous = this._hass; this._hass = value;
     const ids = [this._config?.cleaning?.entity, this._config?.cleaning?.battery, this._config?.cleaning?.current_room,
+      ...Object.values(this._config?.cleaning?.whole_home ?? {}),
       ...(this._config?.rooms ?? []).flatMap(room => Object.values(room.cleaning ?? {}))].filter(Boolean);
     if (!previous || previous.services !== value.services || ids.some(id => previous.states[id] !== value.states[id]) || previous.states['sun.sun'] !== value.states['sun.sun'] || previous.themes !== value.themes) this._render();
   }
@@ -50,6 +51,9 @@ export class MufflonbauCleaning extends HTMLElement {
   _render() {
     if (!this._config || !this._hass) return;
     const { cleaning = {}, rooms = [], language = 'en' } = this._config;
+    const actionRooms = rooms.filter(room => Object.keys(room.cleaning ?? {}).length);
+    const hasMode = kind => cleaning.whole_home?.[kind] || actionRooms.some(room => room.cleaning?.[kind]);
+    this._mode ??= roomCommands.find(([kind]) => hasMode(kind))?.[0];
     const text = cleaningPageText(cleaning, language);
     const royal = cleaning.theme === 'flusenfels';
     const mode = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
@@ -95,32 +99,35 @@ export class MufflonbauCleaning extends HTMLElement {
     if (cleaning.entity) {
       const controls = element('div', undefined, 'actions');
       for (const [command, symbol, label] of commands) {
-        const service = vacuumCommand(command, this._hass.states[cleaning.entity], this._hass.services);
+        const action = cleaningCommand(command, cleaning, this._mode, this._hass.states, this._hass.services);
         const button = element('button', undefined, 'command'); button.type = 'button'; button.dataset.command = command;
         button.setAttribute('aria-label', `${translations[language][label]}${royal ? ` · ${text[label]}` : ''}`);
-        button.disabled = this._busy || !service;
+        button.disabled = this._busy || !action;
+        if (command === 'start_pause' && cleaning.whole_home !== undefined && !['cleaning', 'returning', 'paused'].includes(this._hass.states[cleaning.entity]?.state)) {
+          const label = roomCommands.find(([kind]) => kind === this._mode)?.[2];
+          button.title = `${text.wholeHome}: ${label ? text[label] : text.notConfigured}`;
+        }
         button.append(icon(symbol), element('span', text[label]));
-        button.addEventListener('click', () => this._service('vacuum', service, cleaning.entity, text));
+        button.addEventListener('click', () => this._service(action.domain, action.service, action.entity, text));
         controls.append(button);
       }
       panel.append(controls);
     }
-    const actionRooms = rooms.filter(room => Object.keys(room.cleaning ?? {}).length);
-    if (actionRooms.length) {
-      this._mode ??= roomCommands.find(([kind]) => actionRooms.some(room => room.cleaning?.[kind]))?.[0];
+    if (actionRooms.length || cleaning.whole_home !== undefined) {
       const modes = element('div', undefined, 'modes'); modes.setAttribute('role', 'group'); modes.setAttribute('aria-label', text.cleaningMode);
       for (const [kind, symbol, label] of roomCommands) {
         const button = element('button', undefined, 'command'); button.type = 'button'; button.dataset.mode = kind;
         button.setAttribute('aria-label', text[label]);
         button.setAttribute('aria-pressed', String(this._mode === kind));
-        button.disabled = this._busy || !actionRooms.some(room => room.cleaning?.[kind]);
+        button.disabled = this._busy || !hasMode(kind);
         if (button.disabled && !this._busy) button.title = text.notConfigured;
         button.append(icon(symbol), element('span', text[label]));
         button.addEventListener('click', () => { this._mode = kind; this._error = ''; this._render(); this.shadowRoot.querySelector(`[data-mode="${kind}"]`)?.focus(); });
         modes.append(button);
       }
-      panel.append(element('p', text.cleaningMode, 'meta rooms-label'), modes, element('p', text.chooseCleaningRoom, 'meta rooms-label'));
-      const missingModes = roomCommands.filter(([kind]) => !actionRooms.some(room => room.cleaning?.[kind])).map(([, , label]) => text[label]);
+      panel.append(element('p', text.cleaningMode, 'meta rooms-label'), modes,
+        element('p', cleaning.whole_home !== undefined ? text.chooseCleaningTarget : text.chooseCleaningRoom, 'meta rooms-label'));
+      const missingModes = roomCommands.filter(([kind]) => !hasMode(kind)).map(([, , label]) => text[label]);
       if (missingModes.length) panel.append(element('p', `${missingModes.join(', ')}: ${text.missingCleaningHelper}`, 'mode-note'));
       const roomGrid = element('div', undefined, 'rooms');
       for (const room of actionRooms) {
@@ -136,7 +143,10 @@ export class MufflonbauCleaning extends HTMLElement {
           copy.append(element('small', entity, 'entity-id'));
         }
         button.append(icon('rooms'), copy);
-        button.addEventListener('click', () => this._service(entity.startsWith('script.') ? 'script' : 'input_button', entity.startsWith('script.') ? entity.slice(7) : 'press', entity.startsWith('script.') ? undefined : entity, text)); roomGrid.append(button);
+        button.addEventListener('click', () => {
+          const action = cleaningHelperAction(entity);
+          this._service(action.domain, action.service, action.entity, text);
+        }); roomGrid.append(button);
       }
       panel.append(roomGrid);
     }

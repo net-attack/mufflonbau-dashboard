@@ -125,5 +125,68 @@ export async function checkCleaning(page, config, hass) {
     document.querySelector('#cleaning-controls').hass = window.cleaningHass;
   });
   assert.equal(await panel.locator('[data-room=living]').isEnabled(), true, 'Recovered helpers must become usable without reloading');
+  await page.evaluate(() => {
+    const whole_home = { vacuum: 'script.vacuum_all', mop: 'input_button.mop_all', clean_genius: 'script.genius_all' };
+    window.wholeHomeConfig = { ...window.cleaningConfig, cleaning: { ...window.cleaningConfig.cleaning, whole_home } };
+    window.wholeHomeHass = { ...window.cleaningHass, states: { ...window.cleaningHass.states,
+      'script.vacuum_all': { state: 'off' }, 'input_button.mop_all': { state: 'unknown' }, 'script.genius_all': { state: 'off' },
+    } };
+    const card = document.querySelector('#cleaning-controls');
+    card.setConfig(window.wholeHomeConfig); card.hass = window.wholeHomeHass;
+  });
+  assert.match(await panel.locator('.rooms-label').last().innerText(), /Start reinigt die gesamte Wohnung im gewählten Modus/);
+  for (const [mode, expected] of [
+    ['vacuum', ['script', 'vacuum_all', {}]],
+    ['mop', ['input_button', 'press', {}, { entity_id: 'input_button.mop_all' }]],
+    ['clean_genius', ['script', 'genius_all', {}]],
+  ]) {
+    const count = await page.evaluate(() => window.cleaningCalls.length);
+    await panel.locator(`[data-mode="${mode}"]`).click();
+    assert.equal(await page.evaluate(() => window.cleaningCalls.length), count);
+    await panel.locator('[data-command=start_pause]').click();
+    assert.equal(await page.evaluate(() => window.cleaningCalls.length), count + 1);
+    assert.deepEqual(await page.evaluate(() => window.cleaningCalls.at(-1)), expected);
+  }
+  // A selected future mode must not turn a paused room job into a whole-home job.
+  for (const [state, service] of [['cleaning', 'pause'], ['paused', 'start']]) {
+    await page.evaluate(state => {
+      document.querySelector('#cleaning-controls').hass = { ...window.wholeHomeHass, states: { ...window.wholeHomeHass.states,
+        'vacuum.robot': { ...window.wholeHomeHass.states['vacuum.robot'], state },
+      } };
+    }, state);
+    await panel.locator('[data-command=start_pause]').click();
+    assert.deepEqual(await page.evaluate(() => window.cleaningCalls.at(-1)), ['vacuum', service, {}, { entity_id: config.cleaning.entity }]);
+  }
+  await page.evaluate(() => {
+    document.querySelector('#cleaning-controls').hass = { ...window.wholeHomeHass, states: { ...window.wholeHomeHass.states,
+      'script.genius_all': { state: 'unavailable' },
+    } };
+  });
+  assert.equal(await panel.locator('[data-command=start_pause]').isDisabled(), true, 'An unavailable whole-home helper must never fall back to vacuum.start');
+  await page.evaluate(() => { document.querySelector('#cleaning-controls').hass = window.wholeHomeHass; });
+  assert.equal(await panel.locator('[data-command=start_pause]').isEnabled(), true, 'Whole-home helper recovery must update Start');
+  await page.evaluate(() => { window.cleaningReject = true; });
+  await panel.locator('[data-command=start_pause]').click();
+  await panel.locator('[role=alert]').waitFor();
+  assert.match(await panel.locator('[role=alert]').innerText(), /fehlgeschlagen/);
+  await page.evaluate(() => { window.cleaningReject = false; window.cleaningHold = true; });
+  await panel.locator('[data-command=start_pause]').click();
+  assert.equal(await panel.locator('button:enabled').count(), 0, 'Whole-home mode setup must block repeated starts, room commands and mode changes');
+  await page.evaluate(() => { window.cleaningHold = false; window.cleaningRelease(); });
+  await panel.locator('[data-command=start_pause]:enabled').waitFor();
+  assert.equal(await panel.locator('[data-command=start_pause]').evaluate(button => button === button.getRootNode().activeElement), true);
+  await page.evaluate(() => {
+    const card = document.querySelector('#cleaning-controls');
+    card.setConfig({ ...window.wholeHomeConfig, cleaning: { ...window.wholeHomeConfig.cleaning, whole_home: { vacuum: 'script.vacuum_all' } } });
+  });
+  await panel.locator('[data-mode=mop]').click();
+  assert.equal(await panel.locator('[data-command=start_pause]').isDisabled(), true, 'Room mode availability must not enable a missing whole-home mapping');
+  await page.evaluate(() => {
+    document.querySelector('#cleaning-controls').setConfig({ ...window.wholeHomeConfig, rooms: [] });
+  });
+  assert.equal(await panel.locator('[data-mode=mop]').isEnabled(), true, 'Whole-home modes also work without room helpers');
+  await panel.locator('[data-mode=mop]').click();
+  await panel.locator('[data-command=start_pause]').click();
+  assert.deepEqual(await page.evaluate(() => window.cleaningCalls.at(-1)), ['input_button', 'press', {}, { entity_id: 'input_button.mop_all' }]);
   await page.evaluate(() => document.querySelector('#cleaning-controls').remove());
 }

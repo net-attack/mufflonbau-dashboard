@@ -280,6 +280,8 @@ ${trees}${houses}
       cleanGenius: "CleanGenius",
       cleaningMode: "Cleaning mode",
       chooseCleaningRoom: "Tap a room to start the selected mode.",
+      wholeHome: "Entire home",
+      chooseCleaningTarget: "Start cleans the entire home in the selected mode. Tap a room to clean only that room.",
       notConfigured: "Not configured",
       room: "Room",
       dewPoint: "Dew point"
@@ -521,6 +523,8 @@ ${trees}${houses}
       cleanGenius: "CleanGenius",
       cleaningMode: "Reinigungsmodus",
       chooseCleaningRoom: "Raum antippen startet den gewählten Modus.",
+      wholeHome: "Gesamte Wohnung",
+      chooseCleaningTarget: "Start reinigt die gesamte Wohnung im gewählten Modus. Raum antippen reinigt nur diesen Raum.",
       notConfigured: "Noch nicht eingerichtet",
       room: "Raum",
       dewPoint: "Taupunkt"
@@ -755,13 +759,30 @@ ${trees}${houses}
 
   // src/core/cleaning.js
   function cleaningEntities(cleaning = {}) {
-    return [...["entity", "battery", "current_room", "map"].map((key2) => cleaning[key2]), ...maintenanceEntities(cleaning.maintenance)].filter(Boolean);
+    return [
+      ...["entity", "battery", "current_room", "map"].map((key2) => cleaning[key2]),
+      ...Object.values(cleaning.whole_home ?? {}),
+      ...maintenanceEntities(cleaning.maintenance)
+    ].filter(Boolean);
   }
   function vacuumCommand(command, state, services) {
     const service = command === "start_pause" ? ["cleaning", "returning"].includes(state?.state) ? "pause" : "start" : command === "return_home" ? "return_to_base" : command === "stop" ? "stop" : null;
     const feature = { start: 8192, pause: 4, stop: 8, return_to_base: 16 }[service];
     if (!service || isOffline(state) || !services?.vacuum?.[service] || !(Number(state.attributes?.supported_features) & feature)) return null;
     return service;
+  }
+  function cleaningHelperAction(entity2) {
+    return entity2.startsWith("script.") ? { domain: "script", service: entity2.slice(7) } : { domain: "input_button", service: "press", entity: entity2 };
+  }
+  function cleaningCommand(command, cleaning, mode, states, services) {
+    const state = states[cleaning.entity];
+    const service = vacuumCommand(command, state, services);
+    if (!service) return null;
+    if (service === "start" && state.state !== "paused" && cleaning.whole_home !== void 0) {
+      const entity2 = cleaning.whole_home[mode];
+      return entity2 && !isCleaningActionUnavailable(entity2, states[entity2]) ? cleaningHelperAction(entity2) : null;
+    }
+    return { domain: "vacuum", service, entity: cleaning.entity };
   }
   var key = (value) => typeof value === "string" ? value.trim().toLowerCase().replace(/[\s-]+/g, "_") : value;
   var cleaningLabels = {
@@ -1486,6 +1507,7 @@ h3{font-size:12px;font-weight:500;margin:18px 0 10px}.week{display:grid;grid-tem
       trouble: "Ein Unheil hält den Fürsten auf. Meldung des Roboters prüfen.",
       cleaningMode: "Wählet Euren Feldzug",
       chooseCleaningRoom: "Wählet ein Gemach. Der gewählte Feldzug beginnt sogleich.",
+      chooseCleaningTarget: "Aufbruch schickt den Fürsten im gewählten Feldzug durch das ganze Reich. Wählet ein Gemach für einen einzelnen Raum.",
       vacuum: "Flusenjagd · Saugen",
       mop: "Schrubbdienst · Wischen",
       cleanGenius: "Hofmagie · CleanGenius",
@@ -1513,6 +1535,7 @@ h3{font-size:12px;font-weight:500;margin:18px 0 10px}.week{display:grid;grid-tem
       trouble: "Misfortune holds His Highness back. Check the robot’s error report.",
       cleaningMode: "Choose thy campaign",
       chooseCleaningRoom: "Choose a chamber. The selected campaign begins at once.",
+      chooseCleaningTarget: "March sends His Highness across the entire realm in the selected campaign. Choose a chamber to clean just that room.",
       vacuum: "Dust crusade · Vacuum",
       mop: "Royal scrubbing · Mop",
       cleanGenius: "Court magic · CleanGenius",
@@ -1667,6 +1690,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
         this._config?.cleaning?.entity,
         this._config?.cleaning?.battery,
         this._config?.cleaning?.current_room,
+        ...Object.values(this._config?.cleaning?.whole_home ?? {}),
         ...(this._config?.rooms ?? []).flatMap((room) => Object.values(room.cleaning ?? {}))
       ].filter(Boolean);
       if (!previous || previous.services !== value.services || ids.some((id) => previous.states[id] !== value.states[id]) || previous.states["sun.sun"] !== value.states["sun.sun"] || previous.themes !== value.themes) this._render();
@@ -1697,6 +1721,9 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
     _render() {
       if (!this._config || !this._hass) return;
       const { cleaning = {}, rooms = [], language = "en" } = this._config;
+      const actionRooms = rooms.filter((room) => Object.keys(room.cleaning ?? {}).length);
+      const hasMode = (kind) => cleaning.whole_home?.[kind] || actionRooms.some((room) => room.cleaning?.[kind]);
+      this._mode ??= roomCommands.find(([kind]) => hasMode(kind))?.[0];
       const text = cleaningPageText(cleaning, language);
       const royal = cleaning.theme === "flusenfels";
       const mode = appearanceMode(this._config.appearance, this._hass.states, this._hass.themes?.darkMode);
@@ -1757,21 +1784,23 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
       if (cleaning.entity) {
         const controls = element("div", void 0, "actions");
         for (const [command, symbol, label2] of commands) {
-          const service = vacuumCommand(command, this._hass.states[cleaning.entity], this._hass.services);
+          const action = cleaningCommand(command, cleaning, this._mode, this._hass.states, this._hass.services);
           const button = element("button", void 0, "command");
           button.type = "button";
           button.dataset.command = command;
           button.setAttribute("aria-label", `${translations[language][label2]}${royal ? ` · ${text[label2]}` : ""}`);
-          button.disabled = this._busy || !service;
+          button.disabled = this._busy || !action;
+          if (command === "start_pause" && cleaning.whole_home !== void 0 && !["cleaning", "returning", "paused"].includes(this._hass.states[cleaning.entity]?.state)) {
+            const label3 = roomCommands.find(([kind]) => kind === this._mode)?.[2];
+            button.title = `${text.wholeHome}: ${label3 ? text[label3] : text.notConfigured}`;
+          }
           button.append(icon(symbol), element("span", text[label2]));
-          button.addEventListener("click", () => this._service("vacuum", service, cleaning.entity, text));
+          button.addEventListener("click", () => this._service(action.domain, action.service, action.entity, text));
           controls.append(button);
         }
         panel.append(controls);
       }
-      const actionRooms = rooms.filter((room) => Object.keys(room.cleaning ?? {}).length);
-      if (actionRooms.length) {
-        this._mode ??= roomCommands.find(([kind]) => actionRooms.some((room) => room.cleaning?.[kind]))?.[0];
+      if (actionRooms.length || cleaning.whole_home !== void 0) {
         const modes = element("div", void 0, "modes");
         modes.setAttribute("role", "group");
         modes.setAttribute("aria-label", text.cleaningMode);
@@ -1781,7 +1810,7 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
           button.dataset.mode = kind;
           button.setAttribute("aria-label", text[label2]);
           button.setAttribute("aria-pressed", String(this._mode === kind));
-          button.disabled = this._busy || !actionRooms.some((room) => room.cleaning?.[kind]);
+          button.disabled = this._busy || !hasMode(kind);
           if (button.disabled && !this._busy) button.title = text.notConfigured;
           button.append(icon(symbol), element("span", text[label2]));
           button.addEventListener("click", () => {
@@ -1792,8 +1821,12 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
           });
           modes.append(button);
         }
-        panel.append(element("p", text.cleaningMode, "meta rooms-label"), modes, element("p", text.chooseCleaningRoom, "meta rooms-label"));
-        const missingModes = roomCommands.filter(([kind]) => !actionRooms.some((room) => room.cleaning?.[kind])).map(([, , label2]) => text[label2]);
+        panel.append(
+          element("p", text.cleaningMode, "meta rooms-label"),
+          modes,
+          element("p", cleaning.whole_home !== void 0 ? text.chooseCleaningTarget : text.chooseCleaningRoom, "meta rooms-label")
+        );
+        const missingModes = roomCommands.filter(([kind]) => !hasMode(kind)).map(([, , label2]) => text[label2]);
         if (missingModes.length) panel.append(element("p", `${missingModes.join(", ")}: ${text.missingCleaningHelper}`, "mode-note"));
         const roomGrid = element("div", void 0, "rooms");
         for (const room of actionRooms) {
@@ -1813,7 +1846,10 @@ button:disabled{opacity:.5;cursor:default}button:focus-visible{outline:2px solid
             copy2.append(element("small", entity2, "entity-id"));
           }
           button.append(icon("rooms"), copy2);
-          button.addEventListener("click", () => this._service(entity2.startsWith("script.") ? "script" : "input_button", entity2.startsWith("script.") ? entity2.slice(7) : "press", entity2.startsWith("script.") ? void 0 : entity2, text));
+          button.addEventListener("click", () => {
+            const action = cleaningHelperAction(entity2);
+            this._service(action.domain, action.service, action.entity, text);
+          });
           roomGrid.append(button);
         }
         panel.append(roomGrid);
@@ -2630,6 +2666,14 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
     });
     if (result.cleaning !== void 0) {
       object(result.cleaning, "cleaning");
+      if (result.cleaning.whole_home !== void 0) {
+        object(result.cleaning.whole_home, "cleaning.whole_home");
+        for (const [key2, id] of Object.entries(result.cleaning.whole_home)) {
+          if (!["vacuum", "mop", "clean_genius"].includes(key2)) fail(`cleaning.whole_home.${key2}`, "must be vacuum, mop or clean_genius.");
+          entity(id, `cleaning.whole_home.${key2}`);
+          if (!/^(input_button|script)\./.test(id)) fail(`cleaning.whole_home.${key2}`, "must reference an input_button or script.");
+        }
+      }
       if (result.cleaning.theme !== void 0 && !["default", "flusenfels"].includes(result.cleaning.theme)) fail("cleaning.theme", "must be default or flusenfels.");
       for (const key2 of ["entity", "battery", "current_room", "map"]) {
         if (result.cleaning[key2] !== void 0) entity(result.cleaning[key2], `cleaning.${key2}`);

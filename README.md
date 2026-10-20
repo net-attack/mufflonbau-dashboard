@@ -111,7 +111,7 @@ sections are optional; omitted sections generate no corresponding view.
 | `weather_alerts` | Optional warning package sensor and compact DWD radar access; [setup](docs/WEATHER-ALERTS.de.md) |
 | `calendars` | Calendar entities for the header summary and native calendar |
 | `rooms` | Room definitions, detailed below |
-| `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, `map` (camera) IDs and `maintenance` sensor mappings |
+| `cleaning` | Optional `entity` (vacuum), `battery`, `current_room`, `map` (camera) IDs, `whole_home` mode actions and `maintenance` sensor mappings |
 | `ventilation` | Optional ventilation traffic light using explicit outdoor temperature/humidity pairs with automatic failover and existing room readings; [configuration](docs/VENTILATION.de.md) |
 | `laundry` | Optional appliances with power sensor, restored programme-phase helper and optional `acknowledged` timestamp for persistent completion confirmation; [setup and completion notifications](docs/LAUNDRY.de.md) |
 | `monitors` | Objects containing `entity`, optional `name`, and optional `battery_below` threshold |
@@ -163,6 +163,25 @@ cleaning: # inside a room definition
 
 No automations or helpers are created. The native vacuum tile adds start/pause,
 stop, and return-home controls where supported by the vacuum.
+
+To make the cleaning card's **Start** button clean the entire home in the selected
+mode, map `cleaning.whole_home` to existing scripts or input buttons:
+
+```yaml
+cleaning: # top-level strategy configuration, alongside rooms
+  entity: vacuum.robot
+  whole_home:
+    vacuum: script.vacuum_entire_home
+    mop: script.mop_entire_home
+    clean_genius: script.clean_genius_entire_home
+```
+
+Each helper must configure and confirm its mode, then start a whole-home clean.
+Room buttons continue to use `rooms[].cleaning`. Pausing and resuming keep the
+current job's scope and mode. If a whole-home mapping is configured but the chosen
+mode's helper is missing or unavailable, Start stays disabled. Without
+`whole_home`, Start retains the vacuum integration's existing mode. The native
+vacuum tile controls the robot directly and does not use this card's mode selector.
 
 While cleaning or paused, the cleaning page and Home summary show the robot's
 reported cleaning type (vacuum, mop, combined cleaning or CleanGenius). Changing

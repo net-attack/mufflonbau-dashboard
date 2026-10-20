@@ -204,6 +204,14 @@ export function normalizeConfig(config) {
   });
   if (result.cleaning !== undefined) {
     object(result.cleaning, 'cleaning');
+    if (result.cleaning.whole_home !== undefined) {
+      object(result.cleaning.whole_home, 'cleaning.whole_home');
+      for (const [key, id] of Object.entries(result.cleaning.whole_home)) {
+        if (!['vacuum', 'mop', 'clean_genius'].includes(key)) fail(`cleaning.whole_home.${key}`, 'must be vacuum, mop or clean_genius.');
+        entity(id, `cleaning.whole_home.${key}`);
+        if (!/^(input_button|script)\./.test(id)) fail(`cleaning.whole_home.${key}`, 'must reference an input_button or script.');
+      }
+    }
     if (result.cleaning.theme !== undefined && !['default', 'flusenfels'].includes(result.cleaning.theme)) fail('cleaning.theme', 'must be default or flusenfels.');
     for (const key of ['entity', 'battery', 'current_room', 'map']) {
       if (result.cleaning[key] !== undefined) entity(result.cleaning[key], `cleaning.${key}`);

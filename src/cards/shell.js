@@ -100,11 +100,12 @@ export class MufflonbauShell extends HTMLElement {
       if (config.card_type === 'pop-up') slot.style.display = 'contents';
       if (config.mode === 'observer') slot.style.display = 'none';
       if (config.type === 'weather-forecast' || (config.type === 'custom:mufflonbau-weather-alerts' && config.mode === 'status')) slot.classList.add('wide');
+      if (config.type === 'custom:mufflonbau-spatial') slot.classList.add('wide','spatial');
       if (config.mode) slot.classList.add(`mode-${config.mode}`);
       const layout = { ventilation: config.compact ? 'compact' : 'wide', header: 'wide', climate: 'rooms', 'room-summary': 'compact', people: 'compact', 'presence-summary': 'compact', devices: 'devices', cleaning: 'cleaning', warnings: 'compact', floorplan: 'wide', message: 'wide' }[config.mode];
       if (layout) slot.classList.add(layout);
       let card;
-      if (['custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning', 'custom:mufflonbau-presence', 'custom:mufflonbau-shopping', 'custom:mufflonbau-maintenance', 'custom:mufflonbau-laundry', 'custom:mufflonbau-weather-alerts'].includes(config.type)) {
+      if (['custom:mufflonbau-spatial', 'custom:mufflonbau-live', 'custom:mufflonbau-admin', 'custom:mufflonbau-history', 'custom:mufflonbau-cleaning', 'custom:mufflonbau-presence', 'custom:mufflonbau-shopping', 'custom:mufflonbau-maintenance', 'custom:mufflonbau-laundry', 'custom:mufflonbau-weather-alerts'].includes(config.type)) {
         card = document.createElement(config.type.slice(7)); card.setConfig(config);
         if (config.type === 'custom:mufflonbau-admin') slot.classList.add('wide');
         if (config.type === 'custom:mufflonbau-presence') slot.classList.add('wide');

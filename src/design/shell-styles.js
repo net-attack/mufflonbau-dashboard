@@ -24,6 +24,8 @@ export const shellStyles = `
   .content { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); align-items:start; gap:22px; }
   .slot { min-width:0; grid-column:span 6; } .slot.wide { grid-column:1/-1; } .slot.rooms { grid-column:span 8; } .slot.compact { grid-column:span 4; }
   .slot.devices { grid-column:span 8; } .slot ha-card { background:var(--mb-surface); }
+  .slot.spatial { min-height:500px; height:68dvh; }
+  :host([data-view=rooms]) .slot.spatial { min-height:0; height:100%; }
   .slot.cleaning { grid-column:span 7; height:min(520px,calc(100dvh - 280px)); min-height:300px; }
   .slot.cleaning-map { grid-column:span 5; height:min(520px,calc(100dvh - 280px)); min-height:260px; overflow:hidden; border-radius:24px; }
   .slot.cleaning-map > * { width:100%; height:100%; }

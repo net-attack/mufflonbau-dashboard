@@ -24,6 +24,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Check bundle, HA YAML examples, unit tests, and browser behavior
         run: npm run ci
+      - name: Check isolated spatial rendering POCs
+        run: npm run test:spatial-poc
       - name: Upload browser screenshots
         if: always()
         uses: actions/upload-artifact@v4

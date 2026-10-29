@@ -1,3 +1,4 @@
+import { switchAction } from '../spatial/state.js';
 import { renderVentilation, ventilationStyles } from './ventilation.js';
 import { ventilationEntities } from '../core/ventilation.js';
 import { liveStyles } from '../design/live-styles.js';
@@ -198,7 +199,7 @@ export class MufflonbauLiveCard extends HTMLElement {
         control.disabled = isOffline(this._hass.states[id]); control.append(icon('light'));
         control.addEventListener('click', async () => {
           control.disabled = true;
-          try { await this._hass.callService('homeassistant', 'toggle', {}, { entity_id: id }); }
+          try { if(id.startsWith('switch.'))await switchAction(this._hass,id,this._name(id),this._language);else await this._hass.callService('homeassistant', 'toggle', {}, { entity_id: id }); }
           catch { const error = element('small', text.actionFailed); error.setAttribute('role', 'alert'); tile.append(error); }
           finally { control.disabled = isOffline(this._hass.states[id]); }
         }); top.append(control);
@@ -379,7 +380,7 @@ export class MufflonbauLiveCard extends HTMLElement {
         toggle.setAttribute('role', 'switch'); toggle.setAttribute('aria-checked', String(on)); toggle.setAttribute('aria-label', this._name(id)); toggle.dataset.entity = id;
         toggle.addEventListener('click', async () => {
           toggle.disabled = true;
-          try { await this._hass.callService('homeassistant', 'toggle', {}, { entity_id: id }); }
+          try { if(id.startsWith('switch.'))await switchAction(this._hass,id,this._name(id),this._language);else await this._hass.callService('homeassistant', 'toggle', {}, { entity_id: id }); }
           catch { const error = element('small', text.actionFailed); error.setAttribute('role', 'alert'); tile.append(error); }
           finally { toggle.disabled = isOffline(this._hass.states[id]); }
         }); top.append(toggle);
@@ -462,7 +463,7 @@ export class MufflonbauLiveCard extends HTMLElement {
           event.preventDefault(); event.stopPropagation();
           if (!item.entity) { window.history.pushState(null, '', `room-${room.id}`); window.dispatchEvent(new Event('location-changed')); return; }
           if (item.action === 'toggle') {
-            try { await this._hass.callService('homeassistant', 'toggle', {}, { entity_id: item.entity }); }
+            try { if(item.entity.startsWith('switch.'))await switchAction(this._hass,item.entity,this._name(item.entity),this._language);else await this._hass.callService('homeassistant', 'toggle', {}, { entity_id: item.entity }); }
             catch { this._moreInfo(item.entity); }
           } else this._moreInfo(item.entity);
         });

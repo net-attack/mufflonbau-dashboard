@@ -1,3 +1,4 @@
+import { switchAction } from '../spatial/state.js';
 import { element, svgElement, iconPath, navigateLink } from '../design/dom.js';
 import { localized } from '../core/i18n.js';
 import { appendDrawing } from '../core/floorplan.js';
@@ -126,7 +127,7 @@ export function renderInteractiveFloorplan(host, card, text) {
       action.addEventListener('click',async () => {
         if (chosen.action !== 'toggle') {host._moreInfo(chosen.entity); return;}
         action.disabled=true;
-        try {await host._hass.callService('homeassistant','toggle',{}, {entity_id:chosen.entity});}
+        try {if(chosen.entity.startsWith('switch.'))await switchAction(host._hass,chosen.entity,localized(chosen.name,host._language),host._language);else await host._hass.callService('homeassistant','toggle',{}, {entity_id:chosen.entity});}
         catch {panel.append(element('small',text.actionFailed));}
         finally {action.disabled=!available;}
       }); panel.append(action);

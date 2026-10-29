@@ -1,3 +1,4 @@
+import { validateSpatial } from '../spatial/state.js';
 import { normalizeAdmin } from './admin.js';
 import { cleaningEntities } from './cleaning.js';
 import { laundryEntities } from './laundry.js';
@@ -22,6 +23,7 @@ function label(value, path) {
 }
 export function normalizeConfig(config) {
   object(config, 'configuration');
+  validateSpatial(config.floorplan_spatial);
   if (config.appearance !== undefined) object(config.appearance, 'appearance');
   if (config.title !== undefined && typeof config.title !== 'string') fail('title', 'must be a string.');
   const result = { ...config, entities: config.entities ?? [], people: config.people ?? [],
@@ -264,6 +266,7 @@ export function collectEntities(config) {
       ...room.lights, ...(room.member_lights ?? []), ...room.entities, ...Object.values(room.cleaning ?? {})]),
     ...config.rooms.flatMap(room => (room.objects ?? []).map(item => item.entity)),
     ...(config.floorplan_objects ?? []).map(item => item.entity),
+    ...(config.floorplan_spatial?.scenes ?? []).flatMap(scene => [...(scene.devices ?? []).flatMap(device => [device.entity,device.power,device.energy,device.energy_today]), ...(scene.readings ?? []).flatMap(reading => [reading.temperature,reading.humidity])]),
     ...cleaningEntities(config.cleaning), ...laundryEntities(config.laundry), config.appearance?.night_person, config.appearance?.ambient_person,
   ].filter(Boolean))];
 }

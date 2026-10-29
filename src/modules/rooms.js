@@ -4,11 +4,13 @@ export function roomViews(context) {
   const { config, text, language } = context;
   if (!config.rooms.length) return [];
   const plan = { rooms: config.rooms, walls: config.floorplan_walls, drawing: config.floorplan_drawing, bounds: config.floorplan_bounds, objects: config.floorplan_objects, appearance: config.appearance };
+  const spatial = config.floorplan_spatial;
+  const map = focus_room => spatial ? { type:'custom:mufflonbau-spatial', spatial, rooms:config.rooms, appearance:config.appearance, language, focus_room, fallback:{...plan,map_only:true} } : liveCard('floorplan',{...plan,map_only:!focus_room,focus_room},language);
   const overview = view('rooms', text.rooms, 'mdi:floor-plan', [
-    liveCard('floorplan', { ...plan, map_only: true }, language),
+    map(),
   ], { fullView: true });
   return [overview, ...config.rooms.map(room => view(`room-${room.id}`, localized(room.name, language), room.icon ?? 'mdi:door', [
-    ...(config.floorplan_drawing?.length ? [liveCard('floorplan', { ...plan, focus_room: room.id }, language)] : []),
+    ...(!spatial && config.floorplan_drawing?.length ? [map(room.id)] : []),
     liveCard('climate', { rooms: [room], appearance: config.appearance }, language),
     ...entityCards(room.lights), ...entityCards(room.entities),
     ...(room.note ? [{ type: 'markdown', content: localized(room.note, language) }] : []),

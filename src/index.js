@@ -1,3 +1,4 @@
+import { MufflonbauSpatial } from './cards/spatial.js';
 import { MufflonbauAdmin } from './cards/admin.js';
 import { MufflonbauHistory } from './cards/history.js';
 import { MufflonbauPresence } from './cards/presence.js';
@@ -13,6 +14,7 @@ export class MufflonbauDashboardStrategy extends HTMLElement {
   static getCreateSuggestions() { return { title: 'Mufflonbau', icon: 'mdi:home' }; }
   static async generate(config, hass) { return generateDashboard(config, hass); }
 }
+if (!customElements.get('mufflonbau-spatial')) customElements.define('mufflonbau-spatial', MufflonbauSpatial);
 if (!customElements.get('mufflonbau-admin')) customElements.define('mufflonbau-admin', MufflonbauAdmin);
 if (!customElements.get('mufflonbau-history')) customElements.define('mufflonbau-history', MufflonbauHistory);
 if (!customElements.get('mufflonbau-presence')) customElements.define('mufflonbau-presence', MufflonbauPresence);

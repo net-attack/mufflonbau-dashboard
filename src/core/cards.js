@@ -1,6 +1,6 @@
 export function entityCards(ids) {
   return ids.map(entity => ({ type: 'tile', entity,
-    ...(/^(light|switch)\./.test(entity) ? { tap_action: { action: 'toggle' }, hold_action: { action: 'more-info' } } : {}),
+    ...(/^(light|switch)\./.test(entity) ? { tap_action: { action: 'toggle', ...(entity.startsWith('switch.') ? {confirmation:{text:'Stromversorgung wirklich umschalten? / Really switch the power supply?'}} : {}) }, hold_action: { action: 'more-info' } } : {}),
   }));
 }
 export function entityList(ids, title) {

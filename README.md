@@ -10,6 +10,13 @@ outdoor sources, Saugfried's maintenance workshop, laundry completion status and
 the iCloud-backed shopping list with quick entry. Enable them together in the
 existing dashboard strategy; no separate feature builds or dashboards are needed.
 
+## 2D-Wohnungskarte als Dev-Version
+
+Die optionale Pixi-Wohnungskarte wird als **v0.4.0-dev.1** getestet. Sie zeigt
+eine zusammenhängende Wohnung mit seitlicher Raumauswahl, echten HA-Zuständen
+und Bestätigung vor Steckdosenaktionen. 3D folgt später. Einrichtung und
+Konfigurationsschema: [2D-Wohnungskarte](docs/SPATIAL-2D.de.md).
+
 ## Installation
 
 Requirements: Home Assistant 2026.5 or newer and HACS. Real-instance verification
@@ -405,6 +412,14 @@ available and can be controlled. Missing or unavailable states are not evidence
 that the physical device itself is offline.
 
 ## Development
+
+The isolated [Spatial Lab](docs/spatial-poc-comparison.md) compares SVG,
+SVG + Pixi effects, and a Pixi scene graph using one synthetic room and simulator.
+Run `npm run dev:spatial-poc` and open
+`http://127.0.0.1:4173/dev/spatial-poc`. It needs no Home Assistant connection.
+Use `npm run build:spatial-poc` for the separate dev build and
+`npm run test:spatial-poc` for interaction checks, measurements and screenshots.
+The POC is not imported by the production entry point or shipped in the HACS bundle.
 
 Node.js 22 or newer. esbuild is a development dependency; the dashboard has no
 runtime package dependencies:

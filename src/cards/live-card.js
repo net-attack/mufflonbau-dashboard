@@ -8,6 +8,7 @@ import { element, svgElement, icon, iconPath, navigateLink, roomIcon } from '../
 import { applyTheme } from '../design/tokens.js';
 import { renderInteractiveFloorplan } from './floorplan.js';
 import { cleaningActivity, cleaningEntities } from '../core/cleaning.js';
+import { weatherSystemWarning } from '../core/weather-alerts.js';
 export class MufflonbauLiveCard extends HTMLElement {
   constructor() {
     super();
@@ -300,18 +301,22 @@ export class MufflonbauLiveCard extends HTMLElement {
       `Ø ${average(temperatures)} °C · Ø ${average(humidities)} %`, `${lightsOn} ${text.lightsOn}`);
   }
   _warnings(card, text) {
-    const warnings = monitorWarnings(this._config.monitors ?? [], this._hass.states, this._language, this._hass);
+    const weather = this._config.weather_alerts;
+    const monitors = (this._config.monitors ?? []).filter(item => item.entity !== weather?.entity);
+    const warnings = monitorWarnings(monitors, this._hass.states, this._language, this._hass);
+    const weatherWarning = weatherSystemWarning(weather, this._hass.states[weather?.entity], this._language);
+    if (weatherWarning) warnings.push(weatherWarning);
     card.setAttribute('aria-live', 'polite');
     if (this._config.compact) {
       card.classList.add('dashboard-summary');
       this._summaryLink(card, 'system', warnings.length ? 'warning' : 'system', text.system,
-        warnings.length ? `${warnings.length} ${warnings.length === 1 ? text.warning : text.warnings} · ${warnings[0].name}: ${warnings[0].detail}` : text.healthy);
+        warnings.length ? `${warnings.length} ${warnings.length === 1 ? text.warning : text.warnings}` : text.healthy);
       return;
     }
     card.classList.add('system-board');
     this._section(card, text.system, warnings.length ? warnings.length : '✓');
     const summary = element('div', undefined, 'system-summary');
-    const total = monitorGroups(this._config.monitors ?? [], this._hass).length;
+    const total = monitorGroups(monitors, this._hass).length + (weather ? 1 : 0);
     for (const [value, label] of [[total, text.monitored], [total - warnings.length, text.healthyDevices], [warnings.length, text.warnings]]) {
       const stat = element('div', undefined, 'system-stat'); stat.append(element('strong', String(value)), element('span', label)); summary.append(stat);
     }

@@ -2095,9 +2095,16 @@ progress{display:block;width:100%;height:7px;accent-color:var(--mb-accent);margi
   var warningHash = "#mufflonbau-weather-warnings";
   var radarHash = "#mufflonbau-rain-radar";
   function alertSnapshot(state, now = Date.now()) {
-    const available = state && !["unknown", "unavailable"].includes(state.state);
+    const available = !isOffline(state);
     const warnings = (available && Array.isArray(state.attributes?.warnings) ? state.attributes.warnings : []).filter((w) => w && typeof w.title === "string" && Number(w.level) > 0 && (!w.end || !Number.isFinite(Date.parse(w.end)) || Date.parse(w.end) > now)).sort((a, b) => Number(b.level) - Number(a.level) || a.title.localeCompare(b.title));
-    return { available: Boolean(available), warnings, problems: state?.attributes?.problems ?? [] };
+    const problems = Array.isArray(state?.attributes?.problems) ? [...new Set(state.attributes.problems.filter((p) => typeof p === "string" && p.trim()))] : [];
+    return { available: Boolean(available), warnings, problems };
+  }
+  function weatherSystemWarning(config, state, language) {
+    if (!config) return null;
+    const { available, problems } = alertSnapshot(state);
+    const details = [...new Set([!available && stateProblem(state, language), ...problems].filter(Boolean))];
+    return details.length ? { entity: config.entity, name: "NINA & DWD", detail: details.join(" · ") } : null;
   }
   function weatherPopups(config, language, appearance) {
     if (!config) return [];
@@ -2275,9 +2282,11 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
           content.append(section);
         }
       }
-      if (this._config.mode !== "radar") {
-        if (!available) content.append(element("p", de ? "Warnsystem nicht verfügbar – Einrichtung oder Verbindung prüfen." : "Warning system unavailable – check setup or connection.", "problem"));
-        for (const problem of problems) content.append(element("p", String(problem), "problem"));
+      if (this._config.mode === "details" && (!available || problems.length)) {
+        content.append(element("p", de ? "Warnstatus unvollständig." : "Warning status incomplete.", "problem"));
+        const link = element("a", de ? "Details im Systemstatus" : "Details in system checks");
+        navigateLink(link, "system");
+        content.append(link);
       }
       this.shadowRoot.replaceChildren(element("style", styles7), content);
     }
@@ -2824,8 +2833,8 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
   // src/modules/system.js
   function systemViews({ config, hass, text, language }) {
     const views = [];
-    if (config.monitors.length) views.push(view("system", text.system, "mdi:alert-circle-outline", [
-      liveCard("warnings", { monitors: config.monitors, appearance: config.appearance }, language)
+    if (config.monitors.length || config.weather_alerts) views.push(view("system", text.system, "mdi:alert-circle-outline", [
+      liveCard("warnings", { monitors: config.monitors, weather_alerts: config.weather_alerts, appearance: config.appearance }, language)
     ]));
     const admin = discoverAdminSources(config.admin, hass.states);
     const entities = [.../* @__PURE__ */ new Set([...collectEntities(config), ...Object.values(admin).flat()])];
@@ -2867,7 +2876,7 @@ img{display:block;width:100%;height:auto;border-radius:16px}.radar-link{display:
     if (config.people.length) cards.push(liveCard("presence-summary", { ...shared, compact: true, people: config.people }, language));
     if (config.cleaning?.entity) cards.push(liveCard("cleaning", { ...shared, compact: true, cleaning: config.cleaning }, language));
     if (config.laundry.length) cards.push({ type: "custom:mufflonbau-laundry", ...shared, laundry: config.laundry, language });
-    if (config.monitors.length) cards.push(liveCard("warnings", { ...shared, monitors: config.monitors, compact: true }, language));
+    if (config.monitors.length || config.weather_alerts) cards.push(liveCard("warnings", { ...shared, monitors: config.monitors, weather_alerts: config.weather_alerts, compact: true }, language));
     if (config.shopping) cards.push({ type: "custom:mufflonbau-shopping", ...shared, shopping: config.shopping, language });
     if (config.entities.length) cards.push(liveCard("devices", { ...shared, entities: config.entities, title: text.overview }, language));
     if (!config.rooms.length && !config.people.length && !config.entities.length && !config.laundry.length && !otherViews.some((item) => !item.path.startsWith("admin"))) {
@@ -4265,7 +4274,11 @@ ${ventilationStyles}`);
       );
     }
     _warnings(card, text) {
-      const warnings = monitorWarnings(this._config.monitors ?? [], this._hass.states, this._language, this._hass);
+      const weather = this._config.weather_alerts;
+      const monitors = (this._config.monitors ?? []).filter((item) => item.entity !== weather?.entity);
+      const warnings = monitorWarnings(monitors, this._hass.states, this._language, this._hass);
+      const weatherWarning = weatherSystemWarning(weather, this._hass.states[weather?.entity], this._language);
+      if (weatherWarning) warnings.push(weatherWarning);
       card.setAttribute("aria-live", "polite");
       if (this._config.compact) {
         card.classList.add("dashboard-summary");
@@ -4274,14 +4287,14 @@ ${ventilationStyles}`);
           "system",
           warnings.length ? "warning" : "system",
           text.system,
-          warnings.length ? `${warnings.length} ${warnings.length === 1 ? text.warning : text.warnings} · ${warnings[0].name}: ${warnings[0].detail}` : text.healthy
+          warnings.length ? `${warnings.length} ${warnings.length === 1 ? text.warning : text.warnings}` : text.healthy
         );
         return;
       }
       card.classList.add("system-board");
       this._section(card, text.system, warnings.length ? warnings.length : "✓");
       const summary = element("div", void 0, "system-summary");
-      const total = monitorGroups(this._config.monitors ?? [], this._hass).length;
+      const total = monitorGroups(monitors, this._hass).length + (weather ? 1 : 0);
       for (const [value, label2] of [[total, text.monitored], [total - warnings.length, text.healthyDevices], [warnings.length, text.warnings]]) {
         const stat = element("div", void 0, "system-stat");
         stat.append(element("strong", String(value)), element("span", label2));

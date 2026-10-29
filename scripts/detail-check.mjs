@@ -182,7 +182,7 @@ export async function checkDetailViews(sourcePage) {
     await page.evaluate(() => {
       const card = document.querySelector('#detail-dashboard')._children[0]; card.setConfig({ ...card._config, compact: true });
     });
-    assert.match(await shell.locator('.summary-detail').innerText(), /1 Warnung.*Raumfühler/s);
+    assert.equal(await shell.locator('.summary-detail').innerText(), '1 Warnung');
     await page.evaluate(() => {
       const card = document.querySelector('#detail-dashboard')._children[0]; card.setConfig({ ...card._config, compact: false });
       window.monitorHass = { ...window.monitorHass, states: {

@@ -71,8 +71,13 @@ Dateischreibzugriff für Pakete und `custom_templates`.
    Das Strategie-Editor-Format hat `type` oben; im vollständigen Raw-Editor muss
    die gesamte Strategie unter `strategy:` stehen.
 
-Ein fehlendes Backend oder eine ausgefallene Quelle wird als nicht verfügbar
-angezeigt. Es erscheint dann kein unbegründetes „Alles in Ordnung“.
+Ein fehlendes Backend oder ausgefallene Quellen erscheinen gebündelt als ein
+Eintrag **NINA & DWD** im **Systemstatus**. Auf Zuhause zeigt die Systemkachel
+nur die Anzahl der Probleme; einzelne technische Fehler stehen nicht mehr unter
+dem Wetter. Echte Warnungen bleiben dort sichtbar. Klima meldet bei Störungen
+„Warnstatus prüfen“, das Warnungs-Popup einen unvollständigen Status mit Link
+zum Systemstatus. Es erscheint dann keine unbegründete Entwarnung. Der
+Systemstatus wird auch ohne weitere konfigurierte `monitors` angelegt.
 Die Popups werden von `src/core/weather-alerts.js` erzeugt: Bubble Card
 Standalone-Format mit `cards:`, ohne den veralteten Vertical-Stack-Aufbau.
 Warnungen sind nach Stufe sortiert; beide Indikatoren öffnen dieselbe Liste.

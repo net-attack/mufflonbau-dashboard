@@ -1,4 +1,4 @@
-import { element, icon } from '../design/dom.js';
+import { element, icon, navigateLink } from '../design/dom.js';
 import { applyTheme } from '../design/tokens.js';
 import { appearanceMode } from '../core/state.js';
 import { alertSnapshot, openWeatherPopup, warningHash, radarHash } from '../core/weather-alerts.js';
@@ -104,9 +104,10 @@ export class MufflonbauWeatherAlerts extends HTMLElement {
         content.append(section);
       }
     }
-    if (this._config.mode !== 'radar') {
-      if (!available) content.append(element('p', de ? 'Warnsystem nicht verfügbar – Einrichtung oder Verbindung prüfen.' : 'Warning system unavailable – check setup or connection.', 'problem'));
-      for (const problem of problems) content.append(element('p', String(problem), 'problem'));
+    if (this._config.mode === 'details' && (!available || problems.length)) {
+      content.append(element('p', de ? 'Warnstatus unvollständig.' : 'Warning status incomplete.', 'problem'));
+      const link = element('a', de ? 'Details im Systemstatus' : 'Details in system checks');
+      navigateLink(link, 'system'); content.append(link);
     }
     this.shadowRoot.replaceChildren(element('style', styles), content);
   }

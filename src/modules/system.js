@@ -4,8 +4,8 @@ import { liveCard, view } from '../core/cards.js';
 import { categorizeEntities } from '../core/expert.js';
 export function systemViews({ config, hass, text, language }) {
   const views = [];
-  if (config.monitors.length) views.push(view('system', text.system, 'mdi:alert-circle-outline', [
-    liveCard('warnings', { monitors: config.monitors, appearance: config.appearance }, language),
+  if (config.monitors.length || config.weather_alerts) views.push(view('system', text.system, 'mdi:alert-circle-outline', [
+    liveCard('warnings', { monitors: config.monitors, weather_alerts: config.weather_alerts, appearance: config.appearance }, language),
   ]));
   const admin = discoverAdminSources(config.admin, hass.states);
   const entities = [...new Set([...collectEntities(config), ...Object.values(admin).flat()])];

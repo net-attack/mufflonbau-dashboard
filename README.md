@@ -251,6 +251,13 @@ devices too. Individual battery or measurement problems remain visible when the
 device still reports other readings. Without registry information, entities stay
 separate until Home Assistant supplies their device assignments.
 
+Technical NINA/DWD source failures and an unavailable weather-warning backend
+appear as one warning-system entry in System checks. Home's system button shows
+only the issue count; source errors are not listed below the weather header.
+Actual weather alerts remain visible on Home. An incomplete warning status in
+Climate or the warning popup is never shown as an all-clear; the popup links to
+System checks for technical details. This also works without configured monitors.
+
 The admin view automatically discovers common Speedtest/WAN sensors, router
 network sensors, router-backed device trackers, and Home Assistant/Raspberry Pi
 processor, memory, disk, and uptime sensors. Add explicit IDs under `admin` when

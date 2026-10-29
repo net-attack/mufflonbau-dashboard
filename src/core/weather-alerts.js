@@ -1,13 +1,23 @@
+import { isOffline, stateProblem } from './state.js';
+
 export const warningHash = '#mufflonbau-weather-warnings';
 export const radarHash = '#mufflonbau-rain-radar';
 
 export function alertSnapshot(state, now = Date.now()) {
-  const available = state && !['unknown', 'unavailable'].includes(state.state);
+  const available = !isOffline(state);
   const warnings = (available && Array.isArray(state.attributes?.warnings) ? state.attributes.warnings : [])
     .filter(w => w && typeof w.title === 'string' && Number(w.level) > 0 &&
       (!w.end || !Number.isFinite(Date.parse(w.end)) || Date.parse(w.end) > now))
     .sort((a, b) => Number(b.level) - Number(a.level) || a.title.localeCompare(b.title));
-  return { available: Boolean(available), warnings, problems: state?.attributes?.problems ?? [] };
+  const problems = Array.isArray(state?.attributes?.problems) ? [...new Set(state.attributes.problems.filter(p => typeof p === 'string' && p.trim()))] : [];
+  return { available: Boolean(available), warnings, problems };
+}
+
+export function weatherSystemWarning(config, state, language) {
+  if (!config) return null;
+  const { available, problems } = alertSnapshot(state);
+  const details = [...new Set([!available && stateProblem(state, language), ...problems].filter(Boolean))];
+  return details.length ? { entity: config.entity, name: 'NINA & DWD', detail: details.join(' · ') } : null;
 }
 
 export function weatherPopups(config, language, appearance) {

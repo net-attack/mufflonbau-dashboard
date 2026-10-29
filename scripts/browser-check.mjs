@@ -344,7 +344,8 @@ try {
     document.querySelector('#galaxy-dashboard').hass = window.galaxyHass;
   });
   const compactWarning = galaxyPage.locator('#galaxy-dashboard .mode-warnings .summary-link');
-  assert.match(await compactWarning.innerText(), /1 Warnung.*Türsensor.*10%/s);
+  assert.match(await compactWarning.innerText(), /1 Warnung/);
+  assert.doesNotMatch(await compactWarning.innerText(), /Türsensor|10%/, 'Issue details belong to the system view');
   assert.ok((await compactWarning.boundingBox()).height <= 80, 'Active warnings must also keep the system button compact');
   await galaxyPage.evaluate(() => {
     window.galaxyHass = { ...window.galaxyHass, states: { ...window.galaxyHass.states,

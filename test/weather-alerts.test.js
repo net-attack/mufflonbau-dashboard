@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { alertSnapshot, warningHash, radarHash } from '../src/core/weather-alerts.js';
+import { alertSnapshot, weatherSystemWarning, warningHash, radarHash } from '../src/core/weather-alerts.js';
 import { generateDashboard } from '../src/strategy.js';
 import { normalizeConfig } from '../src/core/config.js';
 
@@ -41,4 +41,23 @@ test('Klima exposes the configured forecast and warning access even without indo
   assert.equal(forecast.show_forecast, true);
   assert.equal(cards.find(c => c.mode === 'status').weather_alerts.entity, config.weather_alerts.entity);
   assert.equal(cards.some(c => c.mode === 'climate'), false);
+});
+
+test('weather source failures belong to system checks even without other monitors', () => {
+  const weather_alerts = { entity: 'sensor.test_alerts' };
+  const dashboard = generateDashboard({ weather_alerts }, { states: {} });
+  for (const path of ['home', 'system']) {
+    const card = dashboard.views.find(v => v.path === path).cards[0].cards.find(c => c.mode === 'warnings');
+    assert.deepEqual(card.weather_alerts, weather_alerts);
+    assert.equal(Boolean(card.compact), path === 'home');
+  }
+  assert.ok(dashboard.views[0].cards[0].navigation.some(n => n.path === 'system'));
+  assert.equal(weatherSystemWarning(undefined, undefined, 'de'), null);
+  assert.equal(weatherSystemWarning(weather_alerts, { state: '2', attributes: { warnings: [{ title: 'Frost', level: 1 }] } }, 'de'), null, 'Real alerts are not system failures');
+  for (const [state, detail] of [[undefined, 'Entity nicht gefunden'], [{ state: 'unknown' }, 'Zustand unbekannt'], [{ state: 'unavailable' }, 'In Home Assistant nicht verfügbar']]) {
+    assert.equal(weatherSystemWarning(weather_alerts, state, 'de').detail, detail);
+  }
+  const state = { state: '0', attributes: { problems: ['NINA offline', 'NINA offline', 'DWD offline'] } };
+  assert.deepEqual(weatherSystemWarning(weather_alerts, state, 'en'), { entity: weather_alerts.entity, name: 'NINA & DWD', detail: 'NINA offline · DWD offline' });
+  assert.deepEqual(alertSnapshot({ state: '0', attributes: { problems: 'invalid' } }).problems, []);
 });

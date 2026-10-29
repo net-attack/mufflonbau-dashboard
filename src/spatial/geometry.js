@@ -6,7 +6,7 @@ export function sceneObjects(scene,states,p) {
  return scene.objects.map(object=>{
   const device=devices.get(object.device??object.id),s=device?deviceState(device,states):null;
   const color=v=>v==='$emissive'||v==='$light'?s?.active?s.color:p.device:v==='$heat'?s?.active?p.heat:p.device:v==='$frame'?p.cool:p[v]??v;
-  const shape=v=>({...v,fill:color(v.fill),stroke:color(v.stroke)});
+  const shape=v=>({...v,fill:color(v.fill),stroke:color(v.stroke),alpha:v.activeOnly&&!s?.active?0:v.alpha});
   const result={...object,shapes:(object.shapes??[]).map(shape),flatShapes:object.flatShapes?.map(shape)};
   // Sensor values are native anchored DOM frames, never baked into floor art.
   if(['temperature','humidity'].includes(object.id))result.shapes=[];

@@ -41,7 +41,7 @@ export class SpatialRenderer {
    (source.placement==='back'?back:front).addChild(group);
   }
   for(const object of geometry(scene,states,p,camera)) {
-   if(object.device){const old=this.hitShapes.get(object.device)??[];this.hitShapes.set(object.device,[...old,...object.shapes]);}
+   if(object.device){const old=this.hitShapes.get(object.device)??[];this.hitShapes.set(object.device,[...old,...object.shapes.filter(shape=>shape.interactive!==false&&shape.alpha!==0)]);}
    const group=new Container({label:object.id});group.alpha=object.opacity??1;
    for(const shape of object.shapes)group.addChild(this.shape(shape));this.world.addChild(group);
    if(object.id==='cutaway-walls')this.world.addChild(back);

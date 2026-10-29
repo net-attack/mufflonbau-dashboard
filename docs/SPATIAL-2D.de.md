@@ -1,12 +1,12 @@
-# Wohnungskarte · v0.4.0-dev.1
+# Wohnungskarte · v0.5.0
 
-Diese Vorabversion ergänzt eine optionale Pixi-Karte im bestehenden Untermenü
+Diese Version ergänzt eine optionale Pixi-Karte im bestehenden Untermenü
 **Räume**. Es bleibt **eine Karte der gesamten Wohnung**. Die seitliche Raumauswahl
 ändert den Ausschnitt derselben Szene. Die bestehenden Startseiten-, Klima-,
 Reinigungs- und Systemkarten bleiben erhalten. Separate Raumdetailseiten erhalten
 keine zusätzliche Pixi-Karte.
 
-Der erste Dev-Release gibt ausschließlich **2D** frei. 3D ist zurückgestellt.
+Dieser Release gibt ausschließlich **2D** frei. 3D ist zurückgestellt.
 Die isolierte Architekturvorschau bleibt unter `npm run dev:spatial-poc` verfügbar.
 
 ## Bedienung
@@ -86,10 +86,25 @@ verschiedene Displaygrößen und das Ausbleiben von Leerlauf-Redraws.
 Screenshots unter `test-results/spatial-production/` sind synthetisch und belegen
 keinen tatsächlich geschalteten physischen Verbraucher.
 
-## Dev-Veröffentlichung
+## Veröffentlichung
 
-`v0.4.0-dev.1` wird als GitHub-Prerelease veröffentlicht und ersetzt nicht die
-stabile Version `v0.3.5`. Die Installation über HACS erfolgt gezielt mit diesem
+`v0.5.0` wird als regulärer GitHub-Release veröffentlicht. Die neue Karte bleibt
+über `floorplan_spatial` optional. Die Installation über HACS erfolgt mit diesem
 Tag. Anschließend Dashboard neu laden; bei einer bereits geladenen Ressource
 gegebenenfalls Browsercache erneuern. Ein Home-Assistant-Core-Update ist nicht
 Teil dieses Releases.
+
+## Ergänzungen in v0.5.0
+
+Geräte ohne eigene HA-Entität können lokale Dashboard-Verknüpfungen tragen:
+`navigation: {view: admin}` öffnet eine Unterseite des aktuellen Dashboards,
+`navigation: {path: /example-platform}` ein anderes Dashboard. Externe URLs,
+Protokoll-URLs und doppelte Pfadseparatoren werden nicht zugelassen. Tippen
+öffnet das Ziel direkt; Halten bietet die Verknüpfung im kompakten Detailfenster.
+Saugfrieds weitere Details führen in den bestehenden Reinigungsbereich.
+
+Nicht schaltbare Verbrauchsanzeigen werden ausschließlich an ihre Messsensoren
+gebunden; sie erhalten weder einen Switch-Target noch eine Schaltaktion.
+Gezeichnete Lichtkegel können `activeOnly: true` und `interactive: false` tragen,
+damit sie nur bei eingeschaltetem Licht sichtbar sind und keine Klickflächen
+anderer Geräte überdecken.

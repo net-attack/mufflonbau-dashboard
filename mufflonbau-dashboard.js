@@ -126,6 +126,10 @@
       for (const d2 of scene.devices ?? []) {
         if (!/^[a-z0-9][a-z0-9_-]*$/i.test(d2.id ?? "") || entityIds.has(d2.id) || typeof d2.x !== "number" || typeof d2.y !== "number") throw new Error("Mufflonbau: spatial devices require unique IDs and coordinates.");
         entityIds.add(d2.id);
+        if (d2.navigation) {
+          const n2 = d2.navigation;
+          if (!n2.view === !n2.path || n2.view && !/^[a-z0-9][a-z0-9_-]*$/i.test(n2.view) || n2.path && (!/^\/[a-z0-9][a-z0-9/_-]*$/i.test(n2.path) || n2.path.includes("//"))) throw new Error("Mufflonbau: spatial navigation must be a local dashboard path or view.");
+        }
         for (const key2 of ["entity", "power", "energy", "energy_today"]) if (d2[key2] && !/^[a-z_]+\.[a-z0-9_]+$/.test(d2[key2])) throw new Error("Mufflonbau: invalid spatial entity ID.");
       }
       walk(scene);
@@ -260,7 +264,7 @@
     return scene.objects.map((object2) => {
       const device = devices.get(object2.device ?? object2.id), s2 = device ? deviceState(device, states) : null;
       const color = (v2) => v2 === "$emissive" || v2 === "$light" ? s2?.active ? s2.color : p2.device : v2 === "$heat" ? s2?.active ? p2.heat : p2.device : v2 === "$frame" ? p2.cool : p2[v2] ?? v2;
-      const shape = (v2) => ({ ...v2, fill: color(v2.fill), stroke: color(v2.stroke) });
+      const shape = (v2) => ({ ...v2, fill: color(v2.fill), stroke: color(v2.stroke), alpha: v2.activeOnly && !s2?.active ? 0 : v2.alpha });
       const result = { ...object2, shapes: (object2.shapes ?? []).map(shape), flatShapes: object2.flatShapes?.map(shape) };
       if (["temperature", "humidity"].includes(object2.id)) result.shapes = [];
       if (object2.windowSpec) Object.assign(result, windowGeometry(object2.windowSpec, s2?.open ?? false));
@@ -46429,7 +46433,7 @@ ${parts.join("\n")}
           for (const object2 of geometry(scene, states, p2, camera)) {
             if (object2.device) {
               const old = this.hitShapes.get(object2.device) ?? [];
-              this.hitShapes.set(object2.device, [...old, ...object2.shapes]);
+              this.hitShapes.set(object2.device, [...old, ...object2.shapes.filter((shape) => shape.interactive !== false && shape.alpha !== 0)]);
             }
             const group = new Container({ label: object2.id });
             group.alpha = object2.opacity ?? 1;
@@ -46534,7 +46538,7 @@ ${parts.join("\n")}
     const url = new URL(window.location.href);
     const segments = url.pathname.split("/").filter(Boolean);
     if (segments.length > 1) segments.pop();
-    url.pathname = `/${segments.join("/")}/${path2}`;
+    url.pathname = "/" + [...segments, path2].join("/");
     url.hash = "";
     return url.pathname;
   }
@@ -47361,7 +47365,7 @@ ${trees}${houses}
       const list2 = this.deviceList.querySelector("div");
       list2.replaceChildren();
       for (const d2 of this.scene.devices ?? []) {
-        if (!d2.entity) continue;
+        if (!d2.entity && !d2.navigation) continue;
         const b2 = element("button", localized(d2.name ?? d2.id, this.language));
         b2.dataset.device = d2.id;
         b2.onclick = () => this.openPopup(d2);
@@ -47513,7 +47517,8 @@ ${trees}${houses}
         else if (gesture && !gesture.moved && !gesture.held && !gesture.orbit) {
           const d2 = gesture.target;
           if (d2) {
-            if (d2.type === "light") this.act(d2, { type: "toggle" });
+            if (d2.navigation) this.openDashboard(d2);
+            else if (d2.type === "light") this.act(d2, { type: "toggle" });
             else if (["radiator", "climate"].includes(d2.type)) {
               this.openPopup(d2);
               this.act(d2, { type: "toggle" });
@@ -47539,6 +47544,18 @@ ${trees}${houses}
           this.draw();
         }
       });
+    }
+    openDashboard(device) {
+      const target = device.navigation;
+      if (!target) return;
+      if (target.view) {
+        const link = element("a");
+        navigateLink(link, target.view);
+        link.click();
+      } else {
+        history.pushState(null, "", target.path);
+        window.dispatchEvent(new Event("location-changed"));
+      }
     }
     openPopup(device) {
       this.closePopup(false);
@@ -47612,9 +47629,15 @@ ${trees}${houses}
           this.popup.append(label2);
         }
       }
-      const more = element("button", this.t("Alle Gerätedetails", "All device details"));
-      more.onclick = () => this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: device.entity }, bubbles: true, composed: true }));
-      more.disabled = !device.entity;
+      const more = element("button", device.navigation ? device.navigation.label ?? this.t("Dashboard öffnen", "Open dashboard") : domain === "vacuum" ? this.t("Weitere Details", "More details") : this.t("Alle Gerätedetails", "All device details"));
+      if (device.navigation) {
+        more.dataset.navigation = device.navigation.view ?? device.navigation.path;
+        more.onclick = () => this.openDashboard(device);
+      } else if (domain === "vacuum") {
+        more.dataset.navigation = "cleaning";
+        navigateLink(more, "cleaning");
+      } else more.onclick = () => this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: device.entity }, bubbles: true, composed: true }));
+      more.disabled = !device.entity && !device.navigation;
       this.popup.append(more);
       this.message = element("p", void 0, "pending");
       this.message.setAttribute("role", "status");
@@ -47634,7 +47657,7 @@ ${trees}${houses}
     refreshPopup() {
       if (!this.popup) return;
       const s2 = deviceState(this.selected, this._hass.states);
-      this.popup.querySelector(".popup-state").textContent = s2.available ? `${s2.raw.state}${s2.type === "light" ? ` · ${Math.round(s2.brightness * 100)} %` : ""}${s2.power !== null ? ` · ${s2.power} W` : ""}${s2.energyToday !== null ? ` · ${s2.energyToday} kWh ${this.t("heute", "today")}` : ""}${s2.energy !== null ? ` · ${s2.energy} kWh ${this.t("gesamt", "total")}` : ""}` : s2.status === "unavailable" ? this.t("Gerät nicht verfügbar", "Device unavailable") : s2.status === "unknown" ? this.t("Gerätezustand unbekannt", "Device state unknown") : this.t("Gerät fehlt", "Device missing");
+      this.popup.querySelector(".popup-state").textContent = this.selected.navigation ? this.selected.navigation.label ?? this.t("Dashboard öffnen", "Open dashboard") : s2.available ? `${s2.raw.state}${s2.type === "light" ? ` · ${Math.round(s2.brightness * 100)} %` : ""}${s2.power !== null ? ` · ${s2.power} W` : ""}${s2.energyToday !== null ? ` · ${s2.energyToday} kWh ${this.t("heute", "today")}` : ""}${s2.energy !== null ? ` · ${s2.energy} kWh ${this.t("gesamt", "total")}` : ""}` : s2.status === "unavailable" ? this.t("Gerät nicht verfügbar", "Device unavailable") : s2.status === "unknown" ? this.t("Gerätezustand unbekannt", "Device state unknown") : this.t("Gerät fehlt", "Device missing");
       for (const input of this.popup.querySelectorAll("[data-setting]")) {
         input.disabled = !s2.available || this.pending;
         if (this.shadowRoot.activeElement === input) continue;

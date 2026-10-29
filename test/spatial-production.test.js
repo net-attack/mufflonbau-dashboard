@@ -70,3 +70,17 @@ test('an appliance drawing preserves its outlet state and confirms both power di
  const states={...spatialHass.states,[printer.entity]:{state:'off',attributes:{}}};
  assert.equal(command(printer,states,{type:'toggle'}).service,'turn_on');
 });
+
+test('dashboard shortcuts accept local routes and reject external or malformed destinations',()=>{
+ const fixture=structuredClone(spatialFixture),s=fixture.scenes[0];
+ s.devices.push({id:'local-board',name:'Board',type:'navigation',x:180,y:300,navigation:{view:'admin'}});validateSpatial(fixture);
+ s.devices.at(-1).navigation={path:'/example-platform'};validateSpatial(fixture);
+ for(const navigation of [{path:'https://example.com'},{path:'//example.com'},{path:'/one//two'},{view:'../../other'},{view:'admin',path:'/other'}]){s.devices.at(-1).navigation=navigation;assert.throws(()=>validateSpatial(fixture),/local dashboard/);}
+});
+
+test('measurement-only appliances have no writable switch target',async()=>{
+ const fridge={id:'fridge',entity:'sensor.spatial_power',type:'appliance',power:'sensor.spatial_power',energy:'sensor.spatial_energy'};
+ let calls=0;const hass={...spatialHass,callService:async()=>{calls++;}};
+ assert.equal(deviceState(fridge,hass.states).power,0);assert.equal(command(fridge,hass.states,{type:'toggle'}),null);
+ assert.equal(await perform(hass,fridge,{type:'toggle'},async()=>true),false);assert.equal(calls,0);
+});

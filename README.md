@@ -10,9 +10,9 @@ outdoor sources, Saugfried's maintenance workshop, laundry completion status and
 the iCloud-backed shopping list with quick entry. Enable them together in the
 existing dashboard strategy; no separate feature builds or dashboards are needed.
 
-## 2D-Wohnungskarte als Dev-Version
+## 2D-Wohnungskarte
 
-Die optionale Pixi-Wohnungskarte wird als **v0.4.0-dev.1** getestet. Sie zeigt
+Die optionale Pixi-Wohnungskarte wird als **v0.5.0** veröffentlicht. Sie zeigt
 eine zusammenhängende Wohnung mit seitlicher Raumauswahl, echten HA-Zuständen
 und Bestätigung vor Steckdosenaktionen. 3D folgt später. Einrichtung und
 Konfigurationsschema: [2D-Wohnungskarte](docs/SPATIAL-2D.de.md).

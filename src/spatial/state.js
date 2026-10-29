@@ -56,7 +56,7 @@ export function validateSpatial(config) {
   for(const scene of config.scenes){
     if(!/^[a-z0-9][a-z0-9_-]*$/i.test(scene.id??'')||ids.has(scene.id)||!scene.room?.points?.length||!Array.isArray(scene.objects))throw new Error('Mufflonbau: spatial scenes need unique IDs, room points and objects.');ids.add(scene.id);
     if(scene.room.points.some(p=>p.length!==2||p.some(n=>typeof n!=='number'||!Number.isFinite(n))))throw new Error('Mufflonbau: invalid spatial room polygon.');
-    const entityIds=new Set();for(const d of scene.devices??[]){if(!/^[a-z0-9][a-z0-9_-]*$/i.test(d.id??'')||entityIds.has(d.id)||typeof d.x!=='number'||typeof d.y!=='number')throw new Error('Mufflonbau: spatial devices require unique IDs and coordinates.');entityIds.add(d.id);for(const key of ['entity','power','energy','energy_today'])if(d[key]&&!/^[a-z_]+\.[a-z0-9_]+$/.test(d[key]))throw new Error('Mufflonbau: invalid spatial entity ID.');}
+    const entityIds=new Set();for(const d of scene.devices??[]){if(!/^[a-z0-9][a-z0-9_-]*$/i.test(d.id??'')||entityIds.has(d.id)||typeof d.x!=='number'||typeof d.y!=='number')throw new Error('Mufflonbau: spatial devices require unique IDs and coordinates.');entityIds.add(d.id);if(d.navigation){const n=d.navigation;if((!n.view===!n.path)||(n.view&&!/^[a-z0-9][a-z0-9_-]*$/i.test(n.view))||(n.path&&(!/^\/[a-z0-9][a-z0-9/_-]*$/i.test(n.path)||n.path.includes('//'))))throw new Error('Mufflonbau: spatial navigation must be a local dashboard path or view.');}for(const key of ['entity','power','energy','energy_today'])if(d[key]&&!/^[a-z_]+\.[a-z0-9_]+$/.test(d[key]))throw new Error('Mufflonbau: invalid spatial entity ID.');}
     walk(scene);
   }
 }

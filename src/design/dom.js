@@ -45,7 +45,7 @@ export function navigationUrl(path) {
   const url = new URL(window.location.href);
   const segments = url.pathname.split('/').filter(Boolean);
   if (segments.length > 1) segments.pop();
-  url.pathname = `/${segments.join('/')}/${path}`;
+  url.pathname = '/' + [...segments,path].join('/');
   url.hash = '';
   return url.pathname;
 }

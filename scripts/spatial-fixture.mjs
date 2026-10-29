@@ -24,3 +24,6 @@ export const spatialHass={locale:{language:'de'},themes:{darkMode:false},states:
 }};
 spatialFixture.focus_rooms=spatialFixture.scenes.filter(s=>s.id!=='all').map((s,i)=>({id:s.id,label:s.label,x:160+(i%3)*140,y:140+Math.floor(i/3)*130,zoom:1.8}));
 spatialFixture.scenes=spatialFixture.scenes.slice(0,1);
+
+spatialFixture.scenes[0].devices.push({id:'board',name:'Board',type:'navigation',x:185,y:290,navigation:{view:'admin',label:'Nerd-Panel öffnen'}});
+spatialFixture.scenes[0].objects.push({id:'board-model',device:'board',layer:'DeviceLayer',height:0,shapes:[{type:'rect',x:180,y:286,w:10,h:8,r:1,fill:'furniture',stroke:'wall',sw:.8}]});

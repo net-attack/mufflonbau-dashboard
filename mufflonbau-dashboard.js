@@ -46,7 +46,7 @@
   function deviceState(device, states) {
     const raw = states[device.entity], a2 = raw?.attributes ?? {}, modes = a2.supported_color_modes ?? [];
     const type = device.type ?? device.entity?.split(".")[0];
-    const active = available(raw) && (type === "light" || type === "outlet" || type === "switch" || type === "window" ? raw.state === "on" : type === "radiator" || type === "climate" ? raw.state !== "off" : ["cleaning", "returning"].includes(raw.state));
+    const active = available(raw) && (type === "light" || type === "outlet" || type === "switch" || type === "window" || device.entity?.startsWith("switch.") ? raw.state === "on" : type === "radiator" || type === "climate" ? raw.state !== "off" : ["cleaning", "returning"].includes(raw.state));
     const rgb = a2.rgb_color;
     const temperature = a2.color_temp_kelvin ?? 2700, t2 = Math.max(0, Math.min(1, (temperature - 2200) / 4300));
     const color = rgb?.length === 3 ? "#" + rgb.map((v2) => clamp(v2, 0, 255).toString(16).padStart(2, "0")).join("") : "#" + [255, 185 + 50 * t2, 99 + 156 * t2].map((n2) => Math.round(n2).toString(16).padStart(2, "0")).join("");

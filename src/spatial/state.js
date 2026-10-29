@@ -5,7 +5,7 @@ export const clamp = (v,min,max,step=1) => Math.max(min,Math.min(max,Math.round(
 export function deviceState(device, states) {
   const raw=states[device.entity],a=raw?.attributes??{},modes=a.supported_color_modes??[];
   const type=device.type??device.entity?.split('.')[0];
-  const active=available(raw) && (type==='light'||type==='outlet'||type==='switch'||type==='window'?raw.state==='on':type==='radiator'||type==='climate'?raw.state!=='off':['cleaning','returning'].includes(raw.state));
+  const active=available(raw) && (type==='light'||type==='outlet'||type==='switch'||type==='window'||device.entity?.startsWith('switch.')?raw.state==='on':type==='radiator'||type==='climate'?raw.state!=='off':['cleaning','returning'].includes(raw.state));
   const rgb=a.rgb_color;
   const temperature=a.color_temp_kelvin??2700,t=Math.max(0,Math.min(1,(temperature-2200)/4300));
   const color=rgb?.length===3?'#'+rgb.map(v=>clamp(v,0,255).toString(16).padStart(2,'0')).join(''):'#'+[255,185+50*t,99+156*t].map(n=>Math.round(n).toString(16).padStart(2,'0')).join('');

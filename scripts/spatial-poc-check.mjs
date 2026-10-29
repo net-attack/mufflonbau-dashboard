@@ -18,7 +18,7 @@ page.on('pageerror', e => errors.push(e.message));
 const panel = id => page.locator(`.scene-card[data-renderer="${id}"]`);
 const waitFrame = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 async function ready(target) {
-  await target.goto(server.url); await target.waitForFunction(() => window.spatialPoc?.ready);
+  await target.goto(server.url); await target.waitForFunction(() => window.spatialPoc?.ready, null, { timeout:60000 });
   await target.evaluate(() => spatialPoc.ready);
   assert.deepEqual(await target.locator('.scene-card').evaluateAll(nodes => nodes.map(n => n.dataset.ready)), ['true', 'true', 'true']);
 }
@@ -193,8 +193,11 @@ try {
   console.log('Desktop scenes, shared state, overlays, gestures and idle measurements passed.');
   await writeFile(new URL('measurements.json', artifacts), JSON.stringify({ capturedAt: new Date().toISOString(), environment: { browser: browser.version(), headless: true, forcedSoftwareRenderer: process.env.SPATIAL_POC_HARDWARE !== '1' }, productionSha256: beforeHash, measurements }, null, 2));
   // Actual touch pinch and touch long press, including cancellation.
+  // Stop desktop GPU work before creating independent tablet contexts.
+  // All tablet captures use a fixed simulator time, including cold startup.
+  await page.evaluate(() => spatialPoc.simulator.update({ frozen:true }));
   for (const profile of galaxyProfiles) {
-    const context = await browser.newContext({ ...profile.options, viewport: { width: profile.viewports[0].width, height: profile.viewports[0].height } });
+    const context = await browser.newContext({ ...profile.options, reducedMotion:'reduce', viewport: { width: profile.viewports[0].width, height: profile.viewports[0].height } });
     const touch = await context.newPage(); touch.on('pageerror', e => errors.push(e.message)); await ready(touch); await touch.evaluate(() => spatialPoc.capture());
     const client = await context.newCDPSession(touch);
     for (const id of ['svg', 'hybrid', 'pixi']) {

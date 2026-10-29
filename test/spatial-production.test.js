@@ -61,3 +61,12 @@ test('heater hit testing includes the full object silhouette beyond its centre t
  assert.equal(geometryHit(project({x:358,y:90},m),shapes,m),true);
  assert.equal(geometryHit(project({x:390,y:90},m),shapes,m),false);
 });
+
+test('an appliance drawing preserves its outlet state and confirms both power directions',async()=>{
+ const printer={id:'printer',entity:'switch.spatial_outlet',type:'appliance'};
+ assert.equal(deviceState(printer,spatialHass.states).active,true);
+ assert.equal(command(printer,spatialHass.states,{type:'toggle'}).service,'turn_off');
+ assert.equal(command(printer,spatialHass.states,{type:'toggle'}).confirm,true);
+ const states={...spatialHass.states,[printer.entity]:{state:'off',attributes:{}}};
+ assert.equal(command(printer,states,{type:'toggle'}).service,'turn_on');
+});
